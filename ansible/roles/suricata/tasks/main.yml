@@ -1,0 +1,474 @@
+---
+# ============================================================================
+# Suricata role - manages Suricata IDS, Snort 3, fail2ban, Filebeat,
+# iprep feeds, MISP integration, Arkime, Velociraptor, and suricata-enforcer
+# on the .120 host.
+# ============================================================================
+
+# ---------- Network interface (promiscuous mode) ----------
+
+- name: Deploy promiscuous mode interface config
+  ansible.builtin.copy:
+    src: enp0s8-promisc
+    dest: "{{ promisc_interface_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+# ---------- Suricata IDS ----------
+
+- name: Deploy suricata.yaml
+  ansible.builtin.template:
+    src: suricata.yaml.j2
+    dest: "{{ suricata_config }}"
+    owner: root
+    group: root
+    mode: "0640"
+    backup: true
+  notify:
+    - Reload suricata rules
+
+- name: Deploy threshold.config
+  ansible.builtin.copy:
+    src: threshold.config
+    dest: "{{ suricata_threshold_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload suricata rules
+
+- name: Deploy suricata-update config (update.yaml)
+  ansible.builtin.copy:
+    src: update.yaml
+    dest: "{{ suricata_update_yaml }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy suricata logrotate config
+  ansible.builtin.copy:
+    src: suricata
+    dest: /etc/logrotate.d/suricata
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy suricata defaults (Debian)
+  ansible.builtin.copy:
+    src: defaults-debian.conf
+    dest: /etc/default/suricata
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart suricata
+
+- name: Ensure suricata iprep directory exists
+  ansible.builtin.file:
+    path: "{{ suricata_iprep_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy iprep categories.txt
+  ansible.builtin.copy:
+    src: categories.txt
+    dest: "{{ suricata_iprep_dir }}/categories.txt"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy suricata EVE logrotate config
+  ansible.builtin.copy:
+    src: suricata-eve.conf
+    dest: /etc/logrotate.d/suricata-eve
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ensure suricata is enabled and running
+  ansible.builtin.systemd:
+    name: suricata
+    state: started
+    enabled: true
+
+- name: Configure suricata-update cron
+  ansible.builtin.cron:
+    name: "suricata-update"
+    hour: "{{ suricata_update_cron_hour }}"
+    minute: "{{ suricata_update_cron_minute }}"
+    job: "/usr/bin/suricata-update && /usr/bin/systemctl restart suricata"
+    user: root
+
+# ---------- IP Reputation feeds ----------
+
+- name: Deploy iprep update script
+  ansible.builtin.copy:
+    src: suricata-iprep-update.sh
+    dest: "{{ iprep_update_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure iprep update cron
+  ansible.builtin.cron:
+    name: "suricata-iprep-update"
+    hour: "{{ iprep_cron_hours }}"
+    minute: "15"
+    job: "{{ iprep_update_script }}"
+    user: root
+
+# ---------- MISP integration ----------
+
+- name: Deploy MISP pull rules script
+  ansible.builtin.template:
+    src: misp-pull-rules.sh.j2
+    dest: "{{ misp_pull_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy MISP push sightings script
+  ansible.builtin.template:
+    src: misp-push-sightings.py.j2
+    dest: "{{ misp_push_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure MISP pull cron
+  ansible.builtin.cron:
+    name: "misp-pull-rules"
+    hour: "{{ misp_pull_cron_hours }}"
+    minute: "0"
+    job: "{{ misp_pull_script }}"
+    user: root
+
+- name: Configure MISP push sightings cron
+  ansible.builtin.cron:
+    name: "misp-push-sightings"
+    hour: "{{ misp_pull_cron_hours }}"
+    minute: "{{ misp_push_cron_minute }}"
+    job: "{{ misp_push_script }}"
+    user: root
+
+# ---------- WAN IP updater ----------
+
+- name: Deploy WAN IP update script
+  ansible.builtin.template:
+    src: update-wan-ip.sh.j2
+    dest: "{{ wan_ip_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure WAN IP update cron
+  ansible.builtin.cron:
+    name: "update-wan-ip"
+    minute: "*/5"
+    job: "{{ wan_ip_script }}"
+    user: root
+
+# ---------- Snort 3 ----------
+
+- name: Deploy snort.lua config
+  ansible.builtin.template:
+    src: snort.lua.j2
+    dest: "{{ snort_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify:
+    - Restart snort3
+
+- name: Deploy snort3 logrotate config
+  ansible.builtin.copy:
+    src: snort3
+    dest: /etc/logrotate.d/snort3
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy snort3 systemd unit
+  ansible.builtin.copy:
+    src: snort3.service
+    dest: /etc/systemd/system/snort3.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Daemon reload
+    - Restart snort3
+
+- name: Deploy snort3 rules update script
+  ansible.builtin.template:
+    src: snort3-update-rules.sh.j2
+    dest: "{{ snort_update_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure snort3 is enabled and running
+  ansible.builtin.systemd:
+    name: snort3
+    state: started
+    enabled: true
+
+# ---------- fail2ban ----------
+
+- name: Deploy fail2ban suricata jail config
+  ansible.builtin.template:
+    src: suricata-jail.conf.j2
+    dest: /etc/fail2ban/jail.d/suricata.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart fail2ban
+
+- name: Deploy fail2ban suricata EVE filter
+  ansible.builtin.copy:
+    src: suricata-eve.conf
+    dest: /etc/fail2ban/filter.d/suricata-eve.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart fail2ban
+
+- name: Deploy fail2ban OpenWrt BanIP action
+  ansible.builtin.template:
+    src: openwrt-banip.conf.j2
+    dest: /etc/fail2ban/action.d/openwrt-banip.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart fail2ban
+
+- name: Ensure fail2ban is enabled and running
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+
+# ---------- Filebeat ----------
+
+- name: Deploy filebeat.yml
+  ansible.builtin.template:
+    src: filebeat.yml.j2
+    dest: "{{ filebeat_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify:
+    - Restart filebeat
+
+- name: Ensure filebeat is enabled and running
+  ansible.builtin.systemd:
+    name: filebeat
+    state: started
+    enabled: true
+
+# ---------- Arkime ----------
+
+- name: Deploy Arkime config.ini
+  ansible.builtin.template:
+    src: config.ini.j2
+    dest: "{{ arkime_config }}"
+    owner: root
+    group: root
+    mode: "0640"
+    backup: true
+
+# ---------- Velociraptor ----------
+
+- name: Deploy Velociraptor server config
+  ansible.builtin.copy:
+    src: server.config.yaml
+    dest: "{{ velociraptor_config }}"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Restart velociraptor
+
+- name: Ensure velociraptor is enabled and running
+  ansible.builtin.systemd:
+    name: velociraptor
+    state: started
+    enabled: true
+
+# ---------- Suricata enforcer ----------
+
+- name: Deploy suricata-enforcer script
+  ansible.builtin.copy:
+    src: suricata-enforcer.py
+    dest: "{{ suricata_enforcer_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Restart suricata-enforcer
+
+- name: Deploy suricata-enforcer systemd unit
+  ansible.builtin.copy:
+    src: suricata-enforcer.service
+    dest: /etc/systemd/system/suricata-enforcer.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Daemon reload
+    - Restart suricata-enforcer
+
+- name: Ensure suricata-enforcer is enabled and running
+  ansible.builtin.systemd:
+    name: suricata-enforcer
+    state: started
+    enabled: true
+
+# ---------- Sinkhole ----------
+
+- name: Deploy sinkhole script
+  ansible.builtin.copy:
+    src: sinkhole.py
+    dest: "{{ sinkhole_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Restart sinkhole
+
+- name: Deploy sinkhole systemd unit
+  ansible.builtin.copy:
+    src: sinkhole.service
+    dest: /etc/systemd/system/sinkhole.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Daemon reload
+    - Restart sinkhole
+
+- name: Ensure sinkhole is enabled and running
+  ansible.builtin.systemd:
+    name: sinkhole
+    state: started
+    enabled: true
+
+# ---------- Loki + Promtail ----------
+
+- name: Deploy loki systemd unit
+  ansible.builtin.copy:
+    src: loki.service
+    dest: /etc/systemd/system/loki.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Daemon reload
+
+- name: Ensure loki is enabled and running
+  ansible.builtin.systemd:
+    name: loki
+    state: started
+    enabled: true
+
+- name: Deploy promtail systemd unit
+  ansible.builtin.copy:
+    src: promtail.service
+    dest: /etc/systemd/system/promtail.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Daemon reload
+
+- name: Ensure promtail is enabled and running
+  ansible.builtin.systemd:
+    name: promtail
+    state: started
+    enabled: true
+
+- name: Deploy promtail scrape config
+  ansible.builtin.copy:
+    src: promtail.yaml
+    dest: /etc/promtail/promtail.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart promtail
+
+# ---------- SOC Ansible state collector (Phase 3.5) ----------
+
+- name: Ensure SOC Ansible state log directory exists
+  ansible.builtin.file:
+    path: /var/log/soc-ansible
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure SOC Ansible state log file exists
+  ansible.builtin.file:
+    path: /var/log/soc-ansible/state.jsonl
+    state: touch
+    owner: root
+    group: root
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Deploy SOC Ansible state collector wrapper
+  ansible.builtin.copy:
+    src: soc-ansible-state.sh
+    dest: /usr/local/bin/soc-ansible-state.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy SOC Ansible state logrotate config
+  ansible.builtin.copy:
+    src: soc-ansible-logrotate
+    dest: /etc/logrotate.d/soc-ansible
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy Grafana dashboard provider config (SOC Dashboards folder)
+  ansible.builtin.copy:
+    src: grafana-dashboards-provider.yaml
+    dest: /etc/grafana/provisioning/dashboards/snort3.yaml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart grafana-server
+
+- name: Deploy SOC Ansible state Grafana dashboard
+  ansible.builtin.copy:
+    src: soc-ansible-state.json
+    dest: /etc/grafana/provisioning/dashboards/soc-ansible-state.json
+    owner: root
+    group: grafana
+    mode: "0640"
+
+- name: Schedule SOC Ansible state collection (every 15 min)
+  ansible.builtin.cron:
+    name: "soc-ansible-state-collect"
+    minute: "*/15"
+    job: "/usr/local/bin/soc-ansible-state.sh >/dev/null 2>&1"
+    user: root
+
+- name: Schedule SOC Ansible drift check (every 4h)
+  ansible.builtin.cron:
+    name: "soc-ansible-state-drift"
+    minute: "0"
+    hour: "*/4"
+    job: "/usr/local/bin/soc-ansible-state.sh --drift >/dev/null 2>&1"
+    user: root

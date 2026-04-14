@@ -1,0 +1,31 @@
+{{ ansible_managed | comment }}
+# Wazuh - Filebeat configuration file
+output.elasticsearch:
+  hosts: ["127.0.0.1:9200"]
+  protocol: http
+setup.template.enabled: false
+setup.ilm.enabled: false
+
+filebeat.modules:
+  - module: wazuh
+    alerts:
+      enabled: true
+    archives:
+      enabled: true
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+logging.metrics.enabled: false
+
+seccomp:
+  default_action: allow
+  syscalls:
+  - action: allow
+    names:
+    - rseq

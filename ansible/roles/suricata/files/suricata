@@ -1,0 +1,17 @@
+/var/log/suricata/*.log {
+    daily
+    size 50M
+    rotate 4
+    missingok
+    compress
+    copytruncate
+}
+
+/var/log/suricata/*.json {
+    daily
+    size 200M
+    rotate 4
+    missingok
+    compress
+    copytruncate
+}

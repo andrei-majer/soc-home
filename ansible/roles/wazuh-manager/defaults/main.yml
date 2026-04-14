@@ -1,0 +1,29 @@
+---
+# ============================================================================
+# wazuh-manager role defaults
+# ============================================================================
+
+# ---------- Paths ----------
+wazuh_ossec_conf: /var/ossec/etc/ossec.conf
+wazuh_local_rules: /var/ossec/etc/rules/local_rules.xml
+wazuh_api_config: /var/ossec/api/configuration/api.yaml
+wazuh_ntfy_script: /var/ossec/integrations/custom-ntfy
+wazuh_taxii_script: /var/ossec/integrations/opencti-taxii.py
+wazuh_taxii_cron: /etc/cron.d/opencti-taxii
+wazuh_dashboard_config: /etc/wazuh-dashboard/opensearch_dashboards.yml
+
+# ---------- Tunables ----------
+wazuh_api_rate_limit: 1000
+wazuh_systemd_timeout: 180
+
+# ---------- ntfy integration ----------
+wazuh_ntfy_topic: "{{ vault_ntfy_topic }}"
+wazuh_ntfy_hook_url: "https://ntfy.sh/{{ wazuh_ntfy_topic }}"
+wazuh_ntfy_rule_ids: "100030,100031,100040,100041"
+
+# ---------- OpenCTI TAXII pull ----------
+wazuh_opencti_url: "http://{{ opencti_host }}:8080"
+wazuh_taxii_collection: "262d8556-dae4-4d30-8b2b-3160162ca395"
+wazuh_taxii_url: "{{ wazuh_opencti_url }}/taxii2/root/collections/{{ wazuh_taxii_collection }}/objects/"
+wazuh_taxii_token: "{{ vault_opencti_taxii_token }}"
+wazuh_taxii_output: /var/ossec/etc/lists/opencti-ioc

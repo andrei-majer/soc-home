@@ -1,0 +1,6 @@
+backups/
+files/originals/
+*.retry
+*.pyc
+__pycache__/
+.vault_pass

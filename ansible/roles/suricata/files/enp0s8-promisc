@@ -1,0 +1,4 @@
+allow-hotplug enp0s8
+iface enp0s8 inet manual
+    up ip link set $IFACE up promisc on
+    down ip link set $IFACE down promisc off

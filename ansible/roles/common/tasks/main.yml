@@ -1,0 +1,40 @@
+---
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Add backports repo (Debian 12 hosts only)
+  ansible.builtin.apt_repository:
+    repo: "deb http://deb.debian.org/debian bookworm-backports main"
+    state: present
+    filename: backports
+  when: ansible_distribution_release == "bookworm"
+
+- name: Deploy SSH authorized keys
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ item }}"
+    state: present
+  loop: "{{ ssh_authorized_keys }}"
+
+- name: Deploy disk-alert script
+  ansible.builtin.template:
+    src: disk-alert.sh.j2
+    dest: "{{ disk_alert_script }}"
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Configure disk-alert cron (hourly)
+  ansible.builtin.cron:
+    name: "disk-alert"
+    minute: "0"
+    job: "{{ disk_alert_script }}"
+    user: root

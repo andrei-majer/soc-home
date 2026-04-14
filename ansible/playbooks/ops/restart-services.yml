@@ -1,0 +1,69 @@
+---
+- name: Restart services (dangerous — requires confirm=yes)
+  hosts: elk-133:suricata-120:opencti-135
+  gather_facts: false
+  serial: 1
+  pre_tasks:
+    - name: Safety check — require explicit confirmation
+      ansible.builtin.assert:
+        that:
+          - confirm is defined
+          - confirm == "yes"
+        fail_msg: "This playbook restarts services lab-wide. Pass -e confirm=yes to proceed."
+      run_once: true
+      delegate_to: localhost
+  tasks:
+    - name: Restart .133 services in order
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - elasticsearch
+        - logstash
+        - kibana
+        - wazuh-manager
+        - wazuh-dashboard
+        - apache2
+        - misp-workers
+      when: inventory_hostname == "elk-133"
+
+    - name: Wait for ES to become green/yellow after restart
+      ansible.builtin.uri:
+        url: http://localhost:9200/_cluster/health
+        return_content: true
+      register: es_health
+      retries: 30
+      delay: 10
+      until: "'green' in es_health.json.status or 'yellow' in es_health.json.status"
+      when: inventory_hostname == "elk-133"
+
+    - name: Restart .120 services in order
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - suricata
+        - snort3
+        - fail2ban
+        - filebeat
+        - promtail
+        - loki
+        - grafana-server
+        - evebox
+      when: inventory_hostname == "suricata-120"
+
+    - name: Wait for Suricata socket to become ready (~7 min)
+      ansible.builtin.command: suricatasc -c version
+      register: sc_check
+      retries: 30
+      delay: 30
+      until: sc_check.rc == 0
+      changed_when: false
+      when: inventory_hostname == "suricata-120"
+
+    - name: Restart OpenCTI docker compose stack
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/opencti
+      when: inventory_hostname == "opencti-135"
+      changed_when: true

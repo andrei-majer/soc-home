@@ -1,0 +1,48 @@
+---
+- name: Deploy MISP Apache vhost
+  ansible.builtin.template:
+    src: misp-apache.conf.j2
+    dest: "{{ misp_apache_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart apache2
+
+- name: Set PHP memory_limit for MISP
+  ansible.builtin.lineinfile:
+    path: /etc/php/8.2/apache2/php.ini
+    regexp: '^memory_limit\s*='
+    line: "memory_limit = {{ misp_php_memory_limit }}"
+  notify: Restart apache2
+
+- name: Check if Redisent.php exists
+  ansible.builtin.stat:
+    path: "{{ misp_install_path }}/app/Vendor/iglocska/php-resque-ex/lib/Redisent/Redisent.php"
+  register: misp_redisent_stat
+
+- name: Fix PHP 8 implode arg order in Redisent
+  ansible.builtin.replace:
+    path: "{{ misp_install_path }}/app/Vendor/iglocska/php-resque-ex/lib/Redisent/Redisent.php"
+    regexp: 'implode\(\$args,\s*'
+    replace: 'implode('
+  when: misp_redisent_stat.stat.exists
+
+- name: Deploy MISP resque logrotate
+  ansible.builtin.copy:
+    src: misp-resque.logrotate
+    dest: /etc/logrotate.d/misp-resque
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ensure misp-workers is running
+  ansible.builtin.systemd:
+    name: misp-workers
+    state: started
+    enabled: true
+
+- name: Ensure apache2 is running
+  ansible.builtin.systemd:
+    name: apache2
+    state: started
+    enabled: true

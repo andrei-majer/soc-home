@@ -1,0 +1,9 @@
+/var/www/MISP/app/tmp/logs/resque-worker-error.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

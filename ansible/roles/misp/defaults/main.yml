@@ -1,0 +1,4 @@
+---
+misp_install_path: /var/www/MISP
+misp_php_memory_limit: "2G"
+misp_apache_config: /etc/apache2/sites-available/misp.conf

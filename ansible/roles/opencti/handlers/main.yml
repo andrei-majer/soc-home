@@ -1,0 +1,10 @@
+---
+- name: Restart opencti
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ opencti_install_dir }}"
+  changed_when: true
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true

@@ -1,0 +1,6 @@
+---
+# Skip rules that are stylistic / not worth the churn for a single-operator repo
+skip_list:
+  - var-naming[no-role-prefix]  # Variables without role name prefix. Stylistic only.
+  - jinja[spacing]               # Large debug-summary templates flag false positives.
+  - run-once[task]               # Safety-assert pre_tasks legitimately use run_once.

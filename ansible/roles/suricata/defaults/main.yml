@@ -1,0 +1,65 @@
+---
+# Suricata IDS
+suricata_config: /etc/suricata/suricata.yaml
+suricata_threshold_config: /etc/suricata/threshold.config
+suricata_disable_conf: /etc/suricata/rules/disable.conf
+suricata_iprep_dir: /etc/suricata/iprep
+suricata_rules_dir: /var/lib/suricata/rules
+suricata_log_dir: /var/log/suricata
+suricata_capture_interface: enp0s8
+suricata_bpf_filter: "net 192.168.0.0/16 or net 10.0.0.0/8 or net 100.64.0.0/10"
+suricata_af_packet_threads: 2
+suricata_update_cron_hour: "2"
+suricata_update_cron_minute: "0"
+suricata_update_yaml: /etc/suricata/update.yaml
+
+# Snort 3
+snort_config: /etc/snort/snort.lua
+snort_log_dir: /var/log/snort
+snort_home_net: "192.168.1.0/24,10.0.0.0/24,100.64.0.0/10,fd7a:115c:a1e0::/48,fe80::/10"
+snort_rules_dir: /etc/snort/rules
+snort_oinkcode: "{{ vault_snort_oinkcode }}"
+snort_update_script: /usr/local/bin/snort3-update-rules.sh
+
+# MISP integration
+misp_pull_script: /usr/local/bin/misp-pull-rules.sh
+misp_push_script: /usr/local/bin/misp-push-sightings.py
+misp_pull_cron_hours: "*/6"
+misp_push_cron_minute: "30"
+misp_url: "http://{{ misp_host }}"
+misp_api_key: "{{ vault_misp_api_key }}"
+misp_rules_file: /etc/suricata/rules/misp.rules
+
+# IP Reputation
+iprep_update_script: /usr/local/bin/suricata-iprep-update.sh
+iprep_cron_hours: "*/6"
+
+# fail2ban
+fail2ban_ban_time: 3600
+fail2ban_find_time: 300
+fail2ban_max_retry: 3
+fail2ban_router_ip: "{{ router_host }}"
+
+# Filebeat
+filebeat_config: /etc/filebeat/filebeat.yml
+filebeat_logstash_host: "{{ elk_host }}:5044"
+
+# Arkime
+arkime_config: /opt/arkime/etc/config.ini
+arkime_elasticsearch_host: "http://{{ elk_host }}:9200"
+
+# Velociraptor
+velociraptor_config: /opt/velociraptor/server.config.yaml
+velociraptor_bin: /opt/velociraptor/velociraptor
+
+# WAN IP updater
+wan_ip_script: /usr/local/bin/update-wan-ip.sh
+
+# Suricata enforcer
+suricata_enforcer_script: /usr/local/bin/suricata-enforcer.py
+
+# Sinkhole
+sinkhole_script: /usr/local/bin/sinkhole.py
+
+# Network interface
+promisc_interface_config: /etc/network/interfaces.d/enp0s8-promisc

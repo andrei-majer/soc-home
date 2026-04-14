@@ -1,0 +1,63 @@
+---
+# This role ONLY fetches configs for version control.
+# It NEVER pushes changes to T-Pot hosts — T-Pot self-manages.
+# Missing source files are tolerated via failed_when: false.
+
+- name: Create local backup directory
+  ansible.builtin.file:
+    path: "{{ tpot_backup_dir }}/{{ inventory_hostname }}"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+
+- name: Fetch .env
+  ansible.builtin.fetch:
+    src: "{{ tpot_install_path }}/.env"
+    dest: "{{ tpot_backup_dir }}/{{ inventory_hostname }}/"
+    flat: true
+  register: fetch_env
+  failed_when: fetch_env.failed and "not found" not in (fetch_env.msg | default(""))
+
+- name: Fetch docker-compose.yml
+  ansible.builtin.fetch:
+    src: "{{ tpot_install_path }}/docker-compose.yml"
+    dest: "{{ tpot_backup_dir }}/{{ inventory_hostname }}/"
+    flat: true
+  register: fetch_compose
+  failed_when: fetch_compose.failed and "not found" not in (fetch_compose.msg | default(""))
+
+- name: Fetch nginx lswebpasswd (HIVE only)
+  ansible.builtin.fetch:
+    src: "{{ tpot_install_path }}/data/nginx/conf/lswebpasswd"
+    dest: "{{ tpot_backup_dir }}/{{ inventory_hostname }}/"
+    flat: true
+  when: tpot_type == "HIVE"
+  register: fetch_lswebpasswd
+  failed_when: fetch_lswebpasswd.failed and "not found" not in (fetch_lswebpasswd.msg | default(""))
+
+- name: Fetch nginx cert (HIVE only)
+  ansible.builtin.fetch:
+    src: "{{ tpot_install_path }}/data/nginx/cert/nginx.crt"
+    dest: "{{ tpot_backup_dir }}/{{ inventory_hostname }}/"
+    flat: true
+  when: tpot_type == "HIVE"
+  register: fetch_nginx_cert
+  failed_when: fetch_nginx_cert.failed and "not found" not in (fetch_nginx_cert.msg | default(""))
+
+- name: Fetch hive.crt (SENSOR only)
+  ansible.builtin.fetch:
+    src: "{{ tpot_install_path }}/data/hive.crt"
+    dest: "{{ tpot_backup_dir }}/{{ inventory_hostname }}/"
+    flat: true
+  when: tpot_type == "SENSOR"
+  register: fetch_hive_cert
+  failed_when: fetch_hive_cert.failed and "not found" not in (fetch_hive_cert.msg | default(""))
+
+- name: Fetch network interface config (SENSOR only)
+  ansible.builtin.fetch:
+    src: /etc/systemd/network/10-enp0s3.link
+    dest: "{{ tpot_backup_dir }}/{{ inventory_hostname }}/"
+    flat: true
+  when: tpot_type == "SENSOR"
+  register: fetch_netconf
+  failed_when: fetch_netconf.failed and "not found" not in (fetch_netconf.msg | default(""))

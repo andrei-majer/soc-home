@@ -1,0 +1,45 @@
+---
+# SOC Lab — Full Convergence Playbook
+# Usage:
+#   ansible-playbook playbooks/site.yml              # all hosts
+#   ansible-playbook playbooks/site.yml --limit elk-133
+#   ansible-playbook playbooks/site.yml --check      # dry run
+
+# Play 1: Common baseline (managed Debian hosts only, NOT T-Pot)
+- name: Common baseline
+  hosts: debian
+  roles:
+    - common
+
+# Play 2: Suricata IDS host (.120)
+- name: Suricata host
+  hosts: suricata-120
+  roles:
+    - suricata
+
+# Play 3: ELK/SIEM host (.133)
+- name: ELK host
+  hosts: elk-133
+  roles:
+    - elk
+    - wazuh-manager
+    - misp
+
+# Play 4: OpenCTI host (.135)
+- name: OpenCTI host
+  hosts: opencti-135
+  roles:
+    - opencti
+
+# Play 5: T-Pot backup (pull-only, no changes pushed)
+- name: T-Pot config backup
+  hosts: tpot
+  roles:
+    - tpot
+
+# Play 6: OpenWrt router backup (raw module, pull-only)
+- name: OpenWrt router backup
+  hosts: openwrt
+  gather_facts: false    # No Python on OpenWrt
+  roles:
+    - openwrt

@@ -1,0 +1,86 @@
+# {{ ansible_managed }}
+input {
+  beats {
+    port => 5044
+    host => "0.0.0.0"
+  }
+}
+
+filter {
+  # ── GeoIP: City/Country ─────────────────────────────────────────────────────
+  if [src_ip] {
+    geoip {
+      source => "src_ip"
+      target => "source_geo"
+    }
+  }
+  if [dest_ip] {
+    geoip {
+      source => "dest_ip"
+      target => "dest_geo"
+    }
+  }
+
+  # ── GeoIP: ASN ───────────────────────────────────────────────────────────────
+  if [src_ip] {
+    geoip {
+      source   => "src_ip"
+      target   => "source_geo"
+      database => "/usr/share/logstash/vendor/bundle/jruby/3.1.0/gems/logstash-filter-geoip-{{ logstash_geoip_plugin_version }}-java/vendor/GeoLite2-ASN.mmdb"
+      fields   => ["AUTONOMOUS_SYSTEM_NUMBER", "AUTONOMOUS_SYSTEM_ORGANIZATION"]
+    }
+  }
+  if [dest_ip] {
+    geoip {
+      source   => "dest_ip"
+      target   => "dest_geo"
+      database => "/usr/share/logstash/vendor/bundle/jruby/3.1.0/gems/logstash-filter-geoip-{{ logstash_geoip_plugin_version }}-java/vendor/GeoLite2-ASN.mmdb"
+      fields   => ["AUTONOMOUS_SYSTEM_NUMBER", "AUTONOMOUS_SYSTEM_ORGANIZATION"]
+    }
+  }
+
+  # ── CVE Metadata: flatten alert.metadata.cve → alert.cve_id ─────────────────
+  if [alert][metadata][cve] {
+    ruby {
+      code => "
+        cves = event.get([alert][metadata][cve])
+        event.set([alert][cve_id], cves.is_a?(Array) ? cves : [cves])
+      "
+    }
+  }
+
+  # ── IP Reputation: flatten alert.iprep → ip_rep ──────────────────────────────
+  if [alert][iprep] {
+    ruby {
+      code => "
+        iprep = event.get([alert][iprep])
+        categories = []
+        if iprep.is_a?(Hash)
+          [src, dst].each do |side|
+            entries = iprep[side]
+            next unless entries.is_a?(Array)
+            entries.each do |e|
+              cat = e[category] rescue nil
+              categories << cat if cat && !cat.empty?
+            end
+          end
+        end
+        event.set(ip_rep, categories.uniq.join(,)) unless categories.empty?
+      "
+    }
+  }
+
+  # ── Timestamp ────────────────────────────────────────────────────────────────
+  date {
+    match => ["timestamp", "ISO8601"]
+    target => "@timestamp"
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["localhost:9200"]
+    index => "suricata-%{+YYYY.MM.dd}"
+    manage_template => false
+  }
+}

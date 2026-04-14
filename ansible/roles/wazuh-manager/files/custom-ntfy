@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+import json, sys, os, urllib.request
+from datetime import datetime
+
+LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'logs', 'integrations.log')
+
+def log(msg):
+    with open(LOG_FILE, 'a') as f:
+        f.write(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + ' custom-ntfy: ' + msg + '\n')
+
+def main(args):
+    if len(args) < 4:
+        log('ERROR: wrong arguments')
+        sys.exit(1)
+    alert_file = args[1]
+    hook_url   = args[3]
+    try:
+        with open(alert_file) as f:
+            alert = json.load(f)
+    except Exception as e:
+        log('ERROR reading alert file: ' + str(e))
+        sys.exit(1)
+    rule      = alert.get('rule', {})
+    rule_id   = rule.get('id', '?')
+    rule_desc = rule.get('description', 'Wazuh alert')
+    level     = rule.get('level', 0)
+    timestamp = alert.get('timestamp', '')[:19].replace('T', ' ')
+    evtdata   = alert.get('data', {}).get('win', {}).get('eventdata', {})
+    ioc = (evtdata.get('destinationIp') or evtdata.get('queryName') or
+           alert.get('data', {}).get('src_ip') or alert.get('data', {}).get('dest_ip') or '')
+    title   = '[SOC] Rule ' + str(rule_id) + ' - Level ' + str(level)
+    message = rule_desc + '\n'
+    if ioc:
+        message += 'IOC: ' + ioc + '\n'
+    message += 'Time: ' + timestamp + ' UTC'
+    priority = 'high' if level >= 10 else 'default'
+    try:
+        req = urllib.request.Request(
+            hook_url,
+            data=message.encode('utf-8'),
+            headers={'Title': title.encode('utf-8'), 'Priority': priority, 'Tags': 'warning,shield'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            log('OK rule=' + str(rule_id) + ' ioc=' + ioc + ' status=' + str(r.status))
+    except Exception as e:
+        log('ERROR sending to ntfy: ' + str(e))
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main(sys.argv)

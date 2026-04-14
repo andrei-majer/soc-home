@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+# Managed by Ansible
+"""
+suricata-enforcer — Suricata EVE alert → OpenWrt BanIP dynamic enforcer.
+
+Tails eve.json in real time. When an external IP accumulates enough
+high-confidence alerts within the sliding window it is SSH-banned on the
+router by inserting the IP into the BanIP blocklist.v4 nftables set.
+Bans are automatically lifted after BAN_DURATION seconds.
+
+Design differences vs fail2ban:
+  - Per-signature throttle: iprep hits ban on first alert; others at threshold
+  - Escalating ban duration: repeat offenders get longer bans
+  - In-memory state — no database, no disk I/O during operation
+  - Logs to syslog (facility daemon) as well as stdout/journal
+"""
+
+import json
+import logging
+import logging.handlers
+import subprocess
+import sys
+import time
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+EVE_LOG       = "/var/log/suricata/eve.json"
+ROUTER        = "root@{{ fail2ban_router_ip }}"
+NFT_TABLE     = "inet banIP"
+NFT_SET       = "blocklist.v4"
+
+# How many qualifying alerts within WINDOW_SECS before an IP is banned.
+BAN_THRESHOLD = 3
+WINDOW_SECS   = 300       # 5-minute sliding window
+
+# Signatures matching these prefixes ban on the FIRST alert (known-bad IPs).
+INSTANT_BAN_PREFIXES = (
+    "IPREP",              # iprep threat-intel hits — already known-bad
+)
+
+# Alert categories that count toward the threshold (case-insensitive substring).
+ACT_ON_CATEGORIES = {
+    "a network trojan",
+    "malware command and control",
+    "attempted administrator privilege gain",
+    "attempted user privilege gain",
+    "successful administrator privilege gain",
+    "successful user privilege gain",
+    "web application attack",
+    "exploit kit",
+    "targeted malicious activity",
+}
+
+# Severity levels that count (1=critical, 2=major).
+ACT_ON_SEVERITY = {1, 2}
+
+# Ban durations — escalate on repeat offences.
+BAN_TIERS = [
+    3600,          # 1st ban:  1 hour
+    21600,         # 2nd ban:  6 hours
+    86400,         # 3rd ban:  24 hours
+    604800,        # 4th+ ban: 7 days
+]
+
+# IPs / prefixes never to ban.
+WHITELIST_EXACT = {
+    "127.0.0.1", "::1",
+    "192.168.1.1", "192.168.1.120",
+}
+WHITELIST_PREFIXES = (
+    "192.168.1.", "10.0.0.", "10.0.",
+    "100.64.", "100.65.", "100.66.", "100.67.",  # CGNAT/Tailscale
+    "fe80:", "fc", "fd",
+)
+
+SSH_TIMEOUT = 10   # seconds per SSH call
+POLL_SLEEP  = 0.5  # seconds to sleep when no new log lines
+
+# ---------------------------------------------------------------------------
+# Logging — both journal (stdout) and syslog
+# ---------------------------------------------------------------------------
+
+log = logging.getLogger("suricata-enforcer")
+log.setLevel(logging.DEBUG)
+
+_fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+
+_stdout = logging.StreamHandler(sys.stdout)
+_stdout.setFormatter(_fmt)
+log.addHandler(_stdout)
+
+_syslog = logging.handlers.SysLogHandler(address="/dev/log",
+                                          facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+_syslog.setFormatter(logging.Formatter("suricata-enforcer: %(levelname)s %(message)s"))
+log.addHandler(_syslog)
+
+# ---------------------------------------------------------------------------
+# State
+# ---------------------------------------------------------------------------
+
+# ip → list of datetime objects (recent qualifying alert timestamps)
+alert_times: dict[str, list] = defaultdict(list)
+
+# ip → datetime when ban expires
+banned_until: dict[str, datetime] = {}
+
+# ip → how many times it has been banned (for tier escalation)
+ban_count: dict[str, int] = defaultdict(int)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def is_internal(ip: str) -> bool:
+    if ip in WHITELIST_EXACT:
+        return True
+    return any(ip.startswith(p) for p in WHITELIST_PREFIXES)
+
+
+def ban_duration_for(ip: str) -> int:
+    tier = min(ban_count[ip], len(BAN_TIERS) - 1)
+    return BAN_TIERS[tier]
+
+
+def ssh_router(cmd: str) -> bool:
+    """Run cmd on the router via SSH. Returns True on success."""
+    result = subprocess.run(
+        ["ssh",
+         "-o", "StrictHostKeyChecking=no",
+         "-o", f"ConnectTimeout={SSH_TIMEOUT}",
+         "-o", "BatchMode=yes",
+         ROUTER, cmd],
+        capture_output=True,
+        timeout=SSH_TIMEOUT + 5,
+    )
+    if result.returncode != 0:
+        log.warning("SSH failed (rc=%d): %s", result.returncode,
+                    result.stderr.decode().strip())
+    return result.returncode == 0
+
+
+def ban_ip(ip: str, reason: str) -> None:
+    now = datetime.utcnow()
+    if ip in banned_until and banned_until[ip] > now:
+        return  # still active
+    duration = ban_duration_for(ip)
+    log.warning("BANNING %s for %ds (tier %d) — %s",
+                ip, duration, ban_count[ip] + 1, reason)
+    cmd = (f"nft add element {NFT_TABLE} {NFT_SET} {{ {ip} }} 2>/dev/null; "
+           f"logger -t suricata-enforcer 'ban {ip}: {reason}'")
+    if ssh_router(cmd):
+        banned_until[ip] = now + timedelta(seconds=duration)
+        ban_count[ip] += 1
+        alert_times[ip] = []  # reset window
+    else:
+        log.error("Failed to ban %s — router SSH unreachable", ip)
+
+
+def unban_ip(ip: str) -> None:
+    log.info("Unbanning %s", ip)
+    cmd = (f"nft delete element {NFT_TABLE} {NFT_SET} {{ {ip} }} 2>/dev/null; "
+           f"logger -t suricata-enforcer 'unban {ip}'")
+    if not ssh_router(cmd):
+        log.error("Failed to unban %s — leaving in expired state", ip)
+    del banned_until[ip]
+
+
+def unban_expired() -> None:
+    now = datetime.utcnow()
+    expired = [ip for ip, until in list(banned_until.items()) if until <= now]
+    for ip in expired:
+        unban_ip(ip)
+
+
+def qualifies(alert: dict) -> bool:
+    """Return True if this alert event should count toward banning."""
+    severity = alert.get("severity", 99)
+    category = (alert.get("category") or "").lower()
+    if severity in ACT_ON_SEVERITY:
+        return True
+    if any(c in category for c in ACT_ON_CATEGORIES):
+        return True
+    return False
+
+
+def instant_ban(alert: dict) -> bool:
+    """Return True if this alert should trigger an immediate ban."""
+    sig = alert.get("signature") or ""
+    return sig.startswith(INSTANT_BAN_PREFIXES)
+
+
+def process_line(line: str) -> None:
+    try:
+        evt = json.loads(line)
+    except json.JSONDecodeError:
+        return
+
+    if evt.get("event_type") != "alert":
+        return
+
+    src = evt.get("src_ip", "")
+    if not src or is_internal(src):
+        return
+
+    alert = evt.get("alert", {})
+    sig   = alert.get("signature", "?")
+
+    if instant_ban(alert):
+        ban_ip(src, f"instant-ban: {sig}")
+        return
+
+    if not qualifies(alert):
+        return
+
+    now    = datetime.utcnow()
+    cutoff = now - timedelta(seconds=WINDOW_SECS)
+    times  = [t for t in alert_times[src] if t > cutoff]
+    times.append(now)
+    alert_times[src] = times
+
+    log.info("Alert %s → %s | %s (sev=%s, count=%d/%d)",
+             src, evt.get("dest_ip", "?"), sig,
+             alert.get("severity", "?"), len(times), BAN_THRESHOLD)
+
+    if len(times) >= BAN_THRESHOLD:
+        ban_ip(src, f"threshold reached: {sig}")
+
+
+def tail_eve(path: str) -> None:
+    log.info("Tailing %s", path)
+    with open(path) as f:
+        f.seek(0, 2)  # seek to end — ignore historical alerts on startup
+        while True:
+            line = f.readline()
+            if not line:
+                unban_expired()
+                time.sleep(POLL_SLEEP)
+                continue
+            process_line(line.strip())
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    log.info("suricata-enforcer starting — router=%s set=%s/%s "
+             "threshold=%d/%ds", ROUTER, NFT_TABLE, NFT_SET,
+             BAN_THRESHOLD, WINDOW_SECS)
+    try:
+        tail_eve(EVE_LOG)
+    except KeyboardInterrupt:
+        log.info("Shutting down — active bans remain on router until they expire")
+        sys.exit(0)
+    except Exception as exc:
+        log.critical("Fatal: %s", exc, exc_info=True)
+        sys.exit(1)

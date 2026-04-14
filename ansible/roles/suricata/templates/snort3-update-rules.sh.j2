@@ -1,0 +1,71 @@
+#!/bin/bash
+# Managed by Ansible
+# Snort 3 rules auto-updater: community + Talos subscriber
+
+set -euo pipefail
+
+OINKCODE="{{ snort_oinkcode }}"
+COMMUNITY_URL="https://www.snort.org/downloads/community/snort3-community-rules.tar.gz"
+TALOS_URL="https://snort.org/rules/snortrules-snapshot-31470.tar.gz?oinkcode=${OINKCODE}"
+RULES_DIR="/etc/snort/rules"
+TALOS_DIR="/etc/snort/rules/talos"
+TMP_COMMUNITY="/tmp/snort3-community-rules.tar.gz"
+TMP_TALOS="/tmp/snort3-talos-rules.tar.gz"
+LOG_TAG="snort3-update-rules"
+
+log() { logger -t "$LOG_TAG" "$*"; }
+
+log "Starting rules update (community + Talos)"
+
+CHANGED=0
+
+# --- Community rules ---
+if wget -q -O "$TMP_COMMUNITY" "$COMMUNITY_URL" && tar -tzf "$TMP_COMMUNITY" &>/dev/null; then
+    TMP_DIR="/tmp/snort3-community-update"
+    rm -rf "$TMP_DIR" && mkdir -p "$TMP_DIR"
+    tar -xzf "$TMP_COMMUNITY" -C "$TMP_DIR" --strip-components=1
+    if [[ -f "$TMP_DIR/snort3-community.rules" ]]; then
+        if ! cmp -s "$TMP_DIR/snort3-community.rules" "$RULES_DIR/snort3-community.rules"; then
+            cp "$TMP_DIR/snort3-community.rules" "$RULES_DIR/snort3-community.rules"
+            cp "$TMP_DIR/sid-msg.map"            "$RULES_DIR/sid-msg.map"
+            log "Community rules updated"
+            CHANGED=1
+        else
+            log "Community rules unchanged"
+        fi
+    fi
+    rm -rf "$TMP_DIR" "$TMP_COMMUNITY"
+else
+    log "ERROR: Failed to download community rules"
+fi
+
+# --- Talos subscriber rules ---
+if wget -q -O "$TMP_TALOS" "$TALOS_URL" && tar -tzf "$TMP_TALOS" &>/dev/null; then
+    TMP_DIR="/tmp/snort3-talos-update"
+    rm -rf "$TMP_DIR" && mkdir -p "$TMP_DIR"
+    tar -xzf "$TMP_TALOS" -C "$TMP_DIR"
+    if [[ -d "$TMP_DIR/rules" ]]; then
+        # Compare a representative file to detect changes
+        if ! cmp -s "$TMP_DIR/rules/snort3-malware-cnc.rules" "$TALOS_DIR/snort3-malware-cnc.rules" 2>/dev/null; then
+            rm -f "$TALOS_DIR"/*.rules "$TALOS_DIR"/*.states "$TALOS_DIR"/*.txt "$TALOS_DIR"/*.map
+            cp "$TMP_DIR/rules/"* "$TALOS_DIR/"
+            log "Talos rules updated"
+            CHANGED=1
+        else
+            log "Talos rules unchanged"
+        fi
+    fi
+    rm -rf "$TMP_DIR" "$TMP_TALOS"
+else
+    log "ERROR: Failed to download Talos rules"
+fi
+
+# --- Validate and reload if anything changed ---
+if [[ $CHANGED -eq 1 ]]; then
+    if ! snort -c /etc/snort/snort.lua --daq-dir /usr/local/lib/daq -T &>/dev/null; then
+        log "ERROR: Snort config validation failed after rules update — aborting restart"
+        exit 1
+    fi
+    systemctl restart snort3
+    log "Rules updated and Snort restarted"
+fi

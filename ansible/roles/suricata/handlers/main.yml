@@ -1,0 +1,54 @@
+---
+- name: Reload suricata rules
+  ansible.builtin.command: suricatasc -c "reload-rules"
+  failed_when: false
+  changed_when: true
+
+- name: Restart suricata
+  ansible.builtin.systemd:
+    name: suricata
+    state: restarted
+
+- name: Restart snort3
+  ansible.builtin.systemd:
+    name: snort3
+    state: restarted
+
+- name: Restart fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+
+- name: Restart filebeat
+  ansible.builtin.systemd:
+    name: filebeat
+    state: restarted
+
+- name: Restart velociraptor
+  ansible.builtin.systemd:
+    name: velociraptor
+    state: restarted
+
+- name: Restart suricata-enforcer
+  ansible.builtin.systemd:
+    name: suricata-enforcer
+    state: restarted
+
+- name: Restart sinkhole
+  ansible.builtin.systemd:
+    name: sinkhole
+    state: restarted
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart promtail
+  ansible.builtin.systemd:
+    name: promtail
+    state: restarted
+
+- name: Restart grafana-server
+  ansible.builtin.systemd:
+    name: grafana-server
+    state: restarted

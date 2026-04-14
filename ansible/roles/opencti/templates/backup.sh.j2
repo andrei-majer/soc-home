@@ -1,0 +1,50 @@
+#!/bin/bash
+set -euo pipefail
+
+BACKUP_DIR={{ opencti_backups_dir }}
+COMPOSE_DIR={{ opencti_install_dir }}
+LOG_PREFIX="[]"
+REMOTE_HOST=192.168.1.15
+REMOTE_USER=Games
+REMOTE_PASS=REDACTED
+REMOTE_DIR=opencti-backups
+
+mkdir -p "$BACKUP_DIR"
+echo "$LOG_PREFIX Starting OpenCTI backup..."
+
+# Stop stack for consistent snapshot
+echo "$LOG_PREFIX Stopping OpenCTI stack..."
+docker compose -f "$COMPOSE_DIR/docker-compose.yml" stop
+echo "$LOG_PREFIX Stack stopped."
+
+# Backup volumes to temp files first, then atomically replace
+for VOL in opencti_esdata opencti_s3data opencti_redisdata opencti_amqpdata; do
+    echo "$LOG_PREFIX Backing up $VOL..."
+    docker run --rm -v "$VOL":/data -v "$BACKUP_DIR":/backup alpine         tar czf /backup/${VOL}.tmp.tar.gz -C /data .
+done
+
+# Backup config files
+echo "$LOG_PREFIX Backing up config files..."
+tar czf "$BACKUP_DIR/opencti_config.tmp.tar.gz"     -C "$COMPOSE_DIR" docker-compose.yml .env config/
+
+# Restart stack before finalising (don't hold it down longer than needed)
+echo "$LOG_PREFIX Restarting OpenCTI stack..."
+docker compose -f "$COMPOSE_DIR/docker-compose.yml" start
+echo "$LOG_PREFIX Stack restarted."
+
+# Atomically replace previous backups only after stack is back up
+for VOL in opencti_esdata opencti_s3data opencti_redisdata opencti_amqpdata opencti_config; do
+    mv "$BACKUP_DIR/${VOL}.tmp.tar.gz" "$BACKUP_DIR/${VOL}.tar.gz"
+done
+
+LOCAL_SIZE=$(du -sh $BACKUP_DIR | cut -f1)
+echo "$LOG_PREFIX Backup finalised: $LOCAL_SIZE used locally."
+
+# Copy to .15 via sftp
+echo "$LOG_PREFIX Copying backups to $REMOTE_HOST..."
+SFTP_CMDS=""
+for FILE in "$BACKUP_DIR"/*.tar.gz; do
+    SFTP_CMDS="$SFTP_CMDS\nput $FILE $REMOTE_DIR/"
+done
+
+printf "%b" "$SFTP_CMDS" | sshpass -p "$REMOTE_PASS" sftp     -o StrictHostKeyChecking=no     "$REMOTE_USER@$REMOTE_HOST" 2>&1     && echo "$LOG_PREFIX Backup complete. Copied to $REMOTE_HOST."     || echo "$LOG_PREFIX WARNING: sftp to .15 failed - local backup still intact."

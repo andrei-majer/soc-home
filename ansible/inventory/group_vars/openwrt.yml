@@ -1,0 +1,6 @@
+---
+# OpenWrt uses sh, not bash - raw module only
+ansible_shell_type: sh
+
+# Router-specific paths
+openwrt_backup_dir: "{{ backup_dir }}/openwrt"

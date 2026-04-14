@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+# Managed by Ansible — pulls OpenCTI TAXII indicators into a Wazuh CDB list.
+import json, urllib.request, sys, re
+
+TAXII_URL = '{{ wazuh_taxii_url }}'
+TOKEN = '{{ wazuh_taxii_token }}'
+OUTPUT = '{{ wazuh_taxii_output }}'
+
+{% raw %}
+req = urllib.request.Request(TAXII_URL,
+    headers={
+        'Authorization': 'Bearer ' + TOKEN,
+        'Accept': 'application/taxii+json;version=2.1'
+    })
+
+try:
+    resp = json.loads(urllib.request.urlopen(req, timeout=30).read())
+except Exception as e:
+    print('ERROR: ' + str(e), file=sys.stderr)
+    sys.exit(1)
+
+objects = resp.get('objects', [])
+iocs = set()
+for obj in objects:
+    if obj.get('type') == 'indicator':
+        pattern = obj.get('pattern', '')
+        for match in re.findall(r"value\s*=\s*'([^']+)'", pattern):
+            iocs.add(match)
+
+with open(OUTPUT, 'w') as f:
+    for ioc in sorted(iocs):
+        f.write(ioc + ':OpenCTI-IOC\n')
+
+print('Written ' + str(len(iocs)) + ' IOCs to ' + OUTPUT)
+{% endraw %}

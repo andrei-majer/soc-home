@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+{{ ansible_managed | comment }}
+"""Delete old ES indices based on retention policy.
+Run daily via cron on 192.168.1.133.
+Retention:
+  suricata-*              {{ retention_suricata }} days
+  wazuh-archives-4.x-*   {{ retention_wazuh_archives }} days  (large, ~600MB/day)
+  wazuh-alerts-4.x-*     {{ retention_wazuh_alerts }} days
+  wazuh-suricata-*        {{ retention_wazuh_suricata }} days
+  arkime_sessions3-*      {{ retention_arkime }} days
+  .monitoring-es-7-*      {{ retention_monitoring }} days
+  .monitoring-kibana-7-*  {{ retention_monitoring }} days
+  wazuh-monitoring-*      {{ retention_wazuh_monitoring // 7 }} weeks
+  wazuh-statistics-*      {{ retention_wazuh_statistics // 7 }} weeks
+"""
+{% raw %}
+import urllib.request, json, re
+from datetime import datetime, timezone, timedelta
+
+ES = "http://localhost:9200"
+
+def es(method, path, body=None):
+    data = json.dumps(body).encode() if body else None
+    req = urllib.request.Request(f"{ES}{path}", data=data, method=method,
+          headers={"Content-Type": "application/json"} if data else {})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        print(f"  ERROR {method} {path}: {e}")
+        return None
+
+def all_indices():
+    resp = es("GET", "/_cat/indices?h=index,store.size&format=json")
+    return {r["index"]: r["store.size"] for r in (resp or [])}
+{% endraw %}
+
+# (prefix, date_fmt_or_"week", retention_days)
+POLICIES = [
+    ("suricata-",              "%Y.%m.%d", {{ retention_suricata }}),
+    ("wazuh-archives-4.x-",   "%Y.%m.%d", {{ retention_wazuh_archives }}),
+    ("wazuh-alerts-4.x-",     "%Y.%m.%d", {{ retention_wazuh_alerts }}),
+    ("wazuh-suricata-",        "%Y.%m.%d", {{ retention_wazuh_suricata }}),
+    ("arkime_sessions3-",      "%y%m%d",   {{ retention_arkime }}),
+    (".monitoring-es-7-",      "%Y.%m.%d", {{ retention_monitoring }}),
+    (".monitoring-kibana-7-",  "%Y.%m.%d", {{ retention_monitoring }}),
+    ("wazuh-monitoring-",      "week",     {{ retention_wazuh_monitoring }}),
+    ("wazuh-statistics-",      "week",     {{ retention_wazuh_statistics }}),
+]
+
+{% raw %}
+def parse_week(date_str):
+    m = re.match(r'(\d{4})\.(\d+)w', date_str)
+    if not m:
+        return None
+    year, week = int(m.group(1)), int(m.group(2))
+    d = datetime(year, 1, 1, tzinfo=timezone.utc) + timedelta(weeks=week - 1)
+    return d
+
+now = datetime.now(timezone.utc)
+idx_map = all_indices()
+total_deleted = 0
+
+for prefix, fmt, days in POLICIES:
+    cutoff = now - timedelta(days=days)
+    for name in sorted(idx_map):
+        if not name.startswith(prefix):
+            continue
+        date_str = name[len(prefix):]
+        try:
+            if fmt == "week":
+                dt = parse_week(date_str)
+                if dt is None:
+                    continue
+            else:
+                dt = datetime.strptime(date_str, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if dt < cutoff:
+            size = idx_map[name]
+            age = (now - dt).days
+            print(f"  Deleting {name} ({size}, age={age}d > {days}d limit)")
+            result = es("DELETE", f"/{name}")
+            if result and result.get("acknowledged"):
+                total_deleted += 1
+            else:
+                print(f"  FAILED: {result}")
+
+print(f"\nDone. Deleted {total_deleted} indices.")
+{% endraw %}

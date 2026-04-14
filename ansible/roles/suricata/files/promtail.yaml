@@ -1,0 +1,160 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://localhost:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: snort3_alerts
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: snort3
+          host: suricata
+          __path__: /var/log/snort/alert_json.txt
+
+    pipeline_stages:
+      # Parse the JSON alert
+      - json:
+          expressions:
+            timestamp:  timestamp
+            proto:      proto
+            src_ap:     src_ap
+            dst_ap:     dst_ap
+            action:     action
+            rule:       rule
+            dir:        dir
+
+      # Promote useful fields as Loki labels for fast filtering
+      - labels:
+          proto:
+          action:
+          dir:
+
+      # NOTE: Snort's timestamp format (MM/DD-HH:MM:SS) has no year.
+      # Go's time parser defaults to year 0000, causing Go to apply historical
+      # LMT offsets instead of EET (UTC+2), producing timestamps ~7h in the
+      # future that Loki rejects. Promtail ingestion time is used instead
+      # (accurate to within milliseconds of the actual alert).
+      #- timestamp:
+      #    source: timestamp
+      #    format: "01/02-15:04:05.000000"
+      #    location: Local
+
+  - job_name: suricata_eve
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: suricata
+          host: suricata
+          __path__: /var/log/suricata/eve.json
+
+    pipeline_stages:
+      # Parse EVE JSON
+      - json:
+          expressions:
+            timestamp:  timestamp
+            event_type: event_type
+            proto:      proto
+            src_ip:     src_ip
+            dest_ip:    dest_ip
+            severity:   alert.severity
+            category:   alert.category
+
+      # Promote useful fields as Loki labels
+      - labels:
+          event_type:
+          proto:
+          severity:
+
+      # GeoIP city enrichment on dest_ip
+      - geoip:
+          db: /usr/share/GeoIP/GeoLite2-City.mmdb
+          source: dest_ip
+          db_type: city
+
+      # ASN enrichment on dest_ip
+      - geoip:
+          db: /usr/share/GeoIP/GeoLite2-ASN.mmdb
+          source: dest_ip
+          db_type: asn
+
+      # GeoIP city enrichment on src_ip
+      - geoip:
+          db: /usr/share/GeoIP/GeoLite2-City.mmdb
+          source: src_ip
+          db_type: city
+
+      # ASN enrichment on src_ip
+      - geoip:
+          db: /usr/share/GeoIP/GeoLite2-ASN.mmdb
+          source: src_ip
+          db_type: asn
+
+      # Only promote country name as a label (lat/lon are too high-cardinality for labels)
+      - labels:
+          geoip_country_name:
+
+      # ASN number and org as structured metadata (queryable in Loki without label cardinality cost)
+      - structured_metadata:
+          geoip_autonomous_system_number:
+          geoip_autonomous_system_organization:
+
+      # Set timestamp from Suricata's ISO8601 field
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          location: Local
+
+  - job_name: sinkhole
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: sinkhole
+          host: suricata
+          __path__: /var/log/sinkhole.json
+
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp:   timestamp
+            client_ip:   client_ip
+            dst_port:    dst_port
+            event:       event
+
+      - labels:
+          event:
+          dst_port:
+
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          location: Local
+
+  - job_name: soc-ansible-state
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: soc-ansible
+          __path__: /var/log/soc-ansible/state.jsonl
+    pipeline_stages:
+      - json:
+          expressions:
+            host: host
+            type: type
+            ts: ts
+      - labels:
+          host:
+          type:
+      - timestamp:
+          source: ts
+          format: RFC3339

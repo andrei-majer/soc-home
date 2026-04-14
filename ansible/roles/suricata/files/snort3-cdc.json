@@ -1,0 +1,358 @@
+{
+  "uid": "snort3-cdc",
+  "title": "Snort 3 — Cyber Defense Operations",
+  "description": "State-of-the-art CDC dashboard: threat posture, rule analytics, port scan detection, traffic direction, top endpoints and live alert feed.",
+  "tags": ["snort3", "ids", "cdc", "threat"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "panels": [
+
+    { "id": 1, "type": "row", "title": "🛡️  THREAT POSTURE", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 } },
+
+    {
+      "id": 2, "type": "stat", "title": "Total Events",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\"}[$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": 0 }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 10000 }] } } }
+    },
+    {
+      "id": 3, "type": "stat", "title": "Unique Rules Fired",
+      "gridPos": { "h": 3, "w": 4, "x": 4, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "count(sum by (rule) (count_over_time({job=\"snort3\"} | json | rule != \"\" [$__range])))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] } } }
+    },
+    {
+      "id": 4, "type": "stat", "title": "Port Scan Alerts (GID 122)",
+      "description": "Events matching Snort's port_scan inspector (GID 122): TCP/UDP port sweeps and scans",
+      "gridPos": { "h": 3, "w": 4, "x": 8, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\"} | json | rule =~ \"122:.*\" [$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }, { "color": "red", "value": 20 }] } } }
+    },
+    {
+      "id": 5, "type": "stat", "title": "SSL/TLS Anomalies (GID 137)",
+      "description": "Events matching Snort's ssl inspector (GID 137): invalid handshakes, unexpected HELLOs",
+      "gridPos": { "h": 3, "w": 4, "x": 12, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\"} | json | rule =~ \"137:.*\" [$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 50 }] } } }
+    },
+    {
+      "id": 6, "type": "stat", "title": "Talos / Community Hits (GID 1)",
+      "description": "Hits on standard SID rules (GID 1): Talos subscriber + community ruleset detections",
+      "gridPos": { "h": 3, "w": 4, "x": 16, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\"} | json | rule =~ \"1:.*\" [$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }, { "color": "red", "value": 10 }] } } }
+    },
+    {
+      "id": 7, "type": "stat", "title": "Throughput (bytes/s avg)",
+      "description": "Average throughput of inspected packets over the selected time range",
+      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | unwrap pkt_len [$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "text", "value": 0 }] } } }
+    },
+
+    { "id": 10, "type": "row", "title": "📊  EVENT TIMELINE", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 } },
+
+    {
+      "id": 11, "type": "timeseries", "title": "Event Rate by Protocol",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 5 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"TCP\"}[$__interval]))", "legendFormat": "TCP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"UDP\"}[$__interval]))", "legendFormat": "UDP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"ARP\"}[$__interval]))", "legendFormat": "ARP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"ICMP\"}[$__interval]))", "legendFormat": "ICMP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"eth\"}[$__interval]))", "legendFormat": "eth (L2)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"IP\"}[$__interval]))", "legendFormat": "IP" }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 8 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 12, "type": "piechart", "title": "Protocol Distribution",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 5 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", proto=\"TCP\"}[$__range]))", "instant": true, "refId": "A", "legendFormat": "TCP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", proto=\"UDP\"}[$__range]))", "instant": true, "refId": "B", "legendFormat": "UDP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", proto=\"ARP\"}[$__range]))", "instant": true, "refId": "C", "legendFormat": "ARP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", proto=\"ICMP\"}[$__range]))", "instant": true, "refId": "D", "legendFormat": "ICMP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", proto=\"eth\"}[$__range]))", "instant": true, "refId": "E", "legendFormat": "eth (L2)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", proto=\"IP\"}[$__range]))", "instant": true, "refId": "F", "legendFormat": "IP" }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "displayName", "value": "TCP" }] },
+          { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "displayName", "value": "UDP" }] },
+          { "matcher": { "id": "byFrameRefID", "options": "C" }, "properties": [{ "id": "displayName", "value": "ARP" }] },
+          { "matcher": { "id": "byFrameRefID", "options": "D" }, "properties": [{ "id": "displayName", "value": "ICMP" }] },
+          { "matcher": { "id": "byFrameRefID", "options": "E" }, "properties": [{ "id": "displayName", "value": "eth (L2)" }] },
+          { "matcher": { "id": "byFrameRefID", "options": "F" }, "properties": [{ "id": "displayName", "value": "IP" }] }
+        ]
+      },
+      "options": { "pieType": "donut", "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } }
+    },
+
+    { "id": 20, "type": "row", "title": "🧭  TRAFFIC DIRECTION & THROUGHPUT", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 } },
+
+    {
+      "id": 21, "type": "piechart", "title": "Traffic Direction",
+      "description": "C2S = Client to Server, S2C = Server to Client, UNK = Unknown (no TCP state)",
+      "gridPos": { "h": 8, "w": 5, "x": 0, "y": 14 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", dir=\"C2S\"}[$__range]))", "instant": true, "refId": "A", "legendFormat": "C2S" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", dir=\"S2C\"}[$__range]))", "instant": true, "refId": "B", "legendFormat": "S2C" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"snort3\", dir=\"UNK\"}[$__range]))", "instant": true, "refId": "C", "legendFormat": "UNK" }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "displayName", "value": "C2S" }, { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "displayName", "value": "S2C" }, { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byFrameRefID", "options": "C" }, "properties": [{ "id": "displayName", "value": "UNK" }, { "id": "color", "value": { "fixedColor": "gray", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "pieType": "donut", "legend": { "displayMode": "table", "placement": "bottom", "values": ["value", "percent"] } }
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "Traffic Direction Over Time",
+      "gridPos": { "h": 8, "w": 11, "x": 5, "y": 14 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", dir=\"C2S\"}[$__interval]))", "legendFormat": "C2S" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", dir=\"S2C\"}[$__interval]))", "legendFormat": "S2C" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", dir=\"UNK\"}[$__interval]))", "legendFormat": "UNK" }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "C2S" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "S2C" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "UNK" }, "properties": [{ "id": "color", "value": { "fixedColor": "gray", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 23, "type": "timeseries", "title": "Inspected Throughput (bytes/s)",
+      "description": "Rate of bytes in packets that triggered Snort rules",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 14 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"TCP\"} | json | unwrap pkt_len [$__interval]))", "legendFormat": "TCP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=\"UDP\"} | json | unwrap pkt_len [$__interval]))", "legendFormat": "UDP" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\", proto=~\"ARP|IP|eth|ICMP\"} | json | unwrap pkt_len [$__interval]))", "legendFormat": "Other" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "lineWidth": 2, "fillOpacity": 8 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+
+    { "id": 30, "type": "row", "title": "🎯  TOP RULES & DETECTIONS", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 } },
+
+    {
+      "id": 31, "type": "table", "title": "Top 20 Rules Fired",
+      "description": "GID:SID:REV — GID 1=Talos/Community, 112=ARP, 116=Stream, 122=PortScan, 129=HTTP, 137=SSL",
+      "gridPos": { "h": 10, "w": 14, "x": 0, "y": 23 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(20, sum by (rule) (count_over_time({job=\"snort3\"} | json | rule != \"\" [$__range])))", "instant": true, "legendFormat": "{{rule}}" }],
+      "options": { "sortBy": [{ "displayName": "Hits", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "rule" }, "properties": [{ "id": "displayName", "value": "Rule (GID:SID:REV)" }, { "id": "custom.width", "value": 160 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Hits" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }, { "id": "custom.width", "value": 120 }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "rule" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 32, "type": "timeseries", "title": "Alert Timeline by Rule Category",
+      "description": "GID 1=Talos/Community, 122=PortScan, 137=SSL, 116=Stream, 112=ARP, 129=HTTP",
+      "gridPos": { "h": 10, "w": 10, "x": 14, "y": 23 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"1:.*\" [$__interval]))", "legendFormat": "Talos/Community (GID 1)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"122:.*\" [$__interval]))", "legendFormat": "Port Scan (GID 122)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"137:.*\" [$__interval]))", "legendFormat": "SSL Anomaly (GID 137)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"116:.*\" [$__interval]))", "legendFormat": "Stream (GID 116)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"112:.*\" [$__interval]))", "legendFormat": "ARP Spoof (GID 112)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"129:.*\" [$__interval]))", "legendFormat": "HTTP Inspect (GID 129)" }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 8 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+
+    { "id": 40, "type": "row", "title": "👤  TOP ENDPOINTS", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 } },
+
+    {
+      "id": 41, "type": "table", "title": "Top Source Addresses",
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 34 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (src_ap) (count_over_time({job=\"snort3\", proto=~\"TCP|UDP\"} | json | src_ap != \"\" | src_ap != \":0\" [$__range])))", "instant": true, "legendFormat": "{{src_ap}}" }],
+      "options": { "sortBy": [{ "displayName": "Hits", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "src_ap" }, "properties": [
+            { "id": "displayName", "value": "Source (IP:Port)" }, { "id": "custom.width", "value": 190 },
+            { "id": "links", "value": [{ "title": "AbuseIPDB Lookup", "url": "https://www.abuseipdb.com/check/${__value.raw}", "targetBlank": true }] }
+          ]},
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Hits" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "src_ap" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 42, "type": "table", "title": "Top Destination Addresses",
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 34 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (dst_ap) (count_over_time({job=\"snort3\", proto=~\"TCP|UDP\"} | json | dst_ap != \"\" | dst_ap != \":0\" [$__range])))", "instant": true, "legendFormat": "{{dst_ap}}" }],
+      "options": { "sortBy": [{ "displayName": "Hits", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "dst_ap" }, "properties": [{ "id": "displayName", "value": "Destination (IP:Port)" }, { "id": "custom.width", "value": 190 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Hits" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "dst_ap" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 43, "type": "table", "title": "Top Rules by Source",
+      "description": "Which sources are triggering the most rule hits",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 34 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (src_ap, rule) (count_over_time({job=\"snort3\", proto=~\"TCP|UDP\"} | json | src_ap != \"\" | src_ap != \":0\" [$__range])))", "instant": true, "legendFormat": "{{src_ap}} / {{rule}}" }],
+      "options": { "sortBy": [{ "displayName": "Hits", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "src_ap" }, "properties": [{ "id": "displayName", "value": "Source" }, { "id": "custom.width", "value": 160 }] },
+          { "matcher": { "id": "byName", "options": "rule" }, "properties": [{ "id": "displayName", "value": "Rule" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Hits" }, { "id": "custom.displayMode", "value": "lcd-gauge" }, { "id": "color", "value": { "mode": "continuous-BlYlRd" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns", "valueLabel": "" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 50, "type": "row", "title": "🔍  PORT SCAN DETECTION (GID 122)", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 } },
+
+    {
+      "id": 51, "type": "timeseries", "title": "Port Scan Activity Over Time",
+      "gridPos": { "h": 7, "w": 14, "x": 0, "y": 44 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"122:3:.*\" [$__interval]))", "legendFormat": "TCP Portsweep (122:3)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"122:21:.*\" [$__interval]))", "legendFormat": "UDP Filtered Portscan (122:21)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"122:23:.*\" [$__interval]))", "legendFormat": "UDP Filtered Portsweep (122:23)" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"122:(?!3:|21:|23:).*\" [$__interval]))", "legendFormat": "Other Port Scan" }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 15 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 52, "type": "table", "title": "Port Scan Sources",
+      "gridPos": { "h": 7, "w": 10, "x": 14, "y": 44 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(10, sum by (src_ap, rule) (count_over_time({job=\"snort3\"} | json | rule =~ \"122:.*\" | src_ap != \"\" | src_ap != \":0\" [$__range])))", "instant": true, "legendFormat": "{{src_ap}} — {{rule}}" }],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "src_ap" }, "properties": [{ "id": "displayName", "value": "Scanner (IP:Port)" }, { "id": "custom.width", "value": 180 }] },
+          { "matcher": { "id": "byName", "options": "rule" }, "properties": [{ "id": "displayName", "value": "Rule" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 60, "type": "row", "title": "🔐  SSL/TLS ANOMALIES (GID 137)", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 51 } },
+
+    {
+      "id": 61, "type": "timeseries", "title": "SSL/TLS Anomaly Rate",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 52 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"137:.*\" [$__interval]))", "legendFormat": "SSL Anomalies" }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 20 }, "color": { "fixedColor": "orange", "mode": "fixed" } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+    },
+    {
+      "id": 62, "type": "table", "title": "SSL Anomaly Sources",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 52 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(10, sum by (src_ap, dst_ap) (count_over_time({job=\"snort3\"} | json | rule =~ \"137:.*\" | src_ap != \":0\" [$__range])))", "instant": true, "legendFormat": "{{src_ap}} → {{dst_ap}}" }],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "src_ap" }, "properties": [{ "id": "displayName", "value": "Source" }, { "id": "custom.width", "value": 180 }] },
+          { "matcher": { "id": "byName", "options": "dst_ap" }, "properties": [{ "id": "displayName", "value": "Destination" }, { "id": "custom.width", "value": 180 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 70, "type": "row", "title": "🎖️  TALOS / COMMUNITY RULE HITS (GID 1)", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 59 } },
+
+    {
+      "id": 71, "type": "timeseries", "title": "Talos / Community Rule Hit Rate",
+      "description": "Hits on standard GID 1 rules: your local.rules + community rules + Talos subscriber rules",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 60 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"snort3\"} | json | rule =~ \"1:.*\" [$__interval]))", "legendFormat": "GID 1 Hits" }],
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 20 }, "color": { "fixedColor": "red", "mode": "fixed" } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+    },
+    {
+      "id": 72, "type": "table", "title": "Top Talos / Community Rules",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 60 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (rule, src_ap, dst_ap) (count_over_time({job=\"snort3\"} | json | rule =~ \"1:.*\" | src_ap != \":0\" [$__range])))", "instant": true, "legendFormat": "{{rule}} | {{src_ap}} → {{dst_ap}}" }],
+      "options": { "sortBy": [{ "displayName": "Hits", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "rule" }, "properties": [{ "id": "displayName", "value": "Rule (SID)" }, { "id": "custom.width", "value": 120 }] },
+          { "matcher": { "id": "byName", "options": "src_ap" }, "properties": [{ "id": "displayName", "value": "Source" }, { "id": "custom.width", "value": 160 }] },
+          { "matcher": { "id": "byName", "options": "dst_ap" }, "properties": [{ "id": "displayName", "value": "Destination" }, { "id": "custom.width", "value": 160 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Hits" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 80, "type": "row", "title": "📋  LIVE ALERT LOG", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 67 } },
+
+    {
+      "id": 81, "type": "logs", "title": "All Snort 3 Alerts",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 68 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "{job=\"snort3\"}", "legendFormat": "" }],
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showTime": true, "showLabels": true, "sortOrder": "Descending", "wrapLogMessage": false }
+    }
+
+  ]
+}

@@ -1,0 +1,11 @@
+/var/log/elasticsearch/suricata-elk*.log
+/var/log/elasticsearch/suricata-elk*.json {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    maxsize 50M
+}

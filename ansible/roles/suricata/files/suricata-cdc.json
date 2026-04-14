@@ -1,0 +1,375 @@
+{
+  "uid": "suricata-cdc",
+  "title": "Suricata — Cyber Defense Operations",
+  "description": "State-of-the-art CDC dashboard: threat posture, alert analytics, threat actors, geographic intelligence, application-layer visibility and live event feeds.",
+  "tags": ["suricata", "ids", "cdc", "threat"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "panels": [
+
+    { "id": 1, "type": "row", "title": "🛡️  THREAT POSTURE", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 } },
+
+    {
+      "id": 2, "type": "stat", "title": "Total Alerts",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"}[$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": 0 }, { "color": "yellow", "value": 100 }, { "color": "red", "value": 1000 }] } } }
+    },
+    {
+      "id": 3, "type": "stat", "title": "High Severity (Sev 1)",
+      "gridPos": { "h": 3, "w": 4, "x": 4, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"1\"}[$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }, { "color": "red", "value": 10 }] } } }
+    },
+    {
+      "id": 4, "type": "stat", "title": "Medium Severity (Sev 2)",
+      "gridPos": { "h": 3, "w": 4, "x": 8, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"2\"}[$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 10 }, { "color": "orange", "value": 100 }] } } }
+    },
+    {
+      "id": 5, "type": "stat", "title": "Unique Signatures Fired",
+      "gridPos": { "h": 3, "w": 4, "x": 12, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "count(sum by (alert_signature) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature != \"\" [$__range])))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 20 }, { "color": "red", "value": 100 }] } } }
+    },
+    {
+      "id": 6, "type": "stat", "title": "Anomaly Events",
+      "gridPos": { "h": 3, "w": 4, "x": 16, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\", event_type=\"anomaly\"}[$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 500 }] } } }
+    },
+    {
+      "id": 7, "type": "stat", "title": "Total Network Events",
+      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\"}[$__range]))", "instant": true, "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "auto" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "text", "value": 0 }] } } }
+    },
+
+    { "id": 10, "type": "row", "title": "📊  ALERT TIMELINE & SEVERITY", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 } },
+
+    {
+      "id": 11, "type": "timeseries", "title": "Alert Rate by Severity",
+      "description": "Alerts per minute broken down by Suricata severity level (1=High, 2=Medium, 3=Low)",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 5 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"alert\", severity=\"1\"}[$__interval]))", "legendFormat": "Severity 1 — High" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"alert\", severity=\"2\"}[$__interval]))", "legendFormat": "Severity 2 — Medium" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"alert\", severity=\"3\"}[$__interval]))", "legendFormat": "Severity 3 — Low" }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 10, "stacking": { "mode": "none" } } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Severity 1 — High" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Severity 2 — Medium" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Severity 3 — Low" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 12, "type": "piechart", "title": "Severity Distribution",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 5 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"1\"}[$__range]))", "instant": true, "refId": "A", "legendFormat": "Severity 1 — High" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"2\"}[$__range]))", "instant": true, "refId": "B", "legendFormat": "Severity 2 — Medium" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"3\"}[$__range]))", "instant": true, "refId": "C", "legendFormat": "Severity 3 — Low" }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "displayName", "value": "Severity 1 — High" }, { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "displayName", "value": "Severity 2 — Medium" }, { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byFrameRefID", "options": "C" }, "properties": [{ "id": "displayName", "value": "Severity 3 — Low" }, { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "pieType": "donut", "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } }
+    },
+
+    { "id": 20, "type": "row", "title": "🎯  TOP THREATS", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 } },
+
+    {
+      "id": 21, "type": "table", "title": "Top 20 Signatures",
+      "gridPos": { "h": 10, "w": 14, "x": 0, "y": 14 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(20, sum by (alert_signature) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature != \"\" [$__range])))", "instant": true, "legendFormat": "{{alert_signature}}" }],
+      "options": { "sortBy": [{ "displayName": "Hits", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "alert_signature" }, "properties": [{ "id": "displayName", "value": "Signature" }, { "id": "custom.width", "value": 480 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Hits" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }, { "id": "custom.width", "value": 100 }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "alert_signature" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 22, "type": "table", "title": "Top Alert Categories",
+      "gridPos": { "h": 10, "w": 10, "x": 14, "y": 14 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (alert_category) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_category != \"\" [$__range])))", "instant": true, "legendFormat": "{{alert_category}}" }],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "alert_category" }, "properties": [{ "id": "displayName", "value": "Category" }, { "id": "custom.width", "value": 300 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }, { "id": "custom.displayMode", "value": "lcd-gauge" }, { "id": "color", "value": { "mode": "continuous-BlYlRd" } } ] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "alert_category" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 30, "type": "row", "title": "👤  THREAT ACTORS", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 } },
+
+    {
+      "id": 31, "type": "table", "title": "Top Attacking Source IPs",
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 25 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (src_ip) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | src_ip != \"\" [$__range])))", "instant": true, "legendFormat": "{{src_ip}}" }],
+      "options": { "sortBy": [{ "displayName": "Alerts", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "src_ip" }, "properties": [{ "id": "displayName", "value": "Source IP" }, { "id": "custom.width", "value": 160 }, { "id": "links", "value": [{ "title": "Threat Intel", "url": "https://www.abuseipdb.com/check/${__value.raw}", "targetBlank": true }] }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Alerts" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "src_ip" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 32, "type": "table", "title": "Top Targeted Destinations",
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 25 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (dest_ip) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | dest_ip != \"\" [$__range])))", "instant": true, "legendFormat": "{{dest_ip}}" }],
+      "options": { "sortBy": [{ "displayName": "Alerts", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "dest_ip" }, "properties": [{ "id": "displayName", "value": "Destination IP" }, { "id": "custom.width", "value": 160 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Alerts" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "dest_ip" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 33, "type": "table", "title": "Top Targeted Ports",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 25 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (dest_port) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | dest_port != \"\" [$__range])))", "instant": true, "legendFormat": "{{dest_port}}" }],
+      "options": { "sortBy": [{ "displayName": "Alerts", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "dest_port" }, "properties": [{ "id": "displayName", "value": "Port" }, { "id": "custom.width", "value": 80 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Alerts" }, { "id": "custom.displayMode", "value": "lcd-gauge" }, { "id": "color", "value": { "mode": "continuous-BlYlRd" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "dest_port" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 40, "type": "row", "title": "🌍  GEOGRAPHIC INTELLIGENCE", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 } },
+
+    {
+      "id": 41, "type": "geomap", "title": "External Connection Origins & Destinations (World Map)",
+      "description": "Geographic distribution of external IPs seen by Suricata, enriched via GeoIP on dest_ip",
+      "gridPos": { "h": 12, "w": 16, "x": 0, "y": 35 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum by (geoip_country_name) (count_over_time({job=\"suricata\", event_type=\"alert\", geoip_country_name!=\"\"}[$__range]))", "instant": true, "legendFormat": "{{geoip_country_name}}" }],
+      "options": {
+        "view": { "id": "zero", "lat": 20, "lon": 0, "zoom": 2 },
+        "controls": { "mouseWheelZoom": true, "showZoom": true, "showAttribution": true },
+        "layers": [{
+          "type": "markers", "name": "Alert Origins",
+          "config": { "style": { "size": { "fixed": 5, "min": 5, "max": 20, "field": "Value" }, "color": { "fixed": "dark-red" }, "opacity": 0.75, "symbol": { "mode": "fixed", "fixed": "img/icons/marker/circle.svg" } }, "showLegend": true },
+          "location": { "mode": "lookup", "lookupField": "geoip_country_name", "gazetteer": "public/gazetteer/countries.json" },
+          "tooltip": true
+        }]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "geoip_country_name" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "geoip_country_name": "Country", "Value": "Alerts" } } }
+      ]
+    },
+    {
+      "id": 42, "type": "table", "title": "Top Countries (by Alert Count)",
+      "gridPos": { "h": 12, "w": 8, "x": 16, "y": 35 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (geoip_country_name) (count_over_time({job=\"suricata\", event_type=\"alert\", geoip_country_name!=\"\"}[$__range])))", "instant": true, "legendFormat": "{{geoip_country_name}}" }],
+      "options": { "sortBy": [{ "displayName": "Alerts", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "geoip_country_name" }, "properties": [{ "id": "displayName", "value": "Country" }, { "id": "custom.width", "value": 180 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Alerts" }, { "id": "custom.displayMode", "value": "lcd-gauge" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "geoip_country_name" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 50, "type": "row", "title": "🌐  APPLICATION LAYER INTELLIGENCE", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 47 } },
+
+    {
+      "id": 51, "type": "table", "title": "Top DNS Queries",
+      "gridPos": { "h": 9, "w": 6, "x": 0, "y": 48 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (dns_rrname) (count_over_time({job=\"suricata\", event_type=\"dns\"} | json | dns_rrname != \"\" [$__range])))", "instant": true, "legendFormat": "{{dns_rrname}}" }],
+      "options": { "sortBy": [{ "displayName": "Queries", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "dns_rrname" }, "properties": [{ "id": "displayName", "value": "Domain" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Queries" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "dns_rrname" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 52, "type": "table", "title": "Top HTTP Hostnames",
+      "gridPos": { "h": 9, "w": 6, "x": 6, "y": 48 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (http_hostname) (count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_hostname != \"\" [$__range])))", "instant": true, "legendFormat": "{{http_hostname}}" }],
+      "options": { "sortBy": [{ "displayName": "Requests", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "http_hostname" }, "properties": [{ "id": "displayName", "value": "Hostname" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Requests" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-GrYlRd" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "http_hostname" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 53, "type": "table", "title": "Top TLS SNI Destinations",
+      "gridPos": { "h": 9, "w": 6, "x": 12, "y": 48 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (tls_sni) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_sni != \"\" [$__range])))", "instant": true, "legendFormat": "{{tls_sni}}" }],
+      "options": { "sortBy": [{ "displayName": "Connections", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "tls_sni" }, "properties": [{ "id": "displayName", "value": "TLS SNI" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Connections" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "tls_sni" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 54, "type": "piechart", "title": "HTTP Methods",
+      "gridPos": { "h": 9, "w": 6, "x": 18, "y": 48 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum by (http_method) (count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_method != \"\" [$__range]))", "instant": true, "legendFormat": "{{http_method}}" }],
+      "options": { "pieType": "donut", "legend": { "displayMode": "table", "placement": "bottom", "values": ["value", "percent"] } }
+    },
+
+    { "id": 60, "type": "row", "title": "🔗  PROTOCOL & TRAFFIC ANALYSIS", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 57 } },
+
+    {
+      "id": 61, "type": "piechart", "title": "Alert Protocol Distribution",
+      "gridPos": { "h": 8, "w": 5, "x": 0, "y": 58 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum by (proto) (count_over_time({job=\"suricata\", event_type=\"alert\"}[$__range]))", "instant": true, "legendFormat": "{{proto}}" }],
+      "options": { "pieType": "pie", "legend": { "displayMode": "table", "placement": "bottom", "values": ["value", "percent"] } }
+    },
+    {
+      "id": 62, "type": "timeseries", "title": "Event Types Over Time",
+      "gridPos": { "h": 8, "w": 14, "x": 5, "y": 58 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"}[$__interval]))", "legendFormat": "alert" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"dns\"}[$__interval]))", "legendFormat": "dns" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"http\"}[$__interval]))", "legendFormat": "http" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"tls\"}[$__interval]))", "legendFormat": "tls" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"flow\"}[$__interval]))", "legendFormat": "flow" },
+        { "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "sum(rate({job=\"suricata\", event_type=\"anomaly\"}[$__interval]))", "legendFormat": "anomaly" }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 1, "fillOpacity": 5 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 63, "type": "table", "title": "Top App Protocols",
+      "gridPos": { "h": 8, "w": 5, "x": 19, "y": 58 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(10, sum by (app_proto) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | app_proto != \"\" | app_proto != \"unknown\" | app_proto != \"failed\" [$__range])))", "instant": true, "legendFormat": "{{app_proto}}" }],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "app_proto" }, "properties": [{ "id": "displayName", "value": "App Protocol" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "app_proto" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    { "id": 70, "type": "row", "title": "⚠️  ANOMALY & HUNTING", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 66 } },
+
+    {
+      "id": 71, "type": "table", "title": "Top Anomaly Event Types",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 67 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "topk(15, sum by (anomaly_type) (count_over_time({job=\"suricata\", event_type=\"anomaly\"} | json | anomaly_type != \"\" [$__range])))", "instant": true, "legendFormat": "{{anomaly_type}}" }],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "anomaly_type" }, "properties": [{ "id": "displayName", "value": "Anomaly Type" }, { "id": "custom.width", "value": 280 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-RdYlGr" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "anomaly_type" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 72, "type": "logs", "title": "High Severity Alert Feed (Severity 1)",
+      "gridPos": { "h": 8, "w": 14, "x": 10, "y": 67 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "{job=\"suricata\", event_type=\"alert\", severity=\"1\"}", "legendFormat": "" }],
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showTime": true, "showLabels": false, "sortOrder": "Descending", "wrapLogMessage": false }
+    },
+
+    { "id": 80, "type": "row", "title": "📋  LIVE ALERT LOG", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 75 } },
+
+    {
+      "id": 81, "type": "logs", "title": "All Suricata Alerts",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 76 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" }, "expr": "{job=\"suricata\", event_type=\"alert\"}", "legendFormat": "" }],
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showTime": true, "showLabels": true, "sortOrder": "Descending", "wrapLogMessage": false }
+    }
+
+  ]
+}

@@ -1,0 +1,22 @@
+[Unit]
+Description=Suricata EVE → OpenWrt BanIP dynamic enforcer
+Documentation=file:///usr/local/bin/suricata-enforcer.py
+After=suricata.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/suricata-enforcer.py
+Restart=always
+RestartSec=10
+
+# Run as root (needs SSH key for root@192.168.1.1 and read access to eve.json)
+User=root
+
+# Logging goes to journal via stdout
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=suricata-enforcer
+
+[Install]
+WantedBy=multi-user.target

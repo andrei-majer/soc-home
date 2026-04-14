@@ -1,0 +1,9 @@
+/var/log/soc-ansible/*.jsonl {
+    weekly
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

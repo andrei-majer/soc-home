@@ -1,0 +1,4 @@
+---
+- hosts: suricata-120
+  roles:
+    - common

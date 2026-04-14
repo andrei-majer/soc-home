@@ -1,0 +1,101 @@
+{
+  "title": "Snort 3 IDS Alerts",
+  "uid": "snort3-ids",
+  "tags": ["snort", "ids", "security"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Alert Rate (per minute)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(rate({job=\"snort3\"}[1m]))",
+          "legendFormat": "alerts/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Alerts by Protocol",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum by (proto) (count_over_time({job=\"snort3\"}[6h]))",
+          "legendFormat": "{{proto}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Alerts by Direction",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum by (dir) (count_over_time({job=\"snort3\"}[6h]))",
+          "legendFormat": "{{dir}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Total Alerts (6h)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(count_over_time({job=\"snort3\"}[6h]))",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Alert Log",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "{job=\"snort3\"}",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+---
+# ============================================================================
+# SOC Ansible State Collector
+# Collects health/state facts from all managed hosts and appends one JSON
+# line per host to /var/log/soc-ansible/state.jsonl on the control node.
+# Invoked every 15 min via /usr/local/bin/soc-ansible-state.sh cron.
+# ============================================================================
+
+- name: Collect state from suricata-120
+  hosts: suricata-120
+  gather_facts: false
+  vars:
+    ansible_shell_executable: /bin/bash
+  tasks:
+    - name: Check suricata services
+      ansible.builtin.shell: |
+        set -e
+        for svc in suricata snort3 fail2ban filebeat loki promtail grafana-server evebox velociraptor; do
+          state=$(systemctl is-active "$svc" 2>/dev/null || echo inactive)
+          printf '%s=%s\n' "$svc" "$state"
+        done
+      register: svc_out
+      changed_when: false
+
+    - name: Check disk usage for /
+      ansible.builtin.shell: |
+        set -o pipefail
+        df -BG / | awk 'NR==2 {gsub("%","",$5); gsub("G","",$4); printf "pct=%s\navail=%s\n", $5, $4}'
+      register: disk_out
+      changed_when: false
+
+    - name: Extract Suricata rule count via suricatasc
+      ansible.builtin.shell: |
+        set -o pipefail
+        suricatasc -c ruleset-stats 2>/dev/null | tr -d ' "' | grep -oE 'rules_loaded:[0-9]+' | cut -d: -f2
+      register: rules_out
+      changed_when: false
+      failed_when: false
+
+    - name: Set facts
+      ansible.builtin.set_fact:
+        host_state:
+          ts: "{{ ansible_date_time.iso8601 | default(lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ')) }}"
+          type: "state"
+          host: "{{ inventory_hostname }}"
+          services: "{{ dict(svc_out.stdout_lines | map('split','=') | list) }}"
+          services_total: "{{ svc_out.stdout_lines | length }}"
+          services_up: "{{ svc_out.stdout_lines | select('search','=active') | list | length }}"
+          disk_pct: "{{ (disk_out.stdout_lines | select('search','pct=') | first).split('=')[1] | int }}"
+          disk_avail_gb: "{{ (disk_out.stdout_lines | select('search','avail=') | first).split('=')[1] | int }}"
+          rules: "{{ (rules_out.stdout.strip() or 0) | int }}"
+
+- name: Collect state from elk-133
+  hosts: elk-133
+  gather_facts: false
+  vars:
+    ansible_shell_executable: /bin/bash
+  tasks:
+    - name: Check ELK services
+      ansible.builtin.shell: |
+        set -e
+        for svc in elasticsearch kibana logstash filebeat wazuh-manager wazuh-dashboard apache2; do
+          state=$(systemctl is-active "$svc" 2>/dev/null || echo inactive)
+          printf '%s=%s\n' "$svc" "$state"
+        done
+      register: svc_out
+      changed_when: false
+      args:
+        executable: /bin/bash
+      become: true
+
+    - name: Check disk usage for /
+      ansible.builtin.shell: |
+        set -o pipefail
+        df -BG / | awk 'NR==2 {gsub("%","",$5); gsub("G","",$4); printf "pct=%s\navail=%s\n", $5, $4}'
+      register: disk_out
+      changed_when: false
+
+    - name: Query ES cluster health
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -s --max-time 5 http://localhost:9200/_cluster/health || echo '{"status":"unknown","unassigned_shards":-1}'
+      register: es_out
+      changed_when: false
+
+    - name: Set facts
+      ansible.builtin.set_fact:
+        host_state:
+          ts: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          type: "state"
+          host: "{{ inventory_hostname }}"
+          services: "{{ dict(svc_out.stdout_lines | map('split','=') | list) }}"
+          services_total: "{{ svc_out.stdout_lines | length }}"
+          services_up: "{{ svc_out.stdout_lines | select('search','=active') | list | length }}"
+          disk_pct: "{{ (disk_out.stdout_lines | select('search','pct=') | first).split('=')[1] | int }}"
+          disk_avail_gb: "{{ (disk_out.stdout_lines | select('search','avail=') | first).split('=')[1] | int }}"
+          es_status: "{{ (es_out.stdout | from_json).status | default('unknown') }}"
+          es_unassigned: "{{ (es_out.stdout | from_json).unassigned_shards | default(-1) | int }}"
+
+- name: Collect state from opencti-135
+  hosts: opencti-135
+  gather_facts: false
+  vars:
+    ansible_shell_executable: /bin/bash
+  tasks:
+    - name: Check disk usage for /
+      ansible.builtin.shell: |
+        set -o pipefail
+        df -BG / | awk 'NR==2 {gsub("%","",$5); gsub("G","",$4); printf "pct=%s\navail=%s\n", $5, $4}'
+      register: disk_out
+      changed_when: false
+
+    - name: Count OpenCTI containers
+      ansible.builtin.shell: |
+        set -o pipefail
+        docker ps --format '{{ "{{.Names}}" }}' 2>/dev/null | wc -l
+      register: cont_out
+      changed_when: false
+      args:
+        executable: /bin/bash
+      become: true
+
+    - name: Set facts
+      ansible.builtin.set_fact:
+        host_state:
+          ts: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          type: "state"
+          host: "{{ inventory_hostname }}"
+          disk_pct: "{{ (disk_out.stdout_lines | select('search','pct=') | first).split('=')[1] | int }}"
+          disk_avail_gb: "{{ (disk_out.stdout_lines | select('search','avail=') | first).split('=')[1] | int }}"
+          containers: "{{ cont_out.stdout.strip() | int }}"
+
+- name: Collect state from T-Pot hosts
+  hosts: tpot
+  gather_facts: false
+  vars:
+    ansible_shell_executable: /bin/bash
+  tasks:
+    - name: Check disk usage for /
+      ansible.builtin.shell: |
+        set -o pipefail
+        df -BG / | awk 'NR==2 {gsub("%","",$5); gsub("G","",$4); printf "pct=%s\navail=%s\n", $5, $4}'
+      register: disk_out
+      changed_when: false
+
+    - name: Count running containers
+      ansible.builtin.shell: |
+        set -o pipefail; docker ps -q 2>/dev/null | wc -l
+      register: cont_out
+      changed_when: false
+      args:
+        executable: /bin/bash
+      become: true
+
+    - name: Set facts
+      ansible.builtin.set_fact:
+        host_state:
+          ts: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          type: "state"
+          host: "{{ inventory_hostname }}"
+          disk_pct: "{{ (disk_out.stdout_lines | select('search','pct=') | first).split('=')[1] | int }}"
+          disk_avail_gb: "{{ (disk_out.stdout_lines | select('search','avail=') | first).split('=')[1] | int }}"
+          containers: "{{ cont_out.stdout.strip() | int }}"
+
+# ----------------------------------------------------------------------------
+# Final play: write collected state to /var/log/soc-ansible/state.jsonl on .120
+# ----------------------------------------------------------------------------
+- name: Write state to log
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    state_log: /var/log/soc-ansible/state.jsonl
+    target_hosts:
+      - suricata-120
+      - elk-133
+      - opencti-135
+      - tpot-hive-130
+      - tpot-sensor-125
+  tasks:
+    - name: Ensure log directory exists
+      ansible.builtin.file:
+        path: /var/log/soc-ansible
+        state: directory
+        mode: "0755"
+      become: true
+
+    - name: Append host state JSON line
+      ansible.builtin.shell: >
+        printf '%s\n' '{{ hostvars[item].host_state | to_json }}' >> {{ state_log }}
+      loop: "{{ target_hosts }}"
+      when: hostvars[item].host_state is defined
+      changed_when: false
+      args:
+        executable: /bin/bash
+      become: true

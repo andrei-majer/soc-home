@@ -1,0 +1,30 @@
+---
+# Elasticsearch
+es_config: /etc/elasticsearch/elasticsearch.yml
+es_cluster_name: suricata-elk
+es_gc_log_count: 5
+es_gc_log_size: "20m"
+
+# Kibana
+kibana_config: /etc/kibana/kibana.yml
+kibana_version: "8.19.12"
+
+# Logstash
+logstash_config: /etc/logstash/conf.d/suricata.conf
+logstash_geoip_plugin_version: "{{ vault_logstash_geoip_plugin_version }}"
+
+# Filebeat (on .133 for Wazuh)
+elk_filebeat_config: /etc/filebeat/filebeat.yml
+
+# Index cleanup
+elk_cleanup_script: /usr/local/bin/elk-cleanup.py
+elk_cleanup_cron_hour: "3"
+elk_cleanup_cron_minute: "0"
+retention_suricata: 14
+retention_wazuh_archives: 7
+retention_wazuh_alerts: 14
+retention_wazuh_suricata: 14
+retention_arkime: 14
+retention_monitoring: 3
+retention_wazuh_monitoring: 28
+retention_wazuh_statistics: 56

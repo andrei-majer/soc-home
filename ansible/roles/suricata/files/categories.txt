@@ -1,0 +1,6 @@
+1,malware,Malware C2/Distribution
+2,spam,Spam/Email Abuse
+3,scanner,Port Scanner/Brute Force
+4,phishing,Phishing Site
+5,botnet,Botnet C2 Server
+6,abuse,Spamhaus DROP/EDROP

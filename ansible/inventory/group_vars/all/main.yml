@@ -1,0 +1,21 @@
+ansible_user: root
+ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+
+home_net:
+  - "192.168.1.0/24"
+  - "10.0.0.0/24"
+  - "100.64.0.0/10"
+home_net_ipv6:
+  - "fd7a:115c:a1e0::/48"
+  - "fe80::/10"
+
+dns_server: 192.168.1.1
+ntp_timezone: Europe/Bucharest
+
+suricata_host: 192.168.1.120
+elk_host: 192.168.1.133
+opencti_host: 192.168.1.135
+misp_host: 192.168.1.133
+router_host: 192.168.1.1
+
+backup_dir: /opt/soc-ansible/backups

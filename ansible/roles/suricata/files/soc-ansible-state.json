@@ -1,0 +1,179 @@
+{
+  "title": "SOC Ansible State",
+  "uid": "soc-ansible-state",
+  "tags": ["soc", "ansible", "iac"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Last collection time",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(count_over_time({job=\"soc-ansible\"}[1h]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "colorMode": "background" }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Hosts reporting (1h)",
+      "gridPos": { "h": 3, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "count(count by (host) (rate({job=\"soc-ansible\"}[1h])))",
+          "queryType": "instant"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "colorMode": "background" }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "ES cluster status",
+      "gridPos": { "h": 3, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "last_over_time({job=\"soc-ansible\", host=\"elk-133\"} | json | es_status != `` | line_format `{{.es_status}}` [1h])"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "green":  { "color": "green",  "index": 0 } } },
+            { "type": "value", "options": { "yellow": { "color": "yellow", "index": 1 } } },
+            { "type": "value", "options": { "red":    { "color": "red",    "index": 2 } } }
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Suricata rule count",
+      "gridPos": { "h": 3, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "avg_over_time({job=\"soc-ansible\", host=\"suricata-120\"} | json | rules != `` | unwrap rules [5m])",
+          "legendFormat": "rules"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "barchart",
+      "title": "Services up per host",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 3 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "last_over_time({job=\"soc-ansible\"} | json | services_up != `` | unwrap services_up [1h]) by (host)",
+          "legendFormat": "{{host}}",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Disk usage % by host",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 3 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "avg_over_time({job=\"soc-ansible\"} | json | disk_pct != `` | unwrap disk_pct [5m]) by (host)",
+          "legendFormat": "{{host}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "OpenCTI containers",
+      "gridPos": { "h": 3, "w": 6, "x": 0, "y": 9 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "last_over_time({job=\"soc-ansible\", host=\"opencti-135\"} | json | containers != `` | unwrap containers [1h])",
+          "queryType": "instant"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "colorMode": "background" }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "T-Pot containers per host",
+      "gridPos": { "h": 3, "w": 6, "x": 6, "y": 9 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "last_over_time({job=\"soc-ansible\", host=~\"tpot.*\"} | json | containers != `` | unwrap containers [1h]) by (host)",
+          "legendFormat": "{{host}}",
+          "queryType": "instant"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "colorMode": "background" }
+    },
+    {
+      "id": 9,
+      "type": "barchart",
+      "title": "Drift (changed tasks) per host",
+      "gridPos": { "h": 3, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "last_over_time({job=\"soc-ansible\"} | json | type=`drift` | changed_tasks != `` | unwrap changed_tasks [6h]) by (host)",
+          "legendFormat": "{{host}}",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Recent state log stream",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "{job=\"soc-ansible\"}"
+        }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" }
+    }
+  ]
+}

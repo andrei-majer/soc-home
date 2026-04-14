@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+# Managed by Ansible
+"""
+misp-push-sightings.py — Read Suricata EVE JSON alerts and push sightings to MISP.
+
+For each alert event, extracts observable indicators (IPs, hostnames, DNS names,
+TLS SNI) and creates MISP sightings so MISP knows those IOCs were seen in traffic.
+
+Tracks file offset in STATE_FILE to process only new EVE lines on each run.
+Runs hourly via /etc/cron.d/misp-suricata.
+"""
+
+import json
+import os
+import sys
+import logging
+from datetime import datetime, timezone, timedelta
+
+try:
+    from pymisp import PyMISP, MISPSighting
+except ImportError:
+    print("ERROR: pymisp not installed. Run: pip3 install pymisp --break-system-packages")
+    sys.exit(1)
+
+# ── Configuration ─────────────────────────────────────────────────────────────
+MISP_URL    = "{{ misp_url }}"
+MISP_KEY    = "{{ misp_api_key }}"
+MISP_VERIFY = False          # HTTP, no TLS
+EVE_FILE    = "/var/log/suricata/eve.json"
+STATE_FILE  = "/var/lib/suricata/misp-sighting-offset"
+LOG_FILE    = "/var/log/suricata/misp-sightings.log"
+# Only process events from the last N hours to avoid flooding MISP on first run
+MAX_LOOKBACK_HOURS = 24
+# ──────────────────────────────────────────────────────────────────────────────
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+log = logging.getLogger(__name__)
+
+
+def load_offset() -> int:
+    try:
+        if os.path.exists(STATE_FILE):
+            with open(STATE_FILE) as f:
+                return max(0, int(f.read().strip() or 0))
+    except (ValueError, OSError):
+        pass
+    return 0
+
+
+def save_offset(offset: int) -> None:
+    os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+    with open(STATE_FILE, "w") as f:
+        f.write(str(offset))
+
+
+def extract_indicators(evt: dict) -> list:
+    """Return observable values from a Suricata alert event."""
+    indicators = []
+
+    src = evt.get("src_ip", "")
+    dst = evt.get("dest_ip", "")
+    # Skip RFC1918 / link-local / loopback IPs — they won't be in MISP
+    def is_public(ip: str) -> bool:
+        return ip and not any(ip.startswith(p) for p in (
+            "192.168.", "10.", "172.16.", "172.17.", "172.18.", "172.19.",
+            "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.",
+            "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
+            "127.", "::1", "fe80:", "fc", "fd",
+        ))
+
+    if is_public(src):
+        indicators.append(src)
+    if is_public(dst):
+        indicators.append(dst)
+
+    http = evt.get("http", {})
+    if http.get("hostname"):
+        indicators.append(http["hostname"])
+
+    dns = evt.get("dns", {})
+    if dns.get("rrname") and not dns["rrname"].endswith(".local"):
+        indicators.append(dns["rrname"])
+
+    tls = evt.get("tls", {})
+    if tls.get("sni"):
+        indicators.append(tls["sni"])
+
+    quic = evt.get("quic", {})
+    if quic.get("sni"):
+        indicators.append(quic["sni"])
+
+    return list(set(filter(None, indicators)))
+
+
+def main() -> None:
+    if not os.path.exists(EVE_FILE):
+        log.error("EVE file not found: %s", EVE_FILE)
+        sys.exit(1)
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=MAX_LOOKBACK_HOURS)
+    offset = load_offset()
+
+    # If file was rotated (size < offset), reset
+    file_size = os.path.getsize(EVE_FILE)
+    if file_size < offset:
+        log.info("EVE file rotated (size=%d < offset=%d), resetting offset", file_size, offset)
+        offset = 0
+
+    try:
+        misp = PyMISP(MISP_URL, MISP_KEY, MISP_VERIFY)
+    except Exception as e:
+        log.error("Failed to connect to MISP: %s", e)
+        sys.exit(1)
+
+    alerts_processed = 0
+    sightings_sent = 0
+    sightings_failed = 0
+    new_offset = offset
+
+    with open(EVE_FILE, "rb") as f:
+        f.seek(offset)
+        for raw_line in f:
+            new_offset = f.tell()
+            try:
+                evt = json.loads(raw_line)
+            except json.JSONDecodeError:
+                continue
+
+            if evt.get("event_type") != "alert":
+                continue
+
+            # Parse timestamp
+            ts_str = evt.get("timestamp", "")
+            try:
+                ts_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                continue
+
+            if ts_dt < cutoff:
+                continue
+
+            ts_epoch = int(ts_dt.timestamp())
+            alerts_processed += 1
+            indicators = extract_indicators(evt)
+
+            for ioc in indicators:
+                s = MISPSighting()
+                s.value = ioc
+                s.timestamp = ts_epoch
+                s.source = "Suricata"
+                try:
+                    misp.add_sighting(s)
+                    sightings_sent += 1
+                except Exception as e:
+                    sightings_failed += 1
+                    log.debug("Sighting failed for %s: %s", ioc, e)
+
+    save_offset(new_offset)
+
+    if alerts_processed or sightings_sent:
+        log.info(
+            "Processed %d alerts, sent %d sightings, %d failed (offset %d→%d)",
+            alerts_processed, sightings_sent, sightings_failed, offset, new_offset,
+        )
+        if sightings_sent:
+            print(f"Sent {sightings_sent} sightings to MISP from {alerts_processed} alerts")
+
+
+if __name__ == "__main__":
+    main()

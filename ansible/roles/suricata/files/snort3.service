@@ -1,0 +1,29 @@
+[Unit]
+Description=Snort 3 NIDS - mirror port enp0s8
+Documentation=https://www.snort.org
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=/usr/sbin/ip link set enp0s8 promisc on
+ExecStart=/usr/local/bin/snort \
+    -c /etc/snort/snort.lua \
+    -i enp0s8 \
+    -l /var/log/snort \
+    --daq-dir /usr/local/lib/daq \
+    --bpf 'net 192.168.0.0/16 or net 10.0.0.0/8 or net 100.64.0.0/10' \
+    -D
+ExecStop=/bin/kill -SIGTERM $MAINPID
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=snort3
+
+[Install]
+WantedBy=multi-user.target

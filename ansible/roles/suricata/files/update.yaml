@@ -1,0 +1,5 @@
+# snort/snortrules-snapshot removed — Snort subscriber rules use Snort-specific
+# syntax (soid, gid:3 SO rules, content comma modifiers) incompatible with Suricata.
+# Use et/open and abuse.ch sources instead.
+sources:
+

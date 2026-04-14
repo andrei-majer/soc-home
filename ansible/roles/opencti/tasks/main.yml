@@ -1,0 +1,91 @@
+---
+# ============================================================================
+# OpenCTI role — Docker Compose stack, connectors, backup (host .135)
+# ============================================================================
+
+- name: Ensure OpenCTI install dir exists
+  ansible.builtin.file:
+    path: "{{ opencti_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure OpenCTI config dir exists
+  ansible.builtin.file:
+    path: "{{ opencti_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure OpenCTI backups dir exists
+  ansible.builtin.file:
+    path: "{{ opencti_backups_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ opencti_install_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Restart opencti
+
+- name: Deploy .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ opencti_install_dir }}/.env"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  notify: Restart opencti
+
+- name: Deploy malwarebazaar connector config
+  ansible.builtin.template:
+    src: malwarebazaar.yml.j2
+    dest: "{{ opencti_config_dir }}/malwarebazaar.yml"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  notify: Restart opencti
+
+- name: Deploy opencti systemd unit
+  ansible.builtin.copy:
+    src: opencti.service
+    dest: /etc/systemd/system/opencti.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Reload systemd daemon
+    - Restart opencti
+
+- name: Deploy OpenCTI backup script
+  ansible.builtin.template:
+    src: backup.sh.j2
+    dest: "{{ opencti_backup_script }}"
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy OpenCTI backup cron
+  ansible.builtin.copy:
+    src: opencti-backup.cron
+    dest: /etc/cron.d/opencti-backup
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure opencti service is enabled and running
+  ansible.builtin.systemd:
+    name: opencti
+    state: started
+    enabled: true

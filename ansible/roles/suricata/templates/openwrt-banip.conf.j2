@@ -1,0 +1,26 @@
+# Managed by Ansible
+[Definition]
+# Bans an IP on the OpenWrt router by inserting it into the BanIP
+# blocklist.v4 nftables set (table inet banIP).
+# Requires SSH key auth from root@{{ fail2ban_router_ip }}20 → root@{{ fail2ban_router_ip }}.
+
+actionstart =
+actionstop  =
+actioncheck =
+
+actionban   = ssh -o StrictHostKeyChecking=no \
+                  -o ConnectTimeout=10 \
+                  -o BatchMode=yes \
+                  root@{{ fail2ban_router_ip }} \
+                  "nft add element inet banIP blocklist.v4 { <ip> } 2>/dev/null; \
+                   logger -t fail2ban 'Suricata ban: <ip> (jail=<name>)'"
+
+actionunban = ssh -o StrictHostKeyChecking=no \
+                  -o ConnectTimeout=10 \
+                  -o BatchMode=yes \
+                  root@{{ fail2ban_router_ip }} \
+                  "nft delete element inet banIP blocklist.v4 { <ip> } 2>/dev/null; \
+                   logger -t fail2ban 'Suricata unban: <ip> (jail=<name>)'"
+
+[Init]
+name = suricata

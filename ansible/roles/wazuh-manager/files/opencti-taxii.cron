@@ -1,0 +1,1 @@
+*/30 * * * * root python3 /var/ossec/integrations/opencti-taxii.py >> /var/log/opencti-taxii.log 2>&1

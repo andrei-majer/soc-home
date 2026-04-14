@@ -1,0 +1,21 @@
+# Managed by Ansible
+[suricata-ids]
+enabled   = true
+filter    = suricata-eve
+logpath   = /var/log/suricata/eve.json
+action    = openwrt-banip
+
+# Ban after 3 alerts from the same external IP within 5 minutes.
+# iprep signatures will still hit this threshold — 3 hits is fast for known-bad IPs.
+# Raise maxretry to 1 if you want to ban on first iprep hit (more aggressive).
+maxretry  = {{ fail2ban_max_retry }}
+findtime  = {{ fail2ban_find_time }}
+bantime   = {{ fail2ban_ban_time }}
+
+# Never ban internal networks or the router itself
+ignoreip  = 127.0.0.0/8
+            192.168.1.0/24
+            10.0.0.0/24
+            100.64.0.0/10
+            ::1
+            fe80::/10

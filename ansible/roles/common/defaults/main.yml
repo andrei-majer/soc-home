@@ -1,0 +1,7 @@
+---
+disk_alert_threshold: 85
+disk_alert_script: /usr/local/bin/disk-alert.sh
+disk_alert_log: /var/log/disk-alert.log
+ssh_authorized_keys:
+  - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+common_timezone: "{{ ntp_timezone | default('Europe/Bucharest') }}"

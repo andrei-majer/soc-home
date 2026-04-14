@@ -1,0 +1,368 @@
+{
+  "title": "Suricata Network Overview",
+  "uid": "suricata-net-overview",
+  "tags": ["suricata", "network", "security"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Alerts Over Time",
+      "description": "Alert events from Suricata (event_type=alert)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"}[$__interval]))",
+          "legendFormat": "Alerts"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "red", "mode": "fixed" },
+          "custom": { "fillOpacity": 70, "gradientMode": "none" }
+        }
+      },
+      "options": {
+        "barAlignment": 0,
+        "fillOpacity": 70,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": -30,
+        "xTickLabelSpacing": 100
+      }
+    },
+
+    {
+      "id": 2,
+      "title": "Total Alerts",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"}[$__range]))",
+          "legendFormat": "Alerts",
+          "instant": true
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": 3,
+      "title": "Rules Loaded",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "last_over_time({job=\"suricata\", event_type=\"stats\"} | json | unwrap detect_engines_0_rules_loaded [$__range])",
+          "legendFormat": "Rules"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "blue", "mode": "fixed" } } }
+    },
+
+    {
+      "id": 4,
+      "title": "Event Type Breakdown",
+      "description": "Distribution of all Suricata event types",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum by (event_type) (count_over_time({job=\"suricata\", event_type=~\"dns|tls|http|flow|alert|fileinfo|dhcp|ssh|sip\"}[$__range]))",
+          "legendFormat": "{{event_type}}",
+          "instant": true
+        }
+      ],
+      "options": { "pieType": "pie", "displayLabels": ["name", "percent"] }
+    },
+
+    {
+      "id": 5,
+      "title": "Top 10 Source IPs by Event Count",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(10, sum by (src_ip) (count_over_time({job=\"suricata\"} | json | src_ip != \"\" [$__range])))",
+          "legendFormat": "{{src_ip}}",
+          "instant": true
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Value", "desc": true }] },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "src_ip" }, "properties": [{ "id": "displayName", "value": "Source IP" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Event Count" }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "src_ip" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "src_ip": "Source IP", "Value": "Events" } } }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "Top 10 DNS Queries",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(10, sum by (dns_rrname) (count_over_time({job=\"suricata\", event_type=\"dns\"} | json [$__range])))",
+          "legendFormat": "{{dns_rrname}}",
+          "instant": true
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Value", "desc": true }] },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "dns_rrname" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "dns_rrname": "Domain", "Value": "Queries" } } }
+      ]
+    },
+
+    {
+      "id": 7,
+      "title": "External Connection Destinations (World Map)",
+      "description": "Geographic distribution of external dest_ip connections, enriched via GeoIP",
+      "type": "geomap",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum by (geoip_country_name) (count_over_time({job=\"suricata\", geoip_country_name!=\"\"}[$__range]))",
+          "legendFormat": "{{geoip_country_name}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "view": { "id": "zero", "lat": 20, "lon": 0, "zoom": 2 },
+        "controls": { "mouseWheelZoom": true, "showZoom": true, "showAttribution": true },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "External Connections",
+            "config": {
+              "style": {
+                "size": { "fixed": 5, "min": 5, "max": 15, "field": "Value" },
+                "color": { "fixed": "dark-red" },
+                "opacity": 0.7,
+                "symbol": { "mode": "fixed", "fixed": "img/icons/marker/circle.svg" }
+              },
+              "showLegend": true
+            },
+            "location": {
+              "mode": "lookup",
+              "lookupField": "geoip_country_name",
+              "gazetteer": "public/gazetteer/countries.json"
+            },
+            "tooltip": true
+          }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "geoip_country_name" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "geoip_country_name": "Country", "Value": "Connections" } } }
+      ]
+    },
+
+    {
+      "id": 12,
+      "title": "Top 10 TLS JA3 Fingerprints",
+      "description": "Most frequent TLS client JA3 hashes — identifies TLS implementations and potential malware",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(10, sum by (tls_ja3_hash) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_ja3_hash != \"\" [$__range])))",
+          "legendFormat": "{{tls_ja3_hash}}",
+          "instant": true
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "tls_ja3_hash" }, "properties": [{ "id": "displayName", "value": "JA3 Hash" }, { "id": "custom.width", "value": 280 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "tls_ja3_hash" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "tls_ja3_hash": "JA3 Hash", "Value": "Count" } } }
+      ]
+    },
+
+    {
+      "id": 11,
+      "title": "Top 10 TLS SNI Destinations",
+      "description": "Most frequent TLS hostnames (SNI from client hello, event_type=tls)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(10, sum by (tls_sni) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_sni != \"\" [$__range])))",
+          "legendFormat": "{{tls_sni}}",
+          "instant": true
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Connections", "desc": true }] },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "tls_sni" }, "properties": [{ "id": "displayName", "value": "SNI Hostname" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Connections" }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "tls_sni" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "tls_sni": "SNI Hostname", "Value": "Connections" } } }
+      ]
+    },
+
+    {
+      "id": 8,
+      "title": "Top 10 QUIC SNI Destinations",
+      "description": "Most frequent QUIC/HTTP3 hostnames (SNI from client hello, event_type=quic)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(10, sum by (quic_sni) (count_over_time({job=\"suricata\", event_type=\"quic\"} | json | quic_sni != \"\" [$__range])))",
+          "legendFormat": "{{quic_sni}}",
+          "instant": true
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Connections", "desc": true }] },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "quic_sni" }, "properties": [{ "id": "displayName", "value": "SNI Hostname" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Connections" }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "quic_sni" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "quic_sni": "SNI Hostname", "Value": "Connections" } } }
+      ]
+    },
+
+    {
+      "id": 9,
+      "title": "Total QUIC Events",
+      "description": "Total QUIC/HTTP3 flow events detected in the selected time range",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 36 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"quic\"}[$__range]))",
+          "legendFormat": "QUIC Events",
+          "instant": true
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "purple", "mode": "fixed" }
+        }
+      }
+    },
+
+    {
+      "id": 10,
+      "title": "QUIC Version Distribution",
+      "description": "QUIC protocol version breakdown (1 = QUIC v1 RFC 9000, Q046 = gQUIC)",
+      "type": "piechart",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 40 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum by (quic_version) (count_over_time({job=\"suricata\", event_type=\"quic\"} | json [$__range]))",
+          "legendFormat": "v{{quic_version}}",
+          "instant": true
+        }
+      ],
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] }
+    },
+
+    {
+      "id": 13,
+      "title": "Top JA4 TLS Fingerprints",
+      "description": "JA4 TLS client fingerprints — more robust than JA3, identifies implementations and C2 tooling. Added 2026-02-28.",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(15, sum by (tls_ja4) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_ja4 != \"\" [$__range])))",
+          "legendFormat": "{{tls_ja4}}",
+          "instant": true
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "tls_ja4" }, "properties": [{ "id": "displayName", "value": "JA4 Fingerprint" }, { "id": "custom.width", "value": 260 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "tls_ja4" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+
+    {
+      "id": 14,
+      "title": "Top HASSH SSH Client Fingerprints",
+      "description": "SSH client HASSH hashes — identifies SSH implementations by key exchange algorithm set. Known bad: Metasploit (ec7378c1a92f5a8dde7e8b7a1ddf33d1). Added 2026-02-28.",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(10, sum by (ssh_client_hassh_hash) (count_over_time({job=\"suricata\", event_type=\"ssh\"} | json | ssh_client_hassh_hash != \"\" [$__range])))",
+          "legendFormat": "{{ssh_client_hassh_hash}}",
+          "instant": true
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Sessions", "desc": true }] },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "ssh_client_hassh_hash" }, "properties": [{ "id": "displayName", "value": "HASSH Hash" }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Sessions" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-GrYlRd" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "ssh_client_hassh_hash" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    }
+
+  ]
+}

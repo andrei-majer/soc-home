@@ -1,0 +1,127 @@
+---
+# ============================================================================
+# ELK role - manages Elasticsearch, Kibana, Logstash, Filebeat, and index
+# cleanup on the .133 host.
+# ============================================================================
+
+# ---------- Elasticsearch ----------
+
+- name: Deploy elasticsearch.yml
+  ansible.builtin.template:
+    src: elasticsearch.yml.j2
+    dest: "{{ es_config }}"
+    owner: root
+    group: elasticsearch
+    mode: "0640"
+    backup: true
+  notify:
+    - Restart elasticsearch
+
+- name: Deploy ES JVM GC log options
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible — GC log rotation overrides
+      -Xlog:gc*,gc+age=trace,safepoint:file=gc.log:utctime,level,pid,tags:filecount={{ es_gc_log_count }},filesize={{ es_gc_log_size }}
+    dest: /etc/elasticsearch/jvm.options.d/gc-log.options
+    owner: root
+    group: elasticsearch
+    mode: "0640"
+  notify:
+    - Restart elasticsearch
+
+- name: Deploy ES logrotate config
+  ansible.builtin.copy:
+    src: elasticsearch-soc
+    dest: /etc/logrotate.d/elasticsearch-soc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ensure elasticsearch is enabled and running
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: started
+    enabled: true
+
+# ---------- Kibana ----------
+
+- name: Deploy kibana.yml
+  ansible.builtin.template:
+    src: kibana.yml.j2
+    dest: "{{ kibana_config }}"
+    owner: root
+    group: kibana
+    mode: "0640"
+    backup: true
+  notify:
+    - Restart kibana
+
+- name: Ensure kibana is enabled and running
+  ansible.builtin.systemd:
+    name: kibana
+    state: started
+    enabled: true
+
+# ---------- Logstash ----------
+
+- name: Deploy Logstash suricata.conf
+  ansible.builtin.template:
+    src: suricata.conf.j2
+    dest: "{{ logstash_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify:
+    - Restart logstash
+
+- name: Deploy Logstash logrotate config
+  ansible.builtin.copy:
+    src: logstash-soc
+    dest: /etc/logrotate.d/logstash-soc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ensure logstash is enabled and running
+  ansible.builtin.systemd:
+    name: logstash
+    state: started
+    enabled: true
+
+# ---------- Filebeat (Wazuh module) ----------
+
+- name: Deploy filebeat.yml
+  ansible.builtin.template:
+    src: filebeat.yml.j2
+    dest: "{{ elk_filebeat_config }}"
+    owner: root
+    group: root
+    mode: "0600"
+    backup: true
+  notify:
+    - Restart filebeat
+
+- name: Ensure filebeat is enabled and running
+  ansible.builtin.systemd:
+    name: filebeat
+    state: started
+    enabled: true
+
+# ---------- Index cleanup ----------
+
+- name: Deploy elk-cleanup.py
+  ansible.builtin.template:
+    src: elk-cleanup.py.j2
+    dest: "{{ elk_cleanup_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure elk-cleanup cron
+  ansible.builtin.cron:
+    name: "elk-cleanup"
+    hour: "{{ elk_cleanup_cron_hour }}"
+    minute: "{{ elk_cleanup_cron_minute }}"
+    job: "/usr/bin/python3 {{ elk_cleanup_script }} >> /var/log/elk-cleanup.log 2>&1"
+    user: root

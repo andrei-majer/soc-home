@@ -1,0 +1,82 @@
+#!/bin/bash
+# Managed by Ansible
+# misp-pull-rules.sh — Pull Suricata rules from MISP IOCs and reload Suricata
+# Runs every 6 hours via /etc/cron.d/misp-suricata
+
+MISP_URL="{{ misp_url }}"
+MISP_KEY="{{ misp_api_key }}"
+RULES_FILE="{{ misp_rules_file }}"
+TMP_FILE=$(mktemp /tmp/misp-rules-XXXXXX.rules)
+
+# Fetch Suricata rules from MISP (only to_ids=1 IOCs, warninglist enforced)
+curl -sf \
+  --connect-timeout 30 \
+  --max-time 120 \
+  -H "Authorization: ${MISP_KEY}" \
+  -H "Accept: text/plain" \
+  "${MISP_URL}/attributes/restSearch?returnFormat=suricata&to_ids=1&enforceWarninglist=1" \
+  -o "${TMP_FILE}"
+
+CURL_RC=$?
+
+if [ ${CURL_RC} -ne 0 ]; then
+  rm -f "${TMP_FILE}"
+  logger -t misp-pull-rules "ERROR: curl failed (rc=${CURL_RC}), keeping existing rules"
+  exit 1
+fi
+
+if [ ! -s "${TMP_FILE}" ]; then
+  rm -f "${TMP_FILE}"
+  logger -t misp-pull-rules "WARNING: empty response from MISP, keeping existing rules"
+  exit 0
+fi
+
+# Validate it looks like Suricata rules (at least has 'alert' or '#' comment lines)
+if ! grep -qE '^(alert|#|pass|drop)' "${TMP_FILE}" 2>/dev/null; then
+  rm -f "${TMP_FILE}"
+  logger -t misp-pull-rules "WARNING: response does not look like rules, keeping existing rules"
+  exit 0
+fi
+
+RULE_COUNT=$(grep -c '^alert' "${TMP_FILE}" 2>/dev/null || echo 0)
+
+# Fix known MISP export issue: empty "priority:;" keyword breaks Suricata parsing
+sed -i 's/ priority:;//' "${TMP_FILE}"
+
+# Deduplicate by SID (MISP often exports duplicate rules, causing ~100k error log lines per reload)
+# Also strip rules with non-ASCII chars (broken Cyrillic PCRE patterns)
+DEDUP_FILE=$(mktemp /tmp/misp-rules-dedup-XXXXXX.rules)
+awk '
+  /^[[:space:]]*#/ { print; next }
+  /^alert/ {
+    # Drop rules using Snort-style escaped semicolons (\;) inside content — Suricata does not parse them
+    if ($0 ~ /content:"[^"]*\;/) { broken_snort++; next }
+    # Drop rules with literal ; inside misp_ioc metadata value (MISP exporter bug — semicolon terminates the keyword)
+    if ($0 ~ /misp_ioc [^,)]*;/) { broken_meta++; next }
+    if (match($0, /sid:[0-9]+/)) {
+      sid = substr($0, RSTART+4, RLENGTH-4)
+      if (!seen[sid]++) print
+    } else { print }
+    next
+  }
+  { print }
+' "${TMP_FILE}" | LC_ALL=C grep -P '^[\x00-\x7F]*$' > "${DEDUP_FILE}"
+DEDUP_COUNT=$(grep -c '^alert' "${DEDUP_FILE}" 2>/dev/null || echo 0)
+DROPPED=$(( RULE_COUNT - DEDUP_COUNT ))
+mv "${DEDUP_FILE}" "${TMP_FILE}"
+RULE_COUNT=${DEDUP_COUNT}
+logger -t misp-pull-rules "Dedup: kept ${RULE_COUNT} rules, dropped ${DROPPED} duplicates/broken"
+
+mv "${TMP_FILE}" "${RULES_FILE}"
+chown root:root "${RULES_FILE}"
+chmod 644 "${RULES_FILE}"
+
+# Reload Suricata rules without restart
+suricatasc -c "reload-rules" 2>/dev/null
+RELOAD_RC=$?
+
+if [ ${RELOAD_RC} -eq 0 ]; then
+  logger -t misp-pull-rules "Updated ${RULES_FILE} (${RULE_COUNT} alert rules), reload OK"
+else
+  logger -t misp-pull-rules "Updated ${RULES_FILE} (${RULE_COUNT} alert rules), reload failed rc=${RELOAD_RC}"
+fi

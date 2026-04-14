@@ -1,0 +1,60 @@
+---
+- name: Backup critical configs
+  hosts: suricata-120:elk-133:opencti-135
+  gather_facts: true
+  vars:
+    backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    backup_local_dir: "/opt/soc-ansible/backups/{{ inventory_hostname }}"
+  tasks:
+    - name: Create local backup directory
+      ansible.builtin.file:
+        path: "{{ backup_local_dir }}"
+        state: directory
+        mode: "0750"
+      delegate_to: localhost
+
+    - name: Build archive on .120
+      community.general.archive:
+        path:
+          - /etc/suricata
+          - /etc/snort
+          - /etc/fail2ban
+          - /var/ossec/etc
+        dest: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
+        mode: "0600"
+        format: gz
+      when: inventory_hostname == "suricata-120"
+
+    - name: Build archive on .133
+      community.general.archive:
+        path:
+          - /etc/elasticsearch
+          - /etc/kibana
+          - /etc/logstash
+          - /var/ossec/etc
+        dest: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
+        mode: "0600"
+        format: gz
+      when: inventory_hostname == "elk-133"
+
+    - name: Build archive on .135
+      community.general.archive:
+        path:
+          - /opt/opencti/docker-compose.yml
+          - /opt/opencti/.env
+          - /opt/opencti/config
+        dest: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
+        mode: "0600"
+        format: gz
+      when: inventory_hostname == "opencti-135"
+
+    - name: Fetch archive to control node
+      ansible.builtin.fetch:
+        src: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
+        dest: "{{ backup_local_dir }}/"
+        flat: true
+
+    - name: Remove remote temp archive
+      ansible.builtin.file:
+        path: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
+        state: absent

@@ -1,0 +1,32 @@
+---
+openwrt_backup_dir: "{{ backup_dir }}/openwrt"
+openwrt_backup_host_dir: "{{ openwrt_backup_dir }}/{{ inventory_hostname }}"
+
+# SSH options for scp/ssh commands delegated to localhost.
+# Single source of truth — do not hardcode in tasks.
+openwrt_ssh_key: "~/.ssh/id_ed25519"
+openwrt_ssh_user: root
+
+# Router state to dump to /tmp via raw, then scp.
+# Each entry becomes one file in the local backup directory.
+openwrt_dumped_files:
+  - name: uci-export.txt
+    cmd: uci export
+  - name: crontab.txt
+    cmd: "crontab -l 2>/dev/null || :"
+  - name: packages.txt
+    cmd: opkg list-installed
+  - name: acme-dir-listing.txt
+    cmd: "ls -la /etc/acme/ 2>/dev/null || :"
+
+# Files on the router to scp directly if present.
+# Existence is checked first — missing files are skipped, not errors.
+openwrt_optional_files:
+  - src: /etc/AdGuardHome/AdGuardHome.yaml
+    dest: AdGuardHome.yaml
+  - src: /etc/nginx/conf.d/xndrei.conf
+    dest: nginx-xndrei.conf
+  - src: /usr/local/bin/acme-renew.sh
+    dest: acme-renew.sh
+  - src: /usr/share/wol-relay/cgi-bin/wol
+    dest: wol-cgi

@@ -1,0 +1,55 @@
+# Managed by Ansible
+[default]
+# Elasticsearch on 192.168.1.133
+elasticsearch={{ arkime_elasticsearch_host }}
+
+# Index rotation
+rotateIndex=daily
+
+# Cron queries processed on this node
+cronQueries=true
+
+# Password hash secret (keep this secret, changing it invalidates all passwords)
+passwordSecret=REDACTED_ARKIME_SALT
+
+# HTTP realm and auth mode
+httpRealm=Arkime
+authMode=digest
+
+# Capture interface (SPAN/mirror port)
+interface={{ suricata_capture_interface }}
+
+# PCAP storage
+pcapDir=/opt/arkime/raw
+
+# Max pcap file size (GB); disk has ~20G free
+maxFileSizeG=4
+
+# Max time between pcap rotations (minutes)
+maxFileTimeM=60
+
+# TCP/UDP/ICMP session timeouts
+tcpTimeout=600
+udpTimeout=30
+icmpTimeout=10
+
+# Packet threads
+packetThreads=2
+
+# Viewer port
+viewPort=8005
+
+# Log files
+logFile=/opt/arkime/logs/viewer.log
+
+# OUI (MAC vendor) and IANA address space
+ouiFile=/opt/arkime/etc/oui.txt
+ouiIpFile=/opt/arkime/etc/ipv4-address-space.csv
+
+# GeoIP databases (MaxMind GeoLite2 — updated via geoipupdate)
+geoLite2Country=/usr/share/GeoIP/GeoLite2-Country.mmdb
+geoLite2ASN=/usr/share/GeoIP/GeoLite2-ASN.mmdb
+geoLite2City=/usr/share/GeoIP/GeoLite2-City.mmdb
+
+# Wise (threat intel) disabled by default
+#wiseHost=127.0.0.1

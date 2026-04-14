@@ -1,0 +1,29 @@
+---
+- name: Renew Lets Encrypt cert on router
+  hosts: openwrt
+  gather_facts: false
+  tasks:
+    - name: Check cert expiry before renewal
+      ansible.builtin.raw: "openssl x509 -in /etc/ssl/acme/xndrei.go.ro.fullchain.crt -noout -enddate 2>&1 || echo 'no cert'"
+      register: cert_before
+      changed_when: false
+
+    - name: Run acme-renew.sh
+      ansible.builtin.raw: "/usr/local/bin/acme-renew.sh"
+      register: renew_output
+      changed_when: "'Success' in (renew_output.stdout | default('')) or 'renewed' in (renew_output.stdout | default(''))"
+
+    - name: Check cert expiry after renewal
+      ansible.builtin.raw: "openssl x509 -in /etc/ssl/acme/xndrei.go.ro.fullchain.crt -noout -enddate 2>&1 || echo 'no cert'"
+      register: cert_after
+      changed_when: false
+
+    - name: Show results
+      ansible.builtin.debug:
+        msg: |
+          === Before ===
+          {{ cert_before.stdout | default('(skipped)') }}
+          === Renewal output ===
+          {{ renew_output.stdout | default('(skipped)') }}
+          === After ===
+          {{ cert_after.stdout | default('(skipped)') }}

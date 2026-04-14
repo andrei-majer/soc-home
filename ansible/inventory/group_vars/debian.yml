@@ -1,0 +1,11 @@
+ansible_python_interpreter: /usr/bin/python3
+
+common_packages:
+  - curl
+  - jq
+  - htop
+  - net-tools
+  - rsync
+  - python3-pip
+
+disk_alert_threshold: 85

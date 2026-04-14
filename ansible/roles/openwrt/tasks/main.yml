@@ -1,0 +1,71 @@
+---
+# OpenWrt router — backup/pull-only role.
+#
+# OpenWrt has no Python, so:
+#   - ansible.builtin.fetch cannot be used (needs Python on target)
+#   - ansible.builtin.raw + register/{{ stdout }} truncates long output
+#   - Solution: raw dumps configs to /tmp on router, then scp from localhost
+#
+# All tasks are changed_when: false — this role never reports drift,
+# it is purely a read-only backup.
+
+- name: Create local backup directory
+  ansible.builtin.file:
+    path: "{{ openwrt_backup_host_dir }}"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+
+- name: Dump router state to /tmp via raw
+  ansible.builtin.raw: "( {{ item.cmd }} ) > /tmp/soc-{{ item.name }}"
+  loop: "{{ openwrt_dumped_files }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+
+- name: SCP dumped files from router to local backup
+  ansible.builtin.command:
+    argv:
+      - scp
+      - -q
+      - "-o"
+      - StrictHostKeyChecking=no
+      - "-i"
+      - "{{ openwrt_ssh_key }}"
+      - "{{ openwrt_ssh_user }}@{{ ansible_host }}:/tmp/soc-{{ item.name }}"
+      - "{{ openwrt_backup_host_dir }}/{{ item.name }}"
+  loop: "{{ openwrt_dumped_files }}"
+  loop_control:
+    label: "{{ item.name }}"
+  delegate_to: localhost
+  changed_when: false
+
+- name: Check which optional files exist on router
+  ansible.builtin.raw: "test -f {{ item.src }} && echo yes || echo no"
+  loop: "{{ openwrt_optional_files }}"
+  loop_control:
+    label: "{{ item.src }}"
+  register: openwrt_file_exists
+  changed_when: false
+
+- name: SCP optional files that are present
+  ansible.builtin.command:
+    argv:
+      - scp
+      - -q
+      - "-o"
+      - StrictHostKeyChecking=no
+      - "-i"
+      - "{{ openwrt_ssh_key }}"
+      - "{{ openwrt_ssh_user }}@{{ ansible_host }}:{{ item.item.src }}"
+      - "{{ openwrt_backup_host_dir }}/{{ item.item.dest }}"
+  loop: "{{ openwrt_file_exists.results }}"
+  loop_control:
+    label: "{{ item.item.dest }}"
+  when: "'yes' in item.stdout"
+  delegate_to: localhost
+  changed_when: false
+
+- name: Clean temp files on router
+  ansible.builtin.raw: "rm -f /tmp/soc-*.txt"
+  changed_when: false

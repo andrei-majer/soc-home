@@ -1,0 +1,3474 @@
+{
+  "uid": "suricata-siem",
+  "title": "Suricata \u2014 SIEM Security Operations",
+  "description": "Analyst-workflow SIEM dashboard: SOC command center, kill-chain lifecycle, attacker/target correlation, geographic intelligence, application-layer hunting, anomaly detection and priority alert feed.",
+  "tags": [
+    "suricata",
+    "siem",
+    "soc",
+    "threat-hunting"
+  ],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "\ud83d\udda5\ufe0f  SOC COMMAND CENTER",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Alerts",
+      "description": "All Suricata alert events in the selected time range",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"}[$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "blue",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 10000
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Current Rate (ev/min)",
+      "description": "Alert events per minute \u2014 rolling 5-minute average",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"}[5m])) * 60",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "orange",
+                "value": 20
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "High Severity Alerts (Sev 1)",
+      "description": "Highest-confidence, highest-priority alert events",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"1\"}[$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Unique Attackers",
+      "description": "Distinct source IP addresses that triggered alert rules",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "count(sum by (src_ip) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | src_ip != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Unique Targets",
+      "description": "Distinct destination IP addresses receiving attack traffic",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "count(sum by (dest_ip) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | dest_ip != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Countries Observed",
+      "description": "Distinct countries of origin seen in alert traffic (GeoIP on dest_ip)",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "count(sum by (geoip_country_name) (count_over_time({job=\"suricata\", event_type=\"alert\", geoip_country_name!=\"\"}[$__range])))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "\u2694\ufe0f  THREAT LIFECYCLE \u2014 KILL CHAIN",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Alert Rate by Kill Chain Phase",
+      "description": "Mapped from Emerging Threats signature prefixes: ET SCAN=Recon | ET EXPLOIT=Exploitation | ET TROJAN/MALWARE=C2 | ET DOS=DoS | ET INFO=Intelligence",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET SCAN.*\" [$__interval]))",
+          "legendFormat": "\ud83d\udd0d Reconnaissance (ET SCAN)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET EXPLOIT.*\" [$__interval]))",
+          "legendFormat": "\ud83d\udca5 Exploitation (ET EXPLOIT)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"(ET TROJAN|ET MALWARE).*\" [$__interval]))",
+          "legendFormat": "\ud83e\udda0 Malware / C2 (ET TROJAN/MALWARE)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET DOS.*\" [$__interval]))",
+          "legendFormat": "\ud83d\udca3 Denial of Service (ET DOS)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET INFO.*\" [$__interval]))",
+          "legendFormat": "\u2139\ufe0f Information Gathering (ET INFO)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83d\udd0d Reconnaissance (ET SCAN)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83d\udca5 Exploitation (ET EXPLOIT)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83e\udda0 Malware / C2 (ET TROJAN/MALWARE)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83d\udca3 Denial of Service (ET DOS)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\u2139\ufe0f Information Gathering (ET INFO)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "piechart",
+      "title": "Kill Chain Phase Distribution",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET SCAN.*\" [$__range]))",
+          "instant": true,
+          "refId": "A",
+          "legendFormat": "Reconnaissance"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET EXPLOIT.*\" [$__range]))",
+          "instant": true,
+          "refId": "B",
+          "legendFormat": "Exploitation"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"(ET TROJAN|ET MALWARE).*\" [$__range]))",
+          "instant": true,
+          "refId": "C",
+          "legendFormat": "Malware / C2"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET DOS.*\" [$__range]))",
+          "instant": true,
+          "refId": "D",
+          "legendFormat": "Denial of Service"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"ET INFO.*\" [$__range]))",
+          "instant": true,
+          "refId": "E",
+          "legendFormat": "Information Gathering"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature !~ \"ET (SCAN|EXPLOIT|TROJAN|MALWARE|DOS|INFO).*\" [$__range]))",
+          "instant": true,
+          "refId": "F",
+          "legendFormat": "Other"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Reconnaissance"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Exploitation"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Malware / C2"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Denial of Service"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "E"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Information Gathering"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "F"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Other"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "gray",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "\ud83d\udc64  THREAT ACTOR INTELLIGENCE",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      }
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Top Attacking Source IPs",
+      "description": "Click a source IP to look it up on AbuseIPDB threat intelligence",
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (src_ip) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | src_ip != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{src_ip}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Alerts",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "src_ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Source IP"
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "AbuseIPDB Lookup",
+                    "url": "https://www.abuseipdb.com/check/${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Alerts"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-RdYlGr"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "src_ip"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "table",
+      "title": "Top Targeted Destinations",
+      "description": "Internal assets receiving the most alert-triggering traffic",
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 8,
+        "y": 14
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (dest_ip, dest_port) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | dest_ip != \"\" | dest_port != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{dest_ip}}:{{dest_port}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Alerts",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dest_ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Destination IP"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dest_port"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Port"
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Alerts"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlPu"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "table",
+      "title": "Attacker \u2192 Target Correlation",
+      "description": "Direct src\u2192dest mapping \u2014 pivot point for incident investigation and lateral movement detection",
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (src_ip, dest_ip) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | src_ip != \"\" | dest_ip != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{src_ip}} \u2192 {{dest_ip}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Alerts",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "src_ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Attacker"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dest_ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Target"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Alerts"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "\ud83c\udf0d  GEOGRAPHIC THREAT INTELLIGENCE",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      }
+    },
+    {
+      "id": 31,
+      "type": "geomap",
+      "title": "Alert Origin World Map (GeoIP on dest_ip)",
+      "description": "Countries of external IPs observed in alert traffic, enriched via GeoIP",
+      "gridPos": {
+        "h": 12,
+        "w": 16,
+        "x": 0,
+        "y": 25
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum by (geoip_country_name) (count_over_time({job=\"suricata\", event_type=\"alert\", geoip_country_name!=\"\"}[$__range]))",
+          "instant": true,
+          "legendFormat": "{{geoip_country_name}}"
+        }
+      ],
+      "options": {
+        "view": {
+          "id": "zero",
+          "lat": 20,
+          "lon": 0,
+          "zoom": 2
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showZoom": true,
+          "showAttribution": true
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Alert Origins",
+            "config": {
+              "style": {
+                "size": {
+                  "fixed": 5,
+                  "min": 5,
+                  "max": 20,
+                  "field": "Value"
+                },
+                "color": {
+                  "fixed": "dark-red"
+                },
+                "opacity": 0.75,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                }
+              },
+              "showLegend": true
+            },
+            "location": {
+              "mode": "lookup",
+              "lookupField": "geoip_country_name",
+              "gazetteer": "public/gazetteer/countries.json"
+            },
+            "tooltip": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "geoip_country_name"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "geoip_country_name": "Country",
+              "Value": "Alerts"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "table",
+      "title": "Top Countries by Alert Count",
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 16,
+        "y": 25
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (geoip_country_name) (count_over_time({job=\"suricata\", event_type=\"alert\", geoip_country_name!=\"\"}[$__range])))",
+          "instant": true,
+          "legendFormat": "{{geoip_country_name}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Alerts",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "geoip_country_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Country"
+              },
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Alerts"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-RdYlGr"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "geoip_country_name"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "\ud83d\udccb  SIGNATURE & CATEGORY ANALYSIS",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      }
+    },
+    {
+      "id": 41,
+      "type": "table",
+      "title": "Top 20 Alert Signatures",
+      "description": "Ranked by hit count \u2014 highest entries are the most active attack patterns in your network",
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 38
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(20, sum by (alert_signature) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{alert_signature}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Hits",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "alert_signature"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Signature"
+              },
+              {
+                "id": "custom.width",
+                "value": 500
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hits"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-RdYlGr"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "alert_signature"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "type": "table",
+      "title": "Top Alert Categories",
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 38
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (alert_category) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_category != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{alert_category}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Count",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "alert_category"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Category"
+              },
+              {
+                "id": "custom.width",
+                "value": 320
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Count"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "alert_category"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "type": "row",
+      "title": "\ud83c\udf10  APPLICATION LAYER THREAT HUNTING",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      }
+    },
+    {
+      "id": 51,
+      "type": "table",
+      "title": "Top DNS Queries",
+      "description": "High-frequency DNS lookups \u2014 watch for C2 beaconing, DGA domains, data exfiltration via DNS",
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 49
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (dns_rrname) (count_over_time({job=\"suricata\", event_type=\"dns\"} | json | dns_rrname != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{dns_rrname}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Queries",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dns_rrname"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Domain"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Queries"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlPu"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "dns_rrname"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "type": "table",
+      "title": "Top HTTP Hostnames",
+      "description": "Most-accessed HTTP hostnames \u2014 investigate unexpected external destinations",
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 49
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (http_hostname) (count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_hostname != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{http_hostname}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Requests",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "http_hostname"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hostname"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Requests"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "http_hostname"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "type": "table",
+      "title": "Top TLS SNI Destinations",
+      "description": "Encrypted channel destinations \u2014 watch for unknown/suspicious SNI names indicating C2 over TLS",
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 12,
+        "y": 49
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(15, sum by (tls_sni) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_sni != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{tls_sni}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Connections",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tls_sni"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "TLS SNI"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Connections"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlPu"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "tls_sni"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "type": "piechart",
+      "title": "HTTP Methods",
+      "description": "Unusual spikes in PUT/DELETE/OPTIONS may indicate web API abuse or exploitation attempts",
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 49
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_method = \"GET\" [$__range]))",
+          "instant": true,
+          "refId": "A",
+          "legendFormat": "GET"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_method = \"POST\" [$__range]))",
+          "instant": true,
+          "refId": "B",
+          "legendFormat": "POST"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_method = \"PUT\" [$__range]))",
+          "instant": true,
+          "refId": "C",
+          "legendFormat": "PUT"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_method = \"DELETE\" [$__range]))",
+          "instant": true,
+          "refId": "D",
+          "legendFormat": "DELETE"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"http\"} | json | http_method != \"GET\" | http_method != \"POST\" | http_method != \"PUT\" | http_method != \"DELETE\" | http_method != \"\" [$__range]))",
+          "instant": true,
+          "refId": "E",
+          "legendFormat": "Other"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "GET"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "POST"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PUT"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "DELETE"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "E"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Other"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "gray",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      }
+    },
+    {
+      "id": 60,
+      "type": "row",
+      "title": "\u26a0\ufe0f  ANOMALY DETECTION & SEVERITY",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      }
+    },
+    {
+      "id": 61,
+      "type": "timeseries",
+      "title": "Anomaly Event Rate",
+      "description": "Protocol and traffic anomalies detected by Suricata \u2014 spikes often precede or accompany active exploitation",
+      "gridPos": {
+        "h": 7,
+        "w": 10,
+        "x": 0,
+        "y": 59
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"anomaly\"}[$__interval]))",
+          "legendFormat": "Anomaly Events"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"}[$__interval]))",
+          "legendFormat": "Alert Events"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Anomaly Events"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Alert Events"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 62,
+      "type": "table",
+      "title": "Top Anomaly Event Types",
+      "description": "Most frequent protocol anomalies \u2014 high counts of TCP stream issues may indicate active scanning or evasion",
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 10,
+        "y": 59
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(12, sum by (anomaly_type) (count_over_time({job=\"suricata\", event_type=\"anomaly\"} | json | anomaly_type != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{anomaly_type}}"
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Count",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "anomaly_type"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Anomaly Type"
+              },
+              {
+                "id": "custom.width",
+                "value": 280
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Count"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-RdYlGr"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "anomaly_type"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "type": "piechart",
+      "title": "Severity Distribution",
+      "gridPos": {
+        "h": 7,
+        "w": 5,
+        "x": 19,
+        "y": 59
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"1\"}[$__range]))",
+          "instant": true,
+          "refId": "A",
+          "legendFormat": "Sev 1 \u2014 High"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"2\"}[$__range]))",
+          "instant": true,
+          "refId": "B",
+          "legendFormat": "Sev 2 \u2014 Medium"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"3\"}[$__range]))",
+          "instant": true,
+          "refId": "C",
+          "legendFormat": "Sev 3 \u2014 Low"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sev 1 \u2014 High"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sev 2 \u2014 Medium"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sev 3 \u2014 Low"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      }
+    },
+    {
+      "id": 70,
+      "type": "row",
+      "title": "\ud83d\udea8  HIGH-PRIORITY ALERT FEED \u2014 SEVERITY 1",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 66
+      }
+    },
+    {
+      "id": 71,
+      "type": "logs",
+      "title": "Severity 1 Alerts \u2014 Immediate Investigation Required",
+      "description": "Only the highest-priority alerts shown here. Every entry in this feed warrants analyst attention.",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 67
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "{job=\"suricata\", event_type=\"alert\", severity=\"1\"}",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      }
+    },
+    {
+      "id": 80,
+      "type": "row",
+      "title": "\ud83d\udccb  FULL ALERT LOG",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      }
+    },
+    {
+      "id": 81,
+      "type": "logs",
+      "title": "All Suricata Alerts",
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 78
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "{job=\"suricata\", event_type=\"alert\"}",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      }
+    },
+    {
+      "id": 90,
+      "type": "row",
+      "title": "\ud83d\udee1\ufe0f  IP REPUTATION INTELLIGENCE (iprep)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 92
+      }
+    },
+    {
+      "id": 91,
+      "type": "stat",
+      "title": "iprep Hits Total",
+      "description": "All alerts matching IP reputation rules (SIDs 9000001\u20139000011)",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 0,
+        "y": 93
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 92,
+      "type": "stat",
+      "title": "Botnet C2 Hits",
+      "description": "Traffic to/from Feodo-tracked botnet C2 servers (SIDs 9000001\u20139000003)",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 4,
+        "y": 93
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Botnet.*\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 93,
+      "type": "stat",
+      "title": "Malware Host Hits",
+      "description": "Traffic to/from known malware distribution or C2 hosts (SIDs 9000004\u20139000007)",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 8,
+        "y": 93
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Malware.*\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 94,
+      "type": "stat",
+      "title": "Scanner / Brute Force Hits",
+      "description": "Inbound from known scanners on CINS Bad Guys list (SID 9000008)",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 93
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Scanner.*\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "orange",
+                "value": 100
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 95,
+      "type": "stat",
+      "title": "Phishing / Spam Hits",
+      "description": "Traffic to phishing sites or spam-listed hosts (SIDs 9000009\u20139000011)",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 93
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*(Phishing|Spam).*\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 96,
+      "type": "stat",
+      "title": "High-Confidence Hits (P1)",
+      "description": "iprep alerts at priority 1 \u2014 Feodo C2 (score>90) or URLhaus/abuse.ch malware (score>84)",
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 93
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\", severity=\"1\"} | json | alert_signature =~ \"IPREP.*\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 97,
+      "type": "timeseries",
+      "title": "iprep Alert Rate by Threat Category",
+      "description": "Alert rate over time broken down by threat category from iprep rules",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 96
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Botnet.*\" [$__interval]))",
+          "legendFormat": "\ud83e\udd16 Botnet C2"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Malware.*\" [$__interval]))",
+          "legendFormat": "\ud83e\udda0 Malware Host"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Scanner.*\" [$__interval]))",
+          "legendFormat": "\ud83d\udd0d Scanner / Brute Force"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Phishing.*\" [$__interval]))",
+          "legendFormat": "\ud83c\udfa3 Phishing"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Spam.*\" [$__interval]))",
+          "legendFormat": "\ud83d\udce7 Spam / Blacklisted"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83e\udd16 Botnet C2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83e\udda0 Malware Host"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83d\udd0d Scanner / Brute Force"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83c\udfa3 Phishing"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "\ud83d\udce7 Spam / Blacklisted"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 98,
+      "type": "piechart",
+      "title": "iprep Category Distribution",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 96
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Botnet.*\" [$__range]))",
+          "instant": true,
+          "refId": "A",
+          "legendFormat": "Botnet C2"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Malware.*\" [$__range]))",
+          "instant": true,
+          "refId": "B",
+          "legendFormat": "Malware Host"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*Scanner.*\" [$__range]))",
+          "instant": true,
+          "refId": "C",
+          "legendFormat": "Scanner"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*(Phishing|Spam).*\" [$__range]))",
+          "instant": true,
+          "refId": "D",
+          "legendFormat": "Phishing / Spam"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 99,
+      "type": "table",
+      "title": "iprep Hits by Rule",
+      "description": "Which iprep rules fired and how many times, sorted by hit count",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 104
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(20, sum by (alert_signature) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{alert_signature}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": [
+              {
+                "desc": true,
+                "displayName": "Value"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "alert_signature"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Rule"
+              },
+              {
+                "id": "custom.width",
+                "value": 400
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hits"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 100,
+      "type": "table",
+      "title": "Top Source IPs \u2014 iprep Matches",
+      "description": "Source IPs most frequently seen triggering iprep alert rules",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 104
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "topk(20, sum by (src_ip) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | src_ip != \"\" | alert_signature =~ \"IPREP.*\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{src_ip}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": [
+              {
+                "desc": true,
+                "displayName": "Value"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "src_ip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Source IP"
+              },
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hits"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 101,
+      "type": "logs",
+      "title": "iprep Alert Log \u2014 Recent IP Reputation Hits",
+      "description": "Live log of Suricata alerts matching iprep reputation rules",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 112
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "{job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \"IPREP.*\"",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 110,
+      "type": "row",
+      "title": "\ud83d\udd10  TLS & SSH FINGERPRINTING",
+      "description": "JA3/JA4 TLS client fingerprints and HASSH SSH fingerprints — enabled 2026-02-28. Use for C2 detection, tool identification and threat hunting.",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 122 }
+    },
+    {
+      "id": 111,
+      "type": "table",
+      "title": "Top JA4 TLS Fingerprints",
+      "description": "JA4 client fingerprints (more robust than JA3) — identify TLS implementations, malware C2 frameworks, scanners. Cross-reference with ja4db.com.",
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 123 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(15, sum by (tls_ja4) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_ja4 != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{tls_ja4}}"
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "tls_ja4" }, "properties": [{ "id": "displayName", "value": "JA4 Fingerprint" }, { "id": "custom.width", "value": 260 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "tls_ja4" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 112,
+      "type": "table",
+      "title": "Top JA3 TLS Fingerprints",
+      "description": "JA3 client fingerprints — broad malware/tool identification. Cross-reference with threat-intel databases.",
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 123 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(15, sum by (tls_ja3_hash) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_ja3_hash != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{tls_ja3_hash}}"
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "tls_ja3_hash" }, "properties": [{ "id": "displayName", "value": "JA3 Hash" }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "tls_ja3_hash" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 113,
+      "type": "table",
+      "title": "Top HASSH SSH Client Fingerprints",
+      "description": "SSH client HASSH hashes — fingerprints SSH implementations. Known bad: Metasploit (ec7378c1a92f5a8dde7e8b7a1ddf33d1), Paramiko, Cobalt Strike.",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 123 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(10, sum by (ssh_client_hassh_hash) (count_over_time({job=\"suricata\", event_type=\"ssh\"} | json | ssh_client_hassh_hash != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{ssh_client_hassh_hash}}"
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Sessions", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "ssh_client_hassh_hash" }, "properties": [{ "id": "displayName", "value": "HASSH Hash" }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Sessions" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-GrYlRd" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "ssh_client_hassh_hash" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 114,
+      "type": "timeseries",
+      "title": "TLS Session Resumption Rate",
+      "description": "Session resumptions/min — sustained high rate on same JA3/JA4 fingerprint is a strong C2 beacon indicator. Enabled 2026-02-28.",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 132 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(rate({job=\"suricata\", event_type=\"tls\"} | json | tls_session_resumed=\"true\" [5m])) * 60",
+          "legendFormat": "Session Resumptions / min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 12 },
+          "color": { "fixedColor": "orange", "mode": "fixed" }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 115,
+      "type": "stat",
+      "title": "TLS Session Resumptions",
+      "description": "Total TLS sessions resumed (ticket reuse). High count relative to new sessions can indicate persistent C2 beaconing.",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 132 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_session_resumed=\"true\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": { "color": { "fixedColor": "orange", "mode": "fixed" } }
+      }
+    },
+    {
+      "id": 116,
+      "type": "stat",
+      "title": "TLS No-SNI Connections",
+      "description": "TLS connections with no Server Name Indication (SNI). May indicate malware, misconfigured app, or DNS-less C2 beaconing.",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 132 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum(count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_sni=\"\" [$__range]))",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 117,
+      "type": "table",
+      "title": "TLS No-SNI — Top Destinations",
+      "description": "IPs contacted over TLS without SNI. Prioritise unknown/external IPs for investigation.",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 136 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(8, sum by (dest_ip) (count_over_time({job=\"suricata\", event_type=\"tls\"} | json | tls_sni=\"\" | dest_ip != \"\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{dest_ip}}"
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Count", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "dest_ip" }, "properties": [{ "id": "displayName", "value": "Destination IP" }, { "id": "custom.width", "value": 160 }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Count" }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "dest_ip" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 120,
+      "type": "row",
+      "title": "\ud83d\udce1  APP-ID & PROTOCOL HUNTING",
+      "description": "Application protocol identification via oisf/trafficid (58 rules, added 2026-02-28) and HTTP body payload capture.",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 140 }
+    },
+    {
+      "id": 121,
+      "type": "piechart",
+      "title": "App-ID Protocol Distribution (oisf/trafficid)",
+      "description": "Protocol breakdown identified by traffic-pattern rules — shows what application protocols are present on your network, even without port correlation.",
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 141 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "sum by (alert_signature) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \".*TRAFFIC.ID.*\" [$__range]))",
+          "instant": true,
+          "legendFormat": "{{alert_signature}}"
+        }
+      ],
+      "options": { "pieType": "pie", "displayLabels": ["name", "percent"] }
+    },
+    {
+      "id": 122,
+      "type": "table",
+      "title": "App-ID Rules Fired — Ranked",
+      "description": "Application identification rules that fired, ranked by hit count. Useful for protocol baseline and anomaly detection (e.g. unexpected BitTorrent or IRC).",
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 141 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "topk(20, sum by (alert_signature) (count_over_time({job=\"suricata\", event_type=\"alert\"} | json | alert_signature =~ \".*TRAFFIC.ID.*\" [$__range])))",
+          "instant": true,
+          "legendFormat": "{{alert_signature}}"
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "Hits", "desc": true }] },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
+          { "matcher": { "id": "byName", "options": "alert_signature" }, "properties": [{ "id": "displayName", "value": "Protocol / App" }] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Hits" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-BlPu" } }] }
+        ]
+      },
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "alert_signature" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 123,
+      "type": "logs",
+      "title": "HTTP Alerts — Payload Preview",
+      "description": "Alert events on HTTP traffic. HTTP body capture enabled 2026-02-28 (4KB cap, base64+printable). Look for http_http_request_body_printable in log details.",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 141 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "expr": "{job=\"suricata\", event_type=\"alert\"} | json | http_http_method != \"\"",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showTime": true,
+        "showLabels": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      }
+    }
+  ]
+}

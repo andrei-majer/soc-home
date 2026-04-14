@@ -1,0 +1,3 @@
+---
+tpot_install_path: /home/andrei/tpotce
+tpot_backup_dir: "{{ backup_dir }}/tpot"

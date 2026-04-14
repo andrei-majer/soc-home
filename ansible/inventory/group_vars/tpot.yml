@@ -1,0 +1,4 @@
+ansible_python_interpreter: /usr/bin/python3
+tpot_install_path: /home/andrei/tpotce
+tpot_user: andrei
+tpot_backup_dir: "{{ backup_dir }}/tpot"

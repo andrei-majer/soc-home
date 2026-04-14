@@ -1,0 +1,191 @@
+---
+- name: Health check — Suricata host (.120)
+  hosts: suricata-120
+  gather_facts: true
+  tasks:
+    - name: Check systemd services (.120)  # noqa: command-instead-of-module
+      ansible.builtin.command: "systemctl is-active {{ item }}"
+      loop:
+        - suricata
+        - snort3
+        - fail2ban
+        - filebeat
+        - loki
+        - promtail
+        - grafana-server
+        - evebox
+        - velociraptor
+      register: svc_120
+      failed_when: false
+      changed_when: false
+
+    - name: Disk usage (.120)
+      ansible.builtin.command: df -h /
+      register: disk_120
+      failed_when: false
+      changed_when: false
+
+    - name: Suricata rule count (.120)
+      ansible.builtin.shell: |
+        set -o pipefail
+        grep "signatures processed" /var/log/suricata/suricata.log | tail -1
+      args:
+        executable: /bin/bash
+      register: rules_120
+      failed_when: false
+      changed_when: false
+
+- name: Health check — ELK host (.133)
+  hosts: elk-133
+  gather_facts: true
+  tasks:
+    - name: Check systemd services (.133)  # noqa: command-instead-of-module
+      ansible.builtin.command: "systemctl is-active {{ item }}"
+      loop:
+        - elasticsearch
+        - kibana
+        - logstash
+        - filebeat
+        - wazuh-manager
+        - wazuh-dashboard
+        - apache2
+        - misp-workers
+      register: svc_133
+      failed_when: false
+      changed_when: false
+
+    - name: Elasticsearch cluster health (.133)
+      ansible.builtin.uri:
+        url: http://localhost:9200/_cluster/health
+        return_content: true
+      register: es_health_133
+      failed_when: false
+
+    - name: Wazuh agent count (.133)
+      ansible.builtin.shell: |
+        set -o pipefail
+        wc -l < /var/ossec/etc/client.keys 2>/dev/null || echo 0
+      args:
+        executable: /bin/bash
+      register: wazuh_agents_133
+      failed_when: false
+      changed_when: false
+
+    - name: Disk usage (.133)
+      ansible.builtin.command: df -h /
+      register: disk_133
+      failed_when: false
+      changed_when: false
+
+- name: Health check — OpenCTI host (.135)
+  hosts: opencti-135
+  gather_facts: true
+  tasks:
+    - name: Check opencti systemd service  # noqa: command-instead-of-module
+      ansible.builtin.command: systemctl is-active opencti
+      register: svc_135
+      failed_when: false
+      changed_when: false
+
+    - name: OpenCTI docker compose ps (.135)
+      ansible.builtin.shell: |
+        set -o pipefail
+        docker compose -f /opt/opencti/docker-compose.yml ps --format json 2>/dev/null | wc -l
+      args:
+        executable: /bin/bash
+      register: docker_135
+      failed_when: false
+      changed_when: false
+
+    - name: Disk usage (.135)
+      ansible.builtin.command: df -h /
+      register: disk_135
+      failed_when: false
+      changed_when: false
+
+- name: Health check — T-Pot hosts (.130, .125)
+  hosts: tpot
+  gather_facts: true
+  tasks:
+    - name: T-Pot systemd service state  # noqa: command-instead-of-module
+      ansible.builtin.command: systemctl is-active tpot
+      register: svc_tpot
+      failed_when: false
+      changed_when: false
+
+    - name: T-Pot docker container count
+      ansible.builtin.shell: |
+        set -o pipefail
+        docker ps -q | wc -l
+      args:
+        executable: /bin/bash
+      register: docker_tpot
+      failed_when: false
+      changed_when: false
+
+    - name: Disk usage (T-Pot)
+      ansible.builtin.command: df -h /
+      register: disk_tpot
+      failed_when: false
+      changed_when: false
+
+- name: Health check — OpenWrt router
+  hosts: openwrt
+  gather_facts: false
+  tasks:
+    - name: Check uhttpd running
+      ansible.builtin.raw: "pgrep uhttpd >/dev/null && echo running || echo stopped"
+      register: uhttpd_state
+      changed_when: false
+
+    - name: Check AdGuardHome running
+      ansible.builtin.raw: "pgrep AdGuardHome >/dev/null && echo running || echo stopped"
+      register: adguard_state
+      changed_when: false
+
+    - name: Router uptime
+      ansible.builtin.raw: "uptime"
+      register: router_uptime
+      changed_when: false
+
+- name: Print health summary
+  hosts: suricata-120
+  gather_facts: false
+  tasks:
+    - name: Summary table
+      ansible.builtin.debug:
+        msg: |
+          ================= SOC LAB HEALTH SUMMARY =================
+          --- .120 suricata services ---
+          {% for r in hostvars['suricata-120']['svc_120']['results'] %}
+          {{ "%-20s" | format(r.item) }} {{ r.stdout | default('?') }}
+          {% endfor %}
+          rules: {{ hostvars['suricata-120']['rules_120']['stdout'] | default('n/a') }}
+          disk:
+          {{ hostvars['suricata-120']['disk_120']['stdout'] | default('n/a') }}
+
+          --- .133 elk services ---
+          {% for r in hostvars['elk-133']['svc_133']['results'] | default([]) %}
+          {{ "%-20s" | format(r.item) }} {{ r.stdout | default('?') }}
+          {% endfor %}
+          ES health: {{ hostvars['elk-133']['es_health_133']['json']['status'] | default('n/a') }}
+          Wazuh agents (lines in client.keys): {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') }}
+          disk:
+          {{ hostvars['elk-133']['disk_133']['stdout'] | default('n/a') }}
+
+          --- .135 opencti ---
+          opencti svc:  {{ hostvars['opencti-135']['svc_135']['stdout'] | default('n/a') }}
+          compose ps lines: {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') }}
+          disk:
+          {{ hostvars['opencti-135']['disk_135']['stdout'] | default('n/a') }}
+
+          --- T-Pot hosts ---
+          {% for h in ['tpot-hive-130','tpot-sensor-125'] %}
+          {{ h }}: tpot svc={{ hostvars[h]['svc_tpot']['stdout'] | default('n/a') }} containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') }}
+          {% endfor %}
+
+          --- Router ---
+          uhttpd:      {{ hostvars['router-1']['uhttpd_state']['stdout'] | default('n/a') | trim }}
+          AdGuardHome: {{ hostvars['router-1']['adguard_state']['stdout'] | default('n/a') | trim }}
+          uptime:      {{ hostvars['router-1']['router_uptime']['stdout'] | default('n/a') | trim }}
+          ==========================================================

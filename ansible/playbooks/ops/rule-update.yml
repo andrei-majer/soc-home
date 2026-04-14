@@ -1,0 +1,46 @@
+---
+- name: Rule update on Suricata host
+  hosts: suricata-120
+  gather_facts: false
+  tasks:
+    - name: Run suricata-update
+      ansible.builtin.command: suricata-update
+      changed_when: true
+      tags: [suricata]
+
+    - name: Reload Suricata rules (async — may take >5 min)
+      ansible.builtin.command: suricatasc -c "reload-rules"
+      async: 900
+      poll: 30
+      changed_when: true
+      tags: [suricata]
+
+    - name: Update Snort 3 rules
+      ansible.builtin.command: /usr/local/bin/snort3-update-rules.sh
+      changed_when: true
+      tags: [snort]
+
+    - name: Update iprep feeds
+      ansible.builtin.command: /usr/local/bin/suricata-iprep-update.sh
+      changed_when: true
+      tags: [iprep]
+
+    - name: Pull MISP rules
+      ansible.builtin.command: /usr/local/bin/misp-pull-rules.sh
+      changed_when: true
+      tags: [misp]
+
+    - name: Get rule count after reload
+      ansible.builtin.shell: |
+        set -o pipefail
+        grep "signatures processed" /var/log/suricata/suricata.log | tail -1
+      args:
+        executable: /bin/bash
+      register: rule_count
+      changed_when: false
+      tags: [always]
+
+    - name: Show rule count
+      ansible.builtin.debug:
+        msg: "{{ rule_count.stdout }}"
+      tags: [always]

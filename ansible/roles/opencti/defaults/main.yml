@@ -1,0 +1,24 @@
+---
+# OpenCTI Docker Compose stack (host .135)
+
+opencti_install_dir: /opt/opencti
+opencti_config_dir: /opt/opencti/config
+opencti_backups_dir: /opt/opencti/backups
+
+opencti_admin_email: "admin@opencti.local"
+opencti_admin_password: "{{ vault_opencti_admin_password }}"
+opencti_api_token: "{{ vault_opencti_api_token }}"
+opencti_base_url: "http://{{ opencti_host }}:8080"
+
+opencti_minio_user: openctiuser
+opencti_minio_password: "{{ vault_opencti_minio_password }}"
+opencti_rabbitmq_user: opencti
+opencti_rabbitmq_password: "{{ vault_opencti_rabbitmq_password }}"
+opencti_elastic_memory: 3g
+
+opencti_malwarebazaar_key: "{{ vault_malwarebazaar_api_key }}"
+opencti_misp_url: "http://{{ misp_host }}"
+opencti_misp_api_key: "{{ vault_misp_api_key_opencti }}"
+
+opencti_backup_script: /opt/opencti/backup.sh
+opencti_backup_retention_days: 7

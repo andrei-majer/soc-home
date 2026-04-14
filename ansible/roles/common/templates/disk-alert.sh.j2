@@ -1,0 +1,13 @@
+#!/bin/bash
+# Disk usage alert — managed by Ansible
+THRESHOLD={{ disk_alert_threshold }}
+LOGFILE={{ disk_alert_log }}
+HOST=$(hostname)
+df -h --output=pcent,target | tail -n +2 | while read -r pct mnt; do
+    val=${pct%%%}
+    if [ "$val" -ge "$THRESHOLD" ]; then
+        msg="DISK WARNING: $HOST $mnt at ${pct} (threshold ${THRESHOLD}%)"
+        logger -t disk-alert -p local0.warn "$msg"
+        echo "$(date '+%F %T') $msg" >> "$LOGFILE"
+    fi
+done
