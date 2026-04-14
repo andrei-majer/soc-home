@@ -42,6 +42,7 @@ A single `ansible-playbook site.yml` brings the lab from a fresh Debian 12 insta
 - **🔐 Vault-Encrypted Secrets** — Per-host `vault.yml` files (AES256), single password unlocks all via `ansible.cfg`
 - **📓 Windows Runbooks** — `.13` workstation and `.15` hypervisor rebuild procedures live next to the code (Ansible can't run on Windows in this lab)
 - **♻️ Bare-Metal Backup Scripts** — Pre-Ansible config-only tarball + restore for `.120` and `.133`, kept for full-host disaster recovery
+- **💾 Documented Backup Strategy** — Three independent backup tracks (bare-metal tarballs, Ansible repo bundles, service-native), restore procedures and snapshot manifest in `backup/README.md`
 
 ---
 
@@ -323,12 +324,15 @@ soc-home/
 │           ├── windows-15.md     # hypervisor rebuild
 │           ├── tpot-rebuild.md   # T-Pot HIVE/Sensor rebuild
 │           └── misp-rebuild.md   # MISP from-scratch rebuild
-└── scripts/
-    ├── README.md
-    ├── backup-suricata-s.sh
-    ├── restore-suricata-s.sh
-    ├── backup-elk-e.sh
-    └── read-hwinfo.ps1
+├── scripts/
+│   ├── README.md
+│   ├── backup-suricata-s.sh
+│   ├── restore-suricata-s.sh
+│   ├── backup-elk-e.sh
+│   └── read-hwinfo.ps1
+└── backup/
+    └── README.md                 # Backup strategy, snapshot manifest, restore procedures
+                                  # (no tarballs committed — see secret-handling rules)
 ```
 
 ---
