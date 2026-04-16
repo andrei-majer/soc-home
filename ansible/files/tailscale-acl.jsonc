@@ -1,0 +1,91 @@
+// Tailscale ACL policy — managed via https://login.tailscale.com/admin/acls
+// This file is a reference copy; Tailscale reads the policy from its admin console, not from disk.
+{
+    "tagOwners": {
+        "tag:router":      ["autogroup:admin"],
+        "tag:vps":         ["autogroup:admin"],
+        "tag:workstation": ["autogroup:admin"],
+        "tag:mobile":      ["autogroup:admin"]
+    },
+
+    "grants": [
+        // Workstations -> routers, VPS, other workstations
+        {
+            "src": ["tag:workstation"],
+            "dst": ["tag:router", "tag:vps", "tag:workstation"],
+            "ip":  ["*"]
+        },
+        // Workstations -> home LAN via xndrei subnet router
+        {
+            "src": ["tag:workstation"],
+            "dst": ["192.168.1.0/24", "192.168.2.0/24", "10.0.0.0/24"],
+            "ip":  ["*"]
+        },
+        // Workstations -> Internet (exit node)
+        {
+            "src": ["tag:workstation"],
+            "dst": ["autogroup:internet"],
+            "ip":  ["*"]
+        },
+        // Mobile -> Internet only (exit node). No peer access.
+        {
+            "src": ["tag:mobile"],
+            "dst": ["autogroup:internet"],
+            "ip":  ["*"]
+        },
+        // VPS <-> VPS
+        {
+            "src": ["tag:vps"],
+            "dst": ["tag:vps"],
+            "ip":  ["*"]
+        }
+        // Router <-> router (remove if bnp/xndrei should stay isolated)
+        //{
+        //    "src": ["tag:router"],
+        //    "dst": ["tag:router"],
+        //    "ip":  ["*"]
+        //},
+
+        // Mobile: no peer grants. Exit-node still works. Stolen phone can't pivot.
+        // Routers/VPS cannot initiate to workstations — denied by default.
+    ],
+
+    "ssh": [
+        {
+            "action":      "check",
+            "src":         ["autogroup:member"],
+            "dst":         ["tag:router", "tag:vps", "tag:workstation"],
+            "users":       ["root", "autogroup:nonroot"],
+            "checkPeriod": "12h"
+        }
+    ],
+
+    "autoApprovers": {
+        "exitNode": ["autogroup:admin"],
+        "routes": {
+            "192.168.1.0/24": ["autogroup:admin"],
+            "192.168.2.0/24": ["autogroup:admin"],
+            "10.0.0.0/24":    ["autogroup:admin"]
+        }
+    },
+
+    "tests": [
+        {
+            "src":    "tag:workstation",
+            "accept": ["tag:router:22", "tag:vps:22", "1.1.1.1:443"]
+        },
+        {
+            "src":  "tag:mobile",
+            "deny": ["tag:workstation:22", "tag:router:22", "tag:vps:22"]
+        },
+        {
+            "src":  "tag:router",
+            "deny": ["tag:workstation:22"]
+        },
+        {
+            "src":  "tag:vps",
+            "deny": ["tag:workstation:22"]
+        }
+    ],
+    "nodeAttrs": [{"target": ["*"], "app": {"tailscale.com/app-connectors": []}}]
+}
