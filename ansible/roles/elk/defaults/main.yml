@@ -11,7 +11,7 @@ kibana_version: "8.19.12"
 
 # Logstash
 logstash_config: /etc/logstash/conf.d/suricata.conf
-logstash_geoip_plugin_version: "{{ vault_logstash_geoip_plugin_version }}"
+logstash_geoip_plugin_version: "8.0.0"
 
 # Filebeat (on .133 for Wazuh)
 elk_filebeat_config: /etc/filebeat/filebeat.yml

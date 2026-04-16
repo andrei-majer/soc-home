@@ -42,31 +42,31 @@ filter {
   # ── CVE Metadata: flatten alert.metadata.cve → alert.cve_id ─────────────────
   if [alert][metadata][cve] {
     ruby {
-      code => "
-        cves = event.get([alert][metadata][cve])
-        event.set([alert][cve_id], cves.is_a?(Array) ? cves : [cves])
-      "
+      code => '
+        cves = event.get("[alert][metadata][cve]")
+        event.set("[alert][cve_id]", cves.is_a?(Array) ? cves : [cves])
+      '
     }
   }
 
   # ── IP Reputation: flatten alert.iprep → ip_rep ──────────────────────────────
   if [alert][iprep] {
     ruby {
-      code => "
-        iprep = event.get([alert][iprep])
+      code => '
+        iprep = event.get("[alert][iprep]")
         categories = []
         if iprep.is_a?(Hash)
-          [src, dst].each do |side|
+          ["src", "dst"].each do |side|
             entries = iprep[side]
             next unless entries.is_a?(Array)
             entries.each do |e|
-              cat = e[category] rescue nil
+              cat = e["category"] rescue nil
               categories << cat if cat && !cat.empty?
             end
           end
         end
-        event.set(ip_rep, categories.uniq.join(,)) unless categories.empty?
-      "
+        event.set("ip_rep", categories.uniq.join(",")) unless categories.empty?
+      '
     }
   }
 
