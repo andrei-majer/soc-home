@@ -145,9 +145,24 @@
       register: router_uptime
       changed_when: false
 
+- name: Health check — hypervisor .15
+  hosts: hypervisor-15
+  gather_facts: false
+  tasks:
+    - name: List running VMs (.15)
+      ansible.builtin.raw: '"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" list runningvms'
+      register: vms_15
+      changed_when: false
+    - name: C drive free space GB (.15)
+      ansible.builtin.raw: 'powershell -NoProfile -Command "[math]::Round((Get-PSDrive C).Free/1GB,1)"'
+      register: disk_15
+      changed_when: false
+
 - name: Print health summary and fail on issues
   hosts: suricata-120
   gather_facts: false
+  vars:
+    expected_vms: ['Suricata', 'ELK', 'T-Pot Hive', 'T-Pot Sensor', 'OpenCTi']
   tasks:
     - name: Summary table
       ansible.builtin.debug:
@@ -185,6 +200,13 @@
           {{ '[OK]  ' if 'running' in hostvars['router-1']['uhttpd_state']['stdout'] else '[FAIL]' }} uhttpd
           {{ '[OK]  ' if 'running' in hostvars['router-1']['adguard_state']['stdout'] else '[FAIL]' }} AdGuardHome
           uptime: {{ hostvars['router-1']['router_uptime']['stdout'] | default('n/a') | trim }}
+
+          --- .15 hypervisor ---
+          {% set running = hostvars['hypervisor-15']['vms_15']['stdout'] | default('') %}
+          {% for vm in expected_vms %}
+          {{ '[OK]  ' if vm in running else '[FAIL]' }} {{ vm }}
+          {% endfor %}
+          C: free      : {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB
           ==========================================================
 
     - name: Fail if any service is down
@@ -196,6 +218,16 @@
         or hostvars['opencti-135']['svc_135']['stdout'] | default('') != 'active'
         or hostvars['tpot-hive-130']['svc_tpot']['stdout'] | default('') != 'active'
         or hostvars['tpot-sensor-125']['svc_tpot']['stdout'] | default('') != 'active'
+
+    - name: Fail if any VM not running on .15
+      ansible.builtin.fail:
+        msg: "One or more VMs not running on .15 — see summary above"
+      when: >
+        'Suricata' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
+        or 'ELK' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
+        or 'T-Pot Hive' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
+        or 'T-Pot Sensor' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
+        or 'OpenCTi' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
 
     - name: Fail if disk >= 85%
       ansible.builtin.fail:
