@@ -17,6 +17,10 @@ echo "$LOG_PREFIX Stopping OpenCTI stack..."
 docker compose -f "$COMPOSE_DIR/docker-compose.yml" stop
 echo "$LOG_PREFIX Stack stopped."
 
+# Remove previous backups now that .15 holds the remote copy — frees space for new run
+echo "$LOG_PREFIX Removing previous local backups..."
+rm -f "$BACKUP_DIR"/*.tar.gz "$BACKUP_DIR"/*.tmp.tar.gz
+
 # Backup volumes to temp files first, then atomically replace
 for VOL in opencti_esdata opencti_s3data opencti_redisdata opencti_amqpdata; do
     echo "$LOG_PREFIX Backing up $VOL..."
