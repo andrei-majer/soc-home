@@ -5,33 +5,38 @@
   tasks:
     - name: Check systemd services (.120)  # noqa: command-instead-of-module
       ansible.builtin.command: "systemctl is-active {{ item }}"
-      loop:
-        - suricata
-        - snort3
-        - fail2ban
-        - filebeat
-        - loki
-        - promtail
-        - grafana-server
-        - evebox
-        - velociraptor
+      loop: [suricata, snort3, fail2ban, filebeat, loki, promtail, grafana-server, evebox, velociraptor]
       register: svc_120
       failed_when: false
       changed_when: false
-
-    - name: Disk usage (.120)
+    - name: Disk pct (.120)
+      ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
+      register: disk_pct_120
+      failed_when: false
+      changed_when: false
+    - name: Disk detail (.120)
       ansible.builtin.command: df -h /
       register: disk_120
       failed_when: false
       changed_when: false
-
     - name: Suricata rule count (.120)
       ansible.builtin.shell: |
-        set -o pipefail
-        grep "signatures processed" /var/log/suricata/suricata.log | tail -1
+        suricatasc --dump-counters 2>/dev/null | python3 -c "
+        import sys,json; d=json.load(sys.stdin)
+        print(d.get('message',{}).get('detect',{}).get('engines',[{}])[0].get('rules_loaded','n/a'))
+        " 2>/dev/null || grep -oP 'rules loaded: \K[0-9]+' /var/log/suricata/suricata.log | tail -1 || echo n/a
       args:
         executable: /bin/bash
       register: rules_120
+      failed_when: false
+      changed_when: false
+    - name: EVE log freshness (.120)
+      ansible.builtin.shell: |
+        last=$(stat -c %Y /var/log/suricata/eve.json 2>/dev/null) || { echo missing; exit 0; }
+        echo "$(( $(date +%s) - last ))s ago"
+      args:
+        executable: /bin/bash
+      register: eve_age_120
       failed_when: false
       changed_when: false
 
@@ -41,37 +46,29 @@
   tasks:
     - name: Check systemd services (.133)  # noqa: command-instead-of-module
       ansible.builtin.command: "systemctl is-active {{ item }}"
-      loop:
-        - elasticsearch
-        - kibana
-        - logstash
-        - filebeat
-        - wazuh-manager
-        - wazuh-dashboard
-        - apache2
-        - misp-workers
+      loop: [elasticsearch, kibana, logstash, filebeat, wazuh-manager, wazuh-dashboard, apache2, misp-workers]
       register: svc_133
       failed_when: false
       changed_when: false
-
     - name: Elasticsearch cluster health (.133)
       ansible.builtin.uri:
         url: http://localhost:9200/_cluster/health
         return_content: true
       register: es_health_133
       failed_when: false
-
     - name: Wazuh agent count (.133)
-      ansible.builtin.shell: |
-        set -o pipefail
-        wc -l < /var/ossec/etc/client.keys 2>/dev/null || echo 0
+      ansible.builtin.shell: wc -l < /var/ossec/etc/client.keys 2>/dev/null || echo 0
       args:
         executable: /bin/bash
       register: wazuh_agents_133
       failed_when: false
       changed_when: false
-
-    - name: Disk usage (.133)
+    - name: Disk pct (.133)
+      ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
+      register: disk_pct_133
+      failed_when: false
+      changed_when: false
+    - name: Disk detail (.133)
       ansible.builtin.command: df -h /
       register: disk_133
       failed_when: false
@@ -86,18 +83,19 @@
       register: svc_135
       failed_when: false
       changed_when: false
-
-    - name: OpenCTI docker compose ps (.135)
-      ansible.builtin.shell: |
-        set -o pipefail
-        docker compose -f /opt/opencti/docker-compose.yml ps --format json 2>/dev/null | wc -l
+    - name: OpenCTI docker container count (.135)
+      ansible.builtin.shell: docker compose -f /opt/opencti/docker-compose.yml ps -q 2>/dev/null | wc -l
       args:
         executable: /bin/bash
       register: docker_135
       failed_when: false
       changed_when: false
-
-    - name: Disk usage (.135)
+    - name: Disk pct (.135)
+      ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
+      register: disk_pct_135
+      failed_when: false
+      changed_when: false
+    - name: Disk detail (.135)
       ansible.builtin.command: df -h /
       register: disk_135
       failed_when: false
@@ -112,18 +110,19 @@
       register: svc_tpot
       failed_when: false
       changed_when: false
-
     - name: T-Pot docker container count
-      ansible.builtin.shell: |
-        set -o pipefail
-        docker ps -q | wc -l
+      ansible.builtin.shell: docker ps -q | wc -l
       args:
         executable: /bin/bash
       register: docker_tpot
       failed_when: false
       changed_when: false
-
-    - name: Disk usage (T-Pot)
+    - name: Disk pct (T-Pot)
+      ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
+      register: disk_pct_tpot
+      failed_when: false
+      changed_when: false
+    - name: Disk detail (T-Pot)
       ansible.builtin.command: df -h /
       register: disk_tpot
       failed_when: false
@@ -137,18 +136,16 @@
       ansible.builtin.raw: "pgrep uhttpd >/dev/null && echo running || echo stopped"
       register: uhttpd_state
       changed_when: false
-
     - name: Check AdGuardHome running
       ansible.builtin.raw: "pgrep AdGuardHome >/dev/null && echo running || echo stopped"
       register: adguard_state
       changed_when: false
-
     - name: Router uptime
-      ansible.builtin.raw: "uptime"
+      ansible.builtin.raw: uptime
       register: router_uptime
       changed_when: false
 
-- name: Print health summary
+- name: Print health summary and fail on issues
   hosts: suricata-120
   gather_facts: false
   tasks:
@@ -158,34 +155,54 @@
           ================= SOC LAB HEALTH SUMMARY =================
           --- .120 suricata services ---
           {% for r in hostvars['suricata-120']['svc_120']['results'] %}
-          {{ "%-20s" | format(r.item) }} {{ r.stdout | default('?') }}
+          {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
           {% endfor %}
-          rules: {{ hostvars['suricata-120']['rules_120']['stdout'] | default('n/a') }}
-          disk:
+          rules loaded : {{ hostvars['suricata-120']['rules_120']['stdout'] | default('n/a') | trim }}
+          eve.json     : {{ hostvars['suricata-120']['eve_age_120']['stdout'] | default('n/a') | trim }}
+          disk         : {{ hostvars['suricata-120']['disk_pct_120']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['suricata-120']['disk_120']['stdout'] | default('n/a') }}
 
           --- .133 elk services ---
           {% for r in hostvars['elk-133']['svc_133']['results'] | default([]) %}
-          {{ "%-20s" | format(r.item) }} {{ r.stdout | default('?') }}
+          {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
           {% endfor %}
-          ES health: {{ hostvars['elk-133']['es_health_133']['json']['status'] | default('n/a') }}
-          Wazuh agents (lines in client.keys): {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') }}
-          disk:
+          ES health    : {{ hostvars['elk-133']['es_health_133']['json']['status'] | default('n/a') }}{{ ' [WARN]' if hostvars['elk-133']['es_health_133']['json']['status'] | default('') not in ['green','yellow'] else '' }}
+          Wazuh agents : {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') | trim }}
+          disk         : {{ hostvars['elk-133']['disk_pct_133']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['elk-133']['disk_133']['stdout'] | default('n/a') }}
 
           --- .135 opencti ---
-          opencti svc:  {{ hostvars['opencti-135']['svc_135']['stdout'] | default('n/a') }}
-          compose ps lines: {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') }}
-          disk:
+          {{ '[OK]  ' if hostvars['opencti-135']['svc_135']['stdout'] == 'active' else '[FAIL]' }} opencti svc
+          containers   : {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') | trim }}
+          disk         : {{ hostvars['opencti-135']['disk_pct_135']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['opencti-135']['disk_135']['stdout'] | default('n/a') }}
 
           --- T-Pot hosts ---
           {% for h in ['tpot-hive-130','tpot-sensor-125'] %}
-          {{ h }}: tpot svc={{ hostvars[h]['svc_tpot']['stdout'] | default('n/a') }} containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') }}
+          {{ '[OK]  ' if hostvars[h]['svc_tpot']['stdout'] == 'active' else '[FAIL]' }} {{ h }}: containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') | trim }} disk={{ hostvars[h]['disk_pct_tpot']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars[h]['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {% endfor %}
-
           --- Router ---
-          uhttpd:      {{ hostvars['router-1']['uhttpd_state']['stdout'] | default('n/a') | trim }}
-          AdGuardHome: {{ hostvars['router-1']['adguard_state']['stdout'] | default('n/a') | trim }}
-          uptime:      {{ hostvars['router-1']['router_uptime']['stdout'] | default('n/a') | trim }}
+          {{ '[OK]  ' if 'running' in hostvars['router-1']['uhttpd_state']['stdout'] else '[FAIL]' }} uhttpd
+          {{ '[OK]  ' if 'running' in hostvars['router-1']['adguard_state']['stdout'] else '[FAIL]' }} AdGuardHome
+          uptime: {{ hostvars['router-1']['router_uptime']['stdout'] | default('n/a') | trim }}
           ==========================================================
+
+    - name: Fail if any service is down
+      ansible.builtin.fail:
+        msg: "One or more services are not active — see summary above"
+      when: >
+        hostvars['suricata-120']['svc_120']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0
+        or hostvars['elk-133']['svc_133']['results'] | default([]) | selectattr('stdout', '!=', 'active') | list | length > 0
+        or hostvars['opencti-135']['svc_135']['stdout'] | default('') != 'active'
+        or hostvars['tpot-hive-130']['svc_tpot']['stdout'] | default('') != 'active'
+        or hostvars['tpot-sensor-125']['svc_tpot']['stdout'] | default('') != 'active'
+
+    - name: Fail if disk >= 85%
+      ansible.builtin.fail:
+        msg: "Disk usage >= 85% on one or more hosts — check summary above"
+      when: >
+        (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 85
+        or (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 85
+        or (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85
+        or (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 85
+        or (hostvars['tpot-sensor-125']['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 85
