@@ -112,3 +112,34 @@ Generates alerts like **"ET SCAN Potential SSH Scan OUTBOUND"** — suppress / t
 5. **Restore SSH keys** to `C:\Users\xndre\.ssh\` (`openwrt`, `id_ed25519`) with correct ACLs (Users: deny, xndre: read).
 6. **Install Tailscale**, join tailnet `cerberus-barometric.ts.net`, enable Magic DNS.
 7. **Verify Active Response**: tail `active-responses.log`, trigger test rule 100030 from manager, confirm `netsh` firewall rule appears and auto-removes after 3600s.
+
+## OpenSSH Server
+
+Installed 2026-04-20. Listens on Tailscale interface only — not accessible from LAN or internet.
+
+| Field | Value |
+|---|---|
+| Service | `sshd` (Automatic startup) |
+| Bind address | `100.78.84.60:22` (Tailscale IP) |
+| Config | `C:\ProgramData\ssh\sshd_config` |
+| Admin authorized keys | `C:\ProgramData\ssh\administrators_authorized_keys` |
+
+### Install / reconfigure
+
+```powershell
+# Install (elevated PowerShell)
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Start-Service sshd
+Set-Service -Name sshd -StartupType Automatic
+
+# Restrict to Tailscale IP (get current IP first: Get-NetIPAddress | Where InterfaceAlias -like '*Tailscale*')
+$cfg = 'C:\ProgramData\ssh\sshd_config'
+(Get-Content $cfg) -replace '#Port 22', 'Port 22' `
+                   -replace '#AddressFamily any', 'AddressFamily inet' `
+                   -replace '#ListenAddress 0\.0\.0\.0', 'ListenAddress <tailscale-ip>' `
+                   -replace '#ListenAddress ::', '' |
+    Set-Content $cfg
+Restart-Service sshd
+```
+
+**Note:** Tailscale IP (`100.78.x.x`) is assigned by Tailscale and is stable per device but may change after a full Tailscale reinstall. Verify with `Get-NetIPAddress | Where InterfaceAlias -like '*Tailscale*'` after rebuild and update `sshd_config` if needed.
