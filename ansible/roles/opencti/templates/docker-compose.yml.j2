@@ -179,13 +179,13 @@ services:
 
 
 
-  connector-malwarebazaar:
-    image: opencti/connector-malwarebazaar-recent-additions:6.9.28
-    volumes:
-      - ./config/malwarebazaar.yml:/opt/opencti-connector-malwarebazaar-recent-additions/config.yml:ro
-    restart: always
-    depends_on:
-      - opencti
+  #   connector-malwarebazaar:
+  #     image: opencti/connector-malwarebazaar-recent-additions:6.9.28
+  #     volumes:
+  #       - ./config/malwarebazaar.yml:/opt/opencti-connector-malwarebazaar-recent-additions/config.yml:ro
+  #     restart: always
+  #     depends_on:
+  #       - opencti
 
 
   connector-cisa-kev:
