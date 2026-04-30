@@ -12,7 +12,7 @@ $vmIPs = @{
     'OpenCTi'      = '192.168.1.135'
 }
 
-# T-Pot VMs run many containers — need longer ping window
+# T-Pot VMs run many containers - need longer ping window
 $vmPingRetries = @{
     'ELK'          = 12
     'T-Pot Hive'   = 30
@@ -54,7 +54,7 @@ foreach ($vm in $vms) {
 "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - All VMs started. Waiting 120s for boot..." | Add-Content $logfile
 Start-Sleep -Seconds 120
 
-# Ping check — auto-reset VMs that don't respond (network may not have come up after cold boot)
+# Ping check - auto-reset VMs that don't respond (network may not have come up after cold boot)
 $failed = @()
 foreach ($vm in $vms) {
     $ip = $vmIPs[$vm]
@@ -66,7 +66,7 @@ foreach ($vm in $vms) {
     }
 
     $maxWait = $retries * 15
-    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - WARN: $vm ($ip) did not respond after ${maxWait}s — resetting" | Add-Content $logfile
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - WARN: $vm ($ip) did not respond after ${maxWait}s - resetting" | Add-Content $logfile
     & $vboxmanage controlvm $vm reset 2>&1 | Out-Null
     "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - Reset sent to $vm. Waiting 90s for reboot..." | Add-Content $logfile
     Start-Sleep -Seconds 90
