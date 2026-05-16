@@ -39,6 +39,22 @@
       register: eve_age_120
       failed_when: false
       changed_when: false
+    - name: MISP IOC rules file age in seconds (.120)
+      ansible.builtin.shell: |
+        f=/etc/suricata/rules/misp.rules
+        [ -f "$f" ] && echo $(( $(date +%s) - $(stat -c %Y "$f") )) || echo -1
+      args:
+        executable: /bin/bash
+      register: misp_rules_age_120
+      failed_when: false
+      changed_when: false
+    - name: MISP IOC rules line count (.120)
+      ansible.builtin.shell: wc -l < /etc/suricata/rules/misp.rules 2>/dev/null || echo 0
+      args:
+        executable: /bin/bash
+      register: misp_rules_count_120
+      failed_when: false
+      changed_when: false
 
 - name: Health check — ELK host (.133)
   hosts: elk-133
@@ -70,6 +86,13 @@
         status_code: [200, 401]
       register: wazuh_api_133
       failed_when: false
+    - name: MISP enabled feeds count (.133)
+      ansible.builtin.shell: mysql misp -Nse "SELECT COUNT(*) FROM feeds WHERE enabled=1" 2>/dev/null || echo -1
+      args:
+        executable: /bin/bash
+      register: misp_feeds_133
+      failed_when: false
+      changed_when: false
     - name: Disk pct (.133)
       ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
       register: disk_pct_133
@@ -95,6 +118,21 @@
       args:
         executable: /bin/bash
       register: docker_135
+      failed_when: false
+      changed_when: false
+    - name: OpenCTI core restart count + uptime hours (.135)
+      ansible.builtin.shell: |
+        rc=$(docker inspect opencti-opencti-1 -f '{% raw %}{{.RestartCount}}{% endraw %}' 2>/dev/null || echo -1)
+        start=$(docker inspect opencti-opencti-1 -f '{% raw %}{{.State.StartedAt}}{% endraw %}' 2>/dev/null || echo "")
+        if [ -n "$start" ]; then
+          up_h=$(( ( $(date +%s) - $(date -d "$start" +%s) ) / 3600 ))
+        else
+          up_h=-1
+        fi
+        echo "$rc $up_h"
+      args:
+        executable: /bin/bash
+      register: opencti_core_135
       failed_when: false
       changed_when: false
     - name: Disk pct (.135)
@@ -181,6 +219,7 @@
           {% endfor %}
           rules loaded : {{ hostvars['suricata-120']['rules_120']['stdout'] | default('n/a') | trim }}
           eve.json     : {{ hostvars['suricata-120']['eve_age_120']['stdout'] | default('n/a') | trim }}
+          MISP rules   : {{ hostvars['suricata-120']['misp_rules_count_120']['stdout'] | default('?') | trim }} rules, {{ (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) // 3600 }}h old{{ ' [FAIL] file missing' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) < 0 else (' [WARN]' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('0') | trim | int) > 28800 else '') }}
           disk         : {{ hostvars['suricata-120']['disk_pct_120']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['suricata-120']['disk_120']['stdout'] | default('n/a') }}
 
@@ -191,12 +230,15 @@
           ES health    : {{ hostvars['elk-133']['es_health_133']['json']['status'] | default('n/a') }}{{ ' [WARN]' if hostvars['elk-133']['es_health_133']['json']['status'] | default('') not in ['green','yellow'] else '' }}
           Wazuh agents : {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') | trim }}
           Wazuh API    : {{ '[OK]  ' if hostvars['elk-133']['wazuh_api_133']['status'] | default(-1) in [200, 401] else '[FAIL] port 55000 down' }}
+          MISP feeds   : {{ hostvars['elk-133']['misp_feeds_133']['stdout'] | default('?') | trim }} enabled{{ ' [FAIL] expected 8' if (hostvars['elk-133']['misp_feeds_133']['stdout'] | default('-1') | trim | int) != 8 else '' }}
           disk         : {{ hostvars['elk-133']['disk_pct_133']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['elk-133']['disk_133']['stdout'] | default('n/a') }}
 
           --- .135 opencti ---
           {{ '[OK]  ' if hostvars['opencti-135']['svc_135']['stdout'] == 'active' else '[FAIL]' }} opencti svc
           containers   : {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') | trim }}
+          {% set octi = (hostvars['opencti-135']['opencti_core_135']['stdout'] | default('-1 -1')).split() %}
+          core restarts: {{ octi[0] }} (up {{ octi[1] }}h){{ ' [WARN] restart loop?' if (octi[0] | int) > 2 and (octi[1] | int) >= 0 and (octi[1] | int) < 24 else '' }}
           disk         : {{ hostvars['opencti-135']['disk_pct_135']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['opencti-135']['disk_135']['stdout'] | default('n/a') }}
 
@@ -255,3 +297,16 @@
         or (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85
         or (hostvars['tpot-hive-130']['disk_pct_tpot'] is defined and (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | trim | int) >= 85)
         or (hostvars['tpot-sensor-125']['disk_pct_tpot'] is defined and (hostvars['tpot-sensor-125']['disk_pct_tpot']['stdout'] | trim | int) >= 85)
+
+    - name: Fail if MISP IOC rules stale or too few
+      ansible.builtin.fail:
+        msg: "Suricata MISP rules pipe broken — file missing, >24h stale, or <100k rules (cron: misp-pull-rules every 6h; WARN shows at >8h)"
+      when: >
+        (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) < 0
+        or (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('0') | trim | int) > 86400
+        or (hostvars['suricata-120']['misp_rules_count_120']['stdout'] | default('0') | trim | int) < 100000
+
+    - name: Fail if MISP enabled feed count drifted
+      ansible.builtin.fail:
+        msg: "MISP enabled feed count != 8 — check /feeds in MISP UI for disabled/added feeds"
+      when: (hostvars['elk-133']['misp_feeds_133']['stdout'] | default('-1') | trim | int) != 8
