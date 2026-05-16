@@ -4,3 +4,5 @@ skip_list:
   - var-naming[no-role-prefix]  # Variables without role name prefix. Stylistic only.
   - jinja[spacing]               # Large debug-summary templates flag false positives.
   - run-once[task]               # Safety-assert pre_tasks legitimately use run_once.
+  - risky-shell-pipe         # health-check ops tasks use failed_when:false; pipe failures are non-fatal.
+  - yaml[line-length]        # Long Jinja2 summary lines in debug tasks are intentional and unbreakable.

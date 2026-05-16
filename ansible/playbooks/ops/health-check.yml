@@ -63,6 +63,13 @@
       register: wazuh_agents_133
       failed_when: false
       changed_when: false
+    - name: Wazuh API port (.133)
+      ansible.builtin.uri:
+        url: https://localhost:55000/
+        validate_certs: false
+        status_code: [200, 401]
+      register: wazuh_api_133
+      failed_when: false
     - name: Disk pct (.133)
       ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
       register: disk_pct_133
@@ -183,6 +190,7 @@
           {% endfor %}
           ES health    : {{ hostvars['elk-133']['es_health_133']['json']['status'] | default('n/a') }}{{ ' [WARN]' if hostvars['elk-133']['es_health_133']['json']['status'] | default('') not in ['green','yellow'] else '' }}
           Wazuh agents : {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') | trim }}
+          Wazuh API    : {{ '[OK]  ' if hostvars['elk-133']['wazuh_api_133']['status'] | default(-1) in [200, 401] else '[FAIL] port 55000 down' }}
           disk         : {{ hostvars['elk-133']['disk_pct_133']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['elk-133']['disk_133']['stdout'] | default('n/a') }}
 
@@ -194,7 +202,11 @@
 
           --- T-Pot hosts ---
           {% for h in ['tpot-hive-130','tpot-sensor-125'] %}
+          {% if hostvars[h]['svc_tpot'] is not defined %}
+          [UNREACH] {{ h }}: facts not gathered (host unreachable)
+          {% else %}
           {{ '[OK]  ' if hostvars[h]['svc_tpot']['stdout'] == 'active' else '[FAIL]' }} {{ h }}: containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') | trim }} disk={{ hostvars[h]['disk_pct_tpot']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars[h]['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 85 else '' }}
+          {% endif %}
           {% endfor %}
           --- Router ---
           {{ '[OK]  ' if 'running' in hostvars['router-1']['uhttpd_state']['stdout'] else '[FAIL]' }} uhttpd
@@ -216,8 +228,13 @@
         hostvars['suricata-120']['svc_120']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0
         or hostvars['elk-133']['svc_133']['results'] | default([]) | selectattr('stdout', '!=', 'active') | list | length > 0
         or hostvars['opencti-135']['svc_135']['stdout'] | default('') != 'active'
-        or hostvars['tpot-hive-130']['svc_tpot']['stdout'] | default('') != 'active'
-        or hostvars['tpot-sensor-125']['svc_tpot']['stdout'] | default('') != 'active'
+        or (hostvars['tpot-hive-130']['svc_tpot'] is defined and hostvars['tpot-hive-130']['svc_tpot']['stdout'] != 'active')
+        or (hostvars['tpot-sensor-125']['svc_tpot'] is defined and hostvars['tpot-sensor-125']['svc_tpot']['stdout'] != 'active')
+
+    - name: Fail if Wazuh API is down
+      ansible.builtin.fail:
+        msg: "Wazuh API not responding on .133 port 55000 — run health-check to see details"
+      when: hostvars['elk-133']['wazuh_api_133']['status'] | default(-1) not in [200, 401]
 
     - name: Fail if any VM not running on .15
       ansible.builtin.fail:
@@ -236,5 +253,5 @@
         (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 85
         or (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 85
         or (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85
-        or (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 85
-        or (hostvars['tpot-sensor-125']['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 85
+        or (hostvars['tpot-hive-130']['disk_pct_tpot'] is defined and (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | trim | int) >= 85)
+        or (hostvars['tpot-sensor-125']['disk_pct_tpot'] is defined and (hostvars['tpot-sensor-125']['disk_pct_tpot']['stdout'] | trim | int) >= 85)
