@@ -19,3 +19,5 @@ misp_host: 192.168.1.133
 router_host: 192.168.1.1
 
 backup_dir: /opt/soc-ansible/backups
+
+ntp_server: "{{ router_host }}"

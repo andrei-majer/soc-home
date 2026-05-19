@@ -1,2 +1,5 @@
 ---
-# Common role has no handlers — no services to restart
+- name: Restart timesyncd
+  ansible.builtin.service:
+    name: systemd-timesyncd
+    state: restarted

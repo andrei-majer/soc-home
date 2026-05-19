@@ -37,9 +37,57 @@
   roles:
     - tpot
 
+# Play 5b: T-Pot NTP configuration (OS-level only, no T-Pot software changes)
+- name: T-Pot NTP
+  hosts: tpot
+  tags: ntp
+  handlers:
+    - name: Restart timesyncd
+      ansible.builtin.service:
+        name: systemd-timesyncd
+        state: restarted
+  tasks:
+    - name: Create timesyncd drop-in directory
+      ansible.builtin.file:
+        path: /etc/systemd/timesyncd.conf.d
+        state: directory
+        mode: "0755"
+        owner: root
+        group: root
+
+    - name: Configure NTP server (timesyncd drop-in)
+      ansible.builtin.copy:
+        dest: /etc/systemd/timesyncd.conf.d/local.conf
+        content: |
+          [Time]
+          NTP={{ ntp_server }}
+          FallbackNTP=0.debian.pool.ntp.org 1.debian.pool.ntp.org
+        mode: "0644"
+        owner: root
+        group: root
+      notify: Restart timesyncd
+
 # Play 6: OpenWrt router backup (raw module, pull-only)
 - name: OpenWrt router backup
   hosts: openwrt
   gather_facts: false    # No Python on OpenWrt
   roles:
     - openwrt
+
+# Play 7: Windows NTP configuration (.15 hypervisor)
+- name: Windows NTP
+  hosts: hypervisor-15
+  gather_facts: false
+  tags: ntp
+  tasks:
+    - name: Configure w32tm to use local NTP server
+      ansible.builtin.raw: >
+        w32tm /config /manualpeerlist:{{ ntp_server }} /syncfromflags:manual /reliable:YES /update &&
+        net stop w32time && net start w32time &&
+        w32tm /resync /force
+      register: w32tm_result
+      changed_when: true
+
+    - name: Show w32tm output
+      ansible.builtin.debug:
+        var: w32tm_result.stdout_lines

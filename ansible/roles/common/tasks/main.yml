@@ -38,3 +38,22 @@
     minute: "0"
     job: "{{ disk_alert_script }}"
     user: root
+
+- name: Create timesyncd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/timesyncd.conf.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  tags: ntp
+
+- name: Configure NTP server (timesyncd drop-in)
+  ansible.builtin.template:
+    src: timesyncd-local.conf.j2
+    dest: /etc/systemd/timesyncd.conf.d/local.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart timesyncd
+  tags: ntp
