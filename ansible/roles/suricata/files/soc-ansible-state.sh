@@ -21,6 +21,16 @@ touch "$LOG"
 
 cd "$REPO" || { logger -t soc-ansible-state "FATAL: cannot cd $REPO"; exit 1; }
 
+# Serialize collect+drift: concurrent runs share the default SSH ControlPath -> mux collisions, spurious unreachable, 2.5h wedge (2026-05-21)
+exec 9>/run/soc-ansible-state.lock || { logger -t soc-ansible-state "FATAL: cannot open lockfile"; exit 1; }
+if ! flock -n 9; then
+    logger -t soc-ansible-state "another run in progress; skipping this cycle"
+    exit 0
+fi
+# Dedicated control-socket dir so ad-hoc/manual ansible runs never share mux sockets with this wrapper
+export ANSIBLE_SSH_CONTROL_PATH_DIR=/run/soc-ansible-state-cp
+mkdir -p "$ANSIBLE_SSH_CONTROL_PATH_DIR"
+
 # ---- State collection ----
 if ! ansible-playbook -i "$INV" "$PLAYBOOK" >/tmp/soc-state-run.log 2>&1; then
     logger -t soc-ansible-state "state-collect.yml failed; see /tmp/soc-state-run.log"
