@@ -17,6 +17,12 @@ services:
       - logger.org.elasticsearch.discovery=ERROR
       - ES_JAVA_OPTS=-Xms${ELASTIC_MEMORY_SIZE} -Xmx${ELASTIC_MEMORY_SIZE}
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -f 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
     ulimits:
       memlock:
         soft: -1
@@ -73,10 +79,14 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - redis
-      - elasticsearch
-      - minio
-      - rabbitmq
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     restart: always
 
   worker:

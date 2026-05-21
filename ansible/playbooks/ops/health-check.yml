@@ -120,16 +120,18 @@
       register: docker_135
       failed_when: false
       changed_when: false
-    - name: OpenCTI core restart count + uptime hours (.135)
+    - name: OpenCTI core restart count + uptime + status (.135)
       ansible.builtin.shell: |
         rc=$(docker inspect opencti-opencti-1 -f '{% raw %}{{.RestartCount}}{% endraw %}' 2>/dev/null || echo -1)
+        st=$(docker inspect opencti-opencti-1 -f '{% raw %}{{.State.Status}}{% endraw %}' 2>/dev/null || echo unknown)
         start=$(docker inspect opencti-opencti-1 -f '{% raw %}{{.State.StartedAt}}{% endraw %}' 2>/dev/null || echo "")
         if [ -n "$start" ]; then
-          up_h=$(( ( $(date +%s) - $(date -d "$start" +%s) ) / 3600 ))
+          secs=$(( $(date +%s) - $(date -d "$start" +%s) ))
+          up_h=$(( secs / 3600 )); up_m=$(( secs / 60 ))
         else
-          up_h=-1
+          up_h=-1; up_m=-1
         fi
-        echo "$rc $up_h"
+        echo "$rc $up_h $up_m $st"
       args:
         executable: /bin/bash
       register: opencti_core_135
@@ -237,8 +239,8 @@
           --- .135 opencti ---
           {{ '[OK]  ' if hostvars['opencti-135']['svc_135']['stdout'] == 'active' else '[FAIL]' }} opencti svc
           containers   : {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') | trim }}
-          {% set octi = (hostvars['opencti-135']['opencti_core_135']['stdout'] | default('-1 -1')).split() %}
-          core restarts: {{ octi[0] }} (up {{ octi[1] }}h){{ ' [WARN] restart loop?' if (octi[0] | int) > 2 and (octi[1] | int) >= 0 and (octi[1] | int) < 24 else '' }}
+          {% set octi = (hostvars['opencti-135']['opencti_core_135']['stdout'] | default('-1 -1 -1 unknown')).split() %}
+          core restarts: {{ octi[0] }} (up {{ octi[1] }}h, {{ octi[3] }}){{ ' [WARN] restart loop?' if (octi[3] != 'running') or ((octi[0] | int) > 2 and (octi[2] | int) >= 0 and (octi[2] | int) < 10) else '' }}
           disk         : {{ hostvars['opencti-135']['disk_pct_135']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['opencti-135']['disk_135']['stdout'] | default('n/a') }}
 

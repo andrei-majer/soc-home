@@ -30,6 +30,8 @@ fi
 # Dedicated control-socket dir so ad-hoc/manual ansible runs never share mux sockets with this wrapper
 export ANSIBLE_SSH_CONTROL_PATH_DIR=/run/soc-ansible-state-cp
 mkdir -p "$ANSIBLE_SSH_CONTROL_PATH_DIR"
+# Hard backstop: kill any single task exceeding 120s so an unattended cron run can never hang
+export ANSIBLE_TASK_TIMEOUT=120
 
 # ---- State collection ----
 if ! ansible-playbook -i "$INV" "$PLAYBOOK" >/tmp/soc-state-run.log 2>&1; then
