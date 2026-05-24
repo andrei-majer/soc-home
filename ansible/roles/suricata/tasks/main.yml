@@ -320,6 +320,131 @@
     name: velociraptor
     state: started
     enabled: true
+- name: Velociraptor | set admin password
+  ansible.builtin.command:
+    cmd: >-
+      velociraptor --config /etc/velociraptor/server.config.yaml
+      user add --role administrator admin {{ vault_velociraptor_admin_password }}
+  changed_when: false
+  tags: velociraptor
+
+- name: Velociraptor | ensure iptables and netfilter-persistent installed
+  ansible.builtin.apt:
+    name:
+      - iptables
+      - netfilter-persistent
+    state: present
+  tags: velociraptor
+
+- name: Velociraptor | allow dashboard from .13
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: 8889
+    source: 192.168.1.13/32
+    jump: ACCEPT
+    comment: velociraptor-allow-13
+  notify: Velociraptor | save iptables rules
+  tags: velociraptor
+
+- name: Velociraptor | block dashboard from other hosts
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: 8889
+    jump: DROP
+    comment: velociraptor-block-others
+  notify: Velociraptor | save iptables rules
+  tags: velociraptor
+
+
+- name: Velociraptor | check automation API config exists
+  ansible.builtin.stat:
+    path: /etc/velociraptor/automation_api.yaml
+  register: vr_api_config
+  tags: velociraptor
+
+- name: Velociraptor | generate automation API client config
+  ansible.builtin.command:
+    cmd: >-
+      velociraptor --config /etc/velociraptor/server.config.yaml
+      config api_client --name automation --role administrator
+      /etc/velociraptor/automation_api.yaml
+  when: not vr_api_config.stat.exists
+  changed_when: true
+  tags: velociraptor
+
+- name: Velociraptor | secure automation API config permissions
+  ansible.builtin.file:
+    path: /etc/velociraptor/automation_api.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  tags: velociraptor
+
+- name: Velociraptor | ensure TrackProcesses in client monitoring
+  ansible.builtin.script:
+    cmd: /opt/soc-ansible/roles/suricata/files/vr-ensure-trackprocesses.py
+  register: track_result
+  changed_when: "'changed' in track_result.stdout"
+  notify: Restart velociraptor
+  tags: velociraptor
+
+- name: Velociraptor | schedule NetstatEnriched on .13 (15 min)
+  ansible.builtin.cron:
+    name: velociraptor-netstat-win
+    minute: "*/15"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Network.NetstatEnriched"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
+
+- name: Velociraptor | schedule ScheduledTasks on .13 (30 min)
+  ansible.builtin.cron:
+    name: velociraptor-scheduledtasks-win
+    minute: "*/30"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.System.ScheduledTasks"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
+
+- name: Velociraptor | schedule Services on .13 (30 min)
+  ansible.builtin.cron:
+    name: velociraptor-services-win
+    minute: "1-59/30"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.System.Services"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
+
+- name: Velociraptor | schedule WMI persistence on .13 (30 min)
+  ansible.builtin.cron:
+    name: velociraptor-wmi-win
+    minute: "2-59/30"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Persistence.PermanentWMIEvents"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
+
+- name: Velociraptor | schedule StartupItems on .13 (30 min)
+  ansible.builtin.cron:
+    name: velociraptor-startup-win
+    minute: "3-59/30"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Sys.StartupItems"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
+
+- name: Velociraptor | schedule Pslist on .120 (15 min)
+  ansible.builtin.cron:
+    name: velociraptor-pslist-lin
+    minute: "*/15"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Sys.Pslist"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
+
+- name: Velociraptor | schedule Netstat on .120 (15 min)
+  ansible.builtin.cron:
+    name: velociraptor-netstat-lin
+    minute: "*/15"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Network.Netstat"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
+
+- name: Velociraptor | schedule Services on .120 (30 min)
+  ansible.builtin.cron:
+    name: velociraptor-services-lin
+    minute: "4-59/30"
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Sys.Services"]) FROM scope()' >/dev/null 2>&1
+  tags: velociraptor
 
 # ---------- Suricata enforcer ----------
 

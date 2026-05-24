@@ -52,3 +52,8 @@
   ansible.builtin.systemd:
     name: grafana-server
     state: restarted
+
+- name: Velociraptor | save iptables rules
+  ansible.builtin.command:
+    cmd: netfilter-persistent save
+  changed_when: false
