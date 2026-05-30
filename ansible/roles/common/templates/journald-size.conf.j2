@@ -1,0 +1,6 @@
+# Ansible managed — cap journal disk usage
+# Without this, journald defaults to 10% of the filesystem and grew to
+# ~900MB on .133, contributing to a disk-full outage (2026-05-30).
+[Journal]
+SystemMaxUse={{ journald_max_use }}
+SystemKeepFree={{ journald_keep_free }}

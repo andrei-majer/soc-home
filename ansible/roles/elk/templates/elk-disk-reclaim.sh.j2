@@ -1,0 +1,15 @@
+#!/bin/bash
+# Ansible managed — disk reclaim that works even when Elasticsearch is DOWN.
+# elk-cleanup.py deletes ES indices via the ES API, so it cannot free space
+# during a disk-full outage (ES is down precisely then). This runs first and
+# reclaims space that does not depend on ES being up (2026-05-30 outage).
+set -u
+# 1. Cap the systemd journal (belt-and-suspenders with journald SystemMaxUse)
+journalctl --vacuum-size={{ elk_reclaim_journal_size }} >/dev/null 2>&1 || true
+# 2. Compress Wazuh archives older than today (built-in rotation stalls under
+#    disk pressure, leaving GBs of raw .json/.log)
+if [ -d /var/ossec/logs/archives ]; then
+    find /var/ossec/logs/archives -type f \
+        \( -name 'ossec-archive-*.json' -o -name 'ossec-archive-*.log' \) \
+        -mtime +0 -exec gzip {} \; 2>/dev/null || true
+fi

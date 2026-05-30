@@ -62,7 +62,7 @@
   tasks:
     - name: Check systemd services (.133)  # noqa: command-instead-of-module
       ansible.builtin.command: "systemctl is-active {{ item }}"
-      loop: [elasticsearch, kibana, logstash, filebeat, wazuh-manager, wazuh-dashboard, apache2, misp-workers]
+      loop: [elasticsearch, kibana, logstash, filebeat, wazuh-manager, wazuh-dashboard, apache2, mariadb, misp-workers]
       register: svc_133
       failed_when: false
       changed_when: false

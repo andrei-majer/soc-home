@@ -5,3 +5,12 @@ disk_alert_log: /var/log/disk-alert.log
 ssh_authorized_keys:
   - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 common_timezone: "{{ ntp_timezone | default('Europe/Bucharest') }}"
+
+# journald disk cap (added 2026-05-30 after disk-full outage on .133)
+journald_max_use: 200M
+journald_keep_free: 1G
+
+# disk-alert notification + self-remediation (added 2026-05-30)
+disk_alert_ntfy_topic: "{{ vault_ntfy_topic | default('') }}"
+disk_alert_critical: 92
+disk_alert_journal_floor: 100M

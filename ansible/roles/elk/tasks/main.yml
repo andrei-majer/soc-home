@@ -125,3 +125,11 @@
     minute: "{{ elk_cleanup_cron_minute }}"
     job: "/usr/bin/python3 {{ elk_cleanup_script }} >> /var/log/elk-cleanup.log 2>&1"
     user: root
+
+- name: Deploy elk-disk-reclaim.sh (runs before elk-cleanup, ES-independent)
+  ansible.builtin.template:
+    src: elk-disk-reclaim.sh.j2
+    dest: "{{ elk_reclaim_script }}"
+    mode: "0755"
+    owner: root
+    group: root

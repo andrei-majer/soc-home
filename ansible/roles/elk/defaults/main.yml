@@ -28,3 +28,7 @@ retention_arkime: 14
 retention_monitoring: 3
 retention_wazuh_monitoring: 28
 retention_wazuh_statistics: 56
+
+# disk reclaim that runs before elk-cleanup.py (works when ES is down) — 2026-05-30
+elk_reclaim_script: /usr/local/bin/elk-disk-reclaim.sh
+elk_reclaim_journal_size: 200M

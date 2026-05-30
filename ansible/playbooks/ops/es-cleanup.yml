@@ -1,10 +1,12 @@
 ---
-# ES index cleanup + Wazuh archive compression
-# Runs elk-cleanup.py and also compresses uncompressed Wazuh archives
-# older than today (the Wazuh built-in rotation has proven unreliable
-# when disk pressure blocks it mid-run, leaving GBs of raw .json/.log).
+# ES index cleanup + disk reclaim.
+# Order matters: disk reclaim (journal vacuum + Wazuh archive compression)
+# runs FIRST and does not depend on Elasticsearch being up, so it frees space
+# even during a disk-full outage. Only then do we run the ES-API index deletes.
+# (Before 2026-05-30 this playbook hard-failed on the ES health check whenever
+# ES was down — exactly when you most need the cleanup to complete.)
 
-- name: Elasticsearch index cleanup
+- name: Elasticsearch index cleanup + disk reclaim
   hosts: elk-133
   gather_facts: false
   tasks:
@@ -13,26 +15,16 @@
       register: disk_before
       changed_when: false
 
-    - name: Run elk-cleanup.py
-      ansible.builtin.command: /usr/local/bin/elk-cleanup.py
+    - name: Reclaim disk (journal + Wazuh archives, ES-independent)
+      ansible.builtin.command: "{{ elk_reclaim_script | default('/usr/local/bin/elk-disk-reclaim.sh') }}"
+      register: reclaim_result
+      changed_when: true
+
+    - name: Run elk-cleanup.py (ES index retention — needs ES up)
+      ansible.builtin.command: "{{ elk_cleanup_script | default('/usr/local/bin/elk-cleanup.py') }}"
       register: cleanup_result
       changed_when: "'Deleted' in cleanup_result.stdout"
-
-    - name: Find uncompressed Wazuh archives (older than today)
-      ansible.builtin.find:
-        paths: /var/ossec/logs/archives
-        recurse: true
-        patterns: "ossec-archive-*.json,ossec-archive-*.log"
-        age: 1d
-      register: uncompressed_archives
-
-    - name: Compress old Wazuh archives with gzip
-      ansible.builtin.command: gzip "{{ item.path }}"
-      loop: "{{ uncompressed_archives.files }}"
-      loop_control:
-        label: "{{ item.path | basename }}"
-      changed_when: true
-      when: uncompressed_archives.files | length > 0
+      failed_when: false
 
     - name: Retry failed shard allocation (in case disk was blocking)
       ansible.builtin.uri:
@@ -44,12 +36,13 @@
       changed_when: false
       failed_when: false
 
-    - name: Check ES cluster health
+    - name: Check ES cluster health (non-fatal — ES may still be starting)
       ansible.builtin.uri:
         url: http://localhost:9200/_cluster/health
         return_content: true
       register: es_health
       changed_when: false
+      failed_when: false
 
     - name: Check disk after cleanup
       ansible.builtin.command: df -h /
@@ -61,9 +54,10 @@
         msg: |
           === Disk before ===
           {{ disk_before.stdout }}
+          === reclaim output ===
+          {{ reclaim_result.stdout | default('(none)') }}
           === elk-cleanup.py output ===
-          {{ cleanup_result.stdout }}
-          === Wazuh archives compressed: {{ uncompressed_archives.files | length }} files ===
-          === ES cluster status: {{ es_health.json.status }} (unassigned: {{ es_health.json.unassigned_shards }}) ===
+          {{ cleanup_result.stdout | default('(skipped/failed — ES down?)') }}
+          === ES cluster status: {{ es_health.json.status | default('n/a — ES not responding') }}{% if es_health.json is defined %} (unassigned: {{ es_health.json.unassigned_shards }}){% endif %} ===
           === Disk after ===
           {{ disk_after.stdout }}

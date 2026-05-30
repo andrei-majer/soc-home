@@ -1,13 +1,39 @@
 #!/bin/bash
-# Disk usage alert — managed by Ansible
+# Disk usage alert + self-remediation — managed by Ansible
+# Was previously log-only (no alert reached anyone); now pushes ntfy and
+# reclaims space at a critical threshold before the disk locks up (2026-05-30).
 THRESHOLD={{ disk_alert_threshold }}
+CRITICAL={{ disk_alert_critical }}
 LOGFILE={{ disk_alert_log }}
+NTFY_TOPIC="{{ disk_alert_ntfy_topic }}"
+JOURNAL_FLOOR={{ disk_alert_journal_floor }}
 HOST=$(hostname)
-df -h --output=pcent,target | tail -n +2 | while read -r pct mnt; do
-    val=${pct%%%}
-    if [ "$val" -ge "$THRESHOLD" ]; then
-        msg="DISK WARNING: $HOST $mnt at ${pct} (threshold ${THRESHOLD}%)"
-        logger -t disk-alert -p local0.warn "$msg"
-        echo "$(date '+%F %T') $msg" >> "$LOGFILE"
+
+note() { echo "$(date '+%F %T') $1" >> "$LOGFILE"; logger -t disk-alert -p local0.warn "$1"; }
+ntfy() {
+    [ -z "$NTFY_TOPIC" ] && return 0
+    curl -fsS -m 10 -H "Title: SOC disk: $HOST" -H "Priority: $2" \
+         -d "$1" "https://ntfy.sh/$NTFY_TOPIC" >/dev/null 2>&1 || true
+}
+
+# Highest-used real filesystem
+read -r pct mnt < <(df -h --output=pcent,target -x tmpfs -x devtmpfs | tail -n +2 | sort -rn | head -1)
+val=${pct%%%}
+
+if [ "$val" -ge "$CRITICAL" ]; then
+    note "CRITICAL: $HOST $mnt at ${pct} (>= ${CRITICAL}%) — remediating"
+    ntfy "CRITICAL: $mnt at ${pct} — auto-reclaiming space" urgent
+    journalctl --vacuum-size="$JOURNAL_FLOOR" >/dev/null 2>&1 || true
+    if [ -d /var/ossec/logs/archives ]; then
+        find /var/ossec/logs/archives -type f \
+            \( -name 'ossec-archive-*.json' -o -name 'ossec-archive-*.log' \) \
+            -mtime +0 -exec gzip {} \; 2>/dev/null || true
     fi
-done
+    read -r pct2 _ < <(df -h --output=pcent,target -x tmpfs -x devtmpfs | tail -n +2 | sort -rn | head -1)
+    note "post-remediation: $mnt now ${pct2}"
+    ntfy "After reclaim: $mnt now ${pct2}" high
+elif [ "$val" -ge "$THRESHOLD" ]; then
+    msg="WARNING: $HOST $mnt at ${pct} (threshold ${THRESHOLD}%)"
+    note "$msg"
+    ntfy "$msg" high
+fi
