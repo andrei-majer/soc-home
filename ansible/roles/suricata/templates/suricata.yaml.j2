@@ -286,10 +286,18 @@ outputs:
         # disabled by default. To enable, uncomment the following line
         # and be sure to enable http2 in the app-layer section.
         - http2
-        - stats:
-            totals: yes       # stats for all threads merged together
-            threads: no       # per thread stats
-            deltas: yes       # include delta values
+        # NOTE: eve.json 'stats' disabled 2026-05-31 — these records have
+        # hundreds of nested fields and overflow the Wazuh agent JSON decoder
+        # on .133 ("Too many fields for JSON decoder", ~3.7M errors/day flooding
+        # ossec.log on the disk-constrained ELK host). Stats are unaffected: the
+        # standalone stats.log sink (below) stays, Grafana reads counters via
+        # `suricatasc -c dump-counters`, and the ELK Logstash pipeline already
+        # drops eve stats (commit ec56020). Re-enable only if a consumer needs
+        # eve-format stats AND the Wazuh field-limit is raised first.
+        #- stats:
+        #    totals: yes       # stats for all threads merged together
+        #    threads: no       # per thread stats
+        #    deltas: yes       # include delta values
         # bi-directional flows
         - flow
         # uni-directional flows
