@@ -7,6 +7,14 @@ input {
 }
 
 filter {
+  # ── Drop Suricata stats events ──────────────────────────────────────────────
+  # Huge nested object (~640 fields) that blows past ES's 1000-field limit and
+  # gets rejected anyway (document_parsing_exception). Operational counters are
+  # available live via `suricatasc --dump-counters` and Grafana.
+  if [event_type] == "stats" {
+    drop { }
+  }
+
   # ── GeoIP: City/Country ─────────────────────────────────────────────────────
   if [src_ip] {
     geoip {
