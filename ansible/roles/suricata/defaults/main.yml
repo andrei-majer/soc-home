@@ -69,3 +69,4 @@ zeek_prefix: /opt/zeek
 zeek_log_dir: /opt/zeek/logs
 zeek_interface: enp0s8
 zeek_log_expire_days: 7
+grafana_zeek_es_url: "http://192.168.1.133:9200"

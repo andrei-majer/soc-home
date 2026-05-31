@@ -685,3 +685,23 @@
   ansible.builtin.command: "{{ zeek_prefix }}/bin/zeekctl deploy"
   when: "'running' not in zeek_status.stdout"
   changed_when: true
+
+# ---------- Zeek in Grafana (Elasticsearch datasource + dashboard) ----------
+
+- name: Deploy Grafana Zeek Elasticsearch datasource
+  ansible.builtin.template:
+    src: grafana-zeek-datasource.yaml.j2
+    dest: /etc/grafana/provisioning/datasources/zeek-es.yaml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart grafana-server
+
+- name: Deploy Zeek Grafana dashboard
+  ansible.builtin.copy:
+    src: zeek-grafana-dashboard.json
+    dest: /etc/grafana/provisioning/dashboards/zeek-nsm.json
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart grafana-server

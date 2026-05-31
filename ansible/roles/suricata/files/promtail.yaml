@@ -158,3 +158,30 @@ scrape_configs:
       - timestamp:
           source: ts
           format: RFC3339
+
+  - job_name: zeek
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: zeek
+          host: suricata
+          __path__: /opt/zeek/logs/current/{conn,dns,ssl,http,notice,weird,ssh,dhcp,files,x509,smtp,ftp,rdp,dpd,software,known_hosts,known_services}.log
+
+    pipeline_stages:
+      # Derive the Zeek log type (conn/dns/ssl/...) from the source filename.
+      - regex:
+          source: filename
+          expression: '/(?P<zeek_log_type>[^/]+)\.log$'
+      - labels:
+          zeek_log_type:
+
+      # Parse only the Zeek timestamp; the full JSON line stays queryable via
+      # `{job="zeek"} | json` in LogQL — no need to pre-extract every field.
+      - json:
+          expressions:
+            ts: ts
+      - timestamp:
+          source: ts
+          format: RFC3339Nano
+          location: Local

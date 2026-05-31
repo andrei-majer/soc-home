@@ -1,0 +1,15 @@
+# Managed by Ansible — Zeek logs in Elasticsearch on the ELK host (.133)
+apiVersion: 1
+
+datasources:
+  - name: Zeek (Elasticsearch)
+    uid: zeek_es
+    type: elasticsearch
+    access: proxy
+    url: {{ grafana_zeek_es_url }}
+    isDefault: false
+    editable: false
+    jsonData:
+      index: "zeek-*"
+      timeField: "@timestamp"
+      maxConcurrentShardRequests: 5
