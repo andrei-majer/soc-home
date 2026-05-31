@@ -221,6 +221,10 @@
       ansible.builtin.raw: "pgrep AdGuardHome >/dev/null && echo running || echo stopped"
       register: adguard_state
       changed_when: false
+    - name: Router disk pct
+      ansible.builtin.raw: "df / | awk 'NR==2{print $5}' | tr -d %"
+      register: disk_pct_router
+      changed_when: false
     - name: Router uptime
       ansible.builtin.raw: uptime
       register: router_uptime
@@ -257,7 +261,7 @@
           eve.json     : {{ hostvars['suricata-120']['eve_age_120']['stdout'] | default('n/a') | trim }}
           Zeek         : {{ '[OK]   running' if 'running' in (hostvars['suricata-120']['zeek_status_120']['stdout'] | default('')) else '[FAIL] not running' }}, conn.log {{ hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('n/a') | trim }}
           MISP rules   : {{ hostvars['suricata-120']['misp_rules_count_120']['stdout'] | default('?') | trim }} rules, {{ (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) // 3600 }}h old{{ ' [FAIL] file missing' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) < 0 else (' [WARN]' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('0') | trim | int) > 28800 else '') }}
-          disk         : {{ hostvars['suricata-120']['disk_pct_120']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 85 else '' }}
+          disk         : {{ hostvars['suricata-120']['disk_pct_120']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {{ hostvars['suricata-120']['disk_120']['stdout'] | default('n/a') }}
 
           --- .133 elk services ---
@@ -268,7 +272,7 @@
           Wazuh agents : {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') | trim }}
           Wazuh API    : {{ '[OK]  ' if hostvars['elk-133']['wazuh_api_133']['status'] | default(-1) in [200, 401] else '[FAIL] port 55000 down' }}
           MISP feeds   : {{ hostvars['elk-133']['misp_feeds_133']['stdout'] | default('?') | trim }} enabled{{ ' [FAIL] expected 8' if (hostvars['elk-133']['misp_feeds_133']['stdout'] | default('-1') | trim | int) != 8 else '' }}
-          disk         : {{ hostvars['elk-133']['disk_pct_133']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 85 else '' }}
+          disk         : {{ hostvars['elk-133']['disk_pct_133']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {{ hostvars['elk-133']['disk_133']['stdout'] | default('n/a') }}
 
           --- .135 opencti ---
@@ -276,7 +280,7 @@
           containers   : {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') | trim }}
           {% set octi = (hostvars['opencti-135']['opencti_core_135']['stdout'] | default('-1 -1 -1 unknown')).split() %}
           core restarts: {{ octi[0] }} (up {{ octi[1] }}h, {{ octi[3] }}){{ ' [WARN] restart loop?' if (octi[3] != 'running') or ((octi[0] | int) > 2 and (octi[2] | int) >= 0 and (octi[2] | int) < 10) else '' }}
-          disk         : {{ hostvars['opencti-135']['disk_pct_135']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85 else '' }}
+          disk         : {{ hostvars['opencti-135']['disk_pct_135']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {{ hostvars['opencti-135']['disk_135']['stdout'] | default('n/a') }}
 
           --- T-Pot hosts ---
@@ -284,12 +288,13 @@
           {% if hostvars[h]['svc_tpot'] is not defined %}
           [UNREACH] {{ h }}: facts not gathered (host unreachable)
           {% else %}
-          {{ '[OK]  ' if hostvars[h]['svc_tpot']['stdout'] == 'active' else '[FAIL]' }} {{ h }}: containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') | trim }} disk={{ hostvars[h]['disk_pct_tpot']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars[h]['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 85 else '' }}
+          {{ '[OK]  ' if hostvars[h]['svc_tpot']['stdout'] == 'active' else '[FAIL]' }} {{ h }}: containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') | trim }} disk={{ hostvars[h]['disk_pct_tpot']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars[h]['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {% endif %}
           {% endfor %}
           --- Router ---
           {{ '[OK]  ' if 'running' in hostvars['router-1']['uhttpd_state']['stdout'] else '[FAIL]' }} uhttpd
           {{ '[OK]  ' if 'running' in hostvars['router-1']['adguard_state']['stdout'] else '[FAIL]' }} AdGuardHome
+          disk         : {{ hostvars['router-1']['disk_pct_router']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['router-1']['disk_pct_router']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           uptime: {{ hostvars['router-1']['router_uptime']['stdout'] | default('n/a') | trim }}
 
           --- .15 hypervisor ---
@@ -297,7 +302,7 @@
           {% for vm in expected_vms %}
           {{ '[OK]  ' if vm in running else '[FAIL]' }} {{ vm }}
           {% endfor %}
-          C: free      : {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB
+          C: free      : {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 30 else '' }}
           ==========================================================
 
     - name: Fail if any service is down
@@ -325,15 +330,21 @@
         or 'T-Pot Sensor' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
         or 'OpenCTi' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
 
-    - name: Fail if disk >= 85%
+    - name: Fail if .15 C drive free space critically low
       ansible.builtin.fail:
-        msg: "Disk usage >= 85% on one or more hosts — check summary above"
+        msg: ".15 hypervisor C: free < 20 GB — VHD growth will starve all SOC VMs (WARN at 30 GB)"
+      when: (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 20
+
+    - name: Fail if disk >= 90%
+      ansible.builtin.fail:
+        msg: "Disk usage >= 90% on one or more hosts — check summary above (WARN at 80%)"
       when: >
-        (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 85
-        or (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 85
-        or (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 85
-        or (hostvars['tpot-hive-130']['disk_pct_tpot'] is defined and (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | trim | int) >= 85)
-        or (hostvars['tpot-sensor-125']['disk_pct_tpot'] is defined and (hostvars['tpot-sensor-125']['disk_pct_tpot']['stdout'] | trim | int) >= 85)
+        (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 90
+        or (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 90
+        or (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 90
+        or (hostvars['tpot-hive-130']['disk_pct_tpot'] is defined and (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | trim | int) >= 90)
+        or (hostvars['tpot-sensor-125']['disk_pct_tpot'] is defined and (hostvars['tpot-sensor-125']['disk_pct_tpot']['stdout'] | trim | int) >= 90)
+        or (hostvars['router-1']['disk_pct_router'] is defined and (hostvars['router-1']['disk_pct_router']['stdout'] | trim | int) >= 90)
 
     - name: Fail if MISP IOC rules stale or too few
       ansible.builtin.fail:
