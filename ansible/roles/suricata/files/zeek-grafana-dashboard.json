@@ -1,125 +1,2634 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "links": [],
   "liveNow": false,
   "panels": [
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "type": "row",
+      "collapsed": false,
+      "title": "Overview",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "textMode": "auto" },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [], "metrics": [ { "id": "1", "type": "count" } ], "query": "", "refId": "A", "timeField": "@timestamp" }
-      ],
-      "title": "Total Zeek events",
-      "type": "stat"
+      "panels": []
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 15, "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
-      "id": 2,
-      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "title": "Total events",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
       "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [ { "field": "zeek_log_type.keyword", "id": "3", "settings": { "min_doc_count": "0", "order": "desc", "orderBy": "_count", "size": "10" }, "type": "terms" }, { "field": "@timestamp", "id": "2", "settings": { "interval": "auto" }, "type": "date_histogram" } ], "metrics": [ { "id": "1", "type": "count" } ], "query": "", "refId": "A", "timeField": "@timestamp" }
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": []
+        }
       ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2
+    },
+    {
+      "title": "Connections",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 1
+      },
+      "id": 3
+    },
+    {
+      "title": "Unique src IPs",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "cardinality",
+              "field": "id.orig_h.keyword"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 1
+      },
+      "id": 4
+    },
+    {
+      "title": "Unique dst IPs",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "cardinality",
+              "field": "id.resp_h.keyword"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 9,
+        "y": 1
+      },
+      "id": 5
+    },
+    {
+      "title": "DNS queries",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:dns",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 1
+      },
+      "id": 6
+    },
+    {
+      "title": "TLS sessions",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssl",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 15,
+        "y": 1
+      },
+      "id": 7
+    },
+    {
+      "title": "HTTP txns",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:http",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 1
+      },
+      "id": 8
+    },
+    {
+      "title": "Notices",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:notice",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 1
+      },
+      "id": 9
+    },
+    {
       "title": "Events over time, by log type",
-      "type": "timeseries"
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "zeek_log_type.keyword",
+              "id": "3",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "0",
+                "order": "desc",
+                "orderBy": "_term",
+                "size": "12"
+              }
+            },
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "type": "date_histogram",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 0,
+        "y": 5
+      },
+      "id": 10
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 4 },
-      "id": 3,
-      "options": { "legend": { "displayMode": "list", "placement": "right", "values": [ "value" ] }, "pieType": "donut", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "desc" } },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [ { "field": "zeek_log_type.keyword", "id": "2", "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "15" }, "type": "terms" } ], "metrics": [ { "id": "1", "type": "count" } ], "query": "", "refId": "A", "timeField": "@timestamp" }
-      ],
       "title": "Events by log type",
-      "type": "piechart"
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "zeek_log_type.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "id": 11
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
-      "id": 4,
-      "options": { "showHeader": true },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [ { "field": "id.orig_h.keyword", "id": "2", "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "10" }, "type": "terms" } ], "metrics": [ { "id": "1", "type": "count" } ], "query": "", "refId": "A", "timeField": "@timestamp" }
-      ],
-      "title": "Top source IPs",
-      "type": "table"
+      "type": "row",
+      "collapsed": false,
+      "title": "Connections (conn.log)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 12,
+      "panels": []
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
-      "id": 5,
-      "options": { "showHeader": true },
+      "title": "Top talkers by bytes (sent / received)",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
       "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
       "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [ { "field": "id.resp_p", "id": "2", "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "10" }, "type": "terms" } ], "metrics": [ { "id": "1", "type": "count" } ], "query": "", "refId": "A", "timeField": "@timestamp" }
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "sum",
+              "field": "orig_ip_bytes"
+            },
+            {
+              "id": "3",
+              "type": "sum",
+              "field": "resp_ip_bytes"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "id.orig_h.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "1",
+                "size": "15"
+              }
+            }
+          ]
+        }
       ],
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 0,
+        "y": 15
+      },
+      "id": 13
+    },
+    {
+      "title": "Top destination IPs",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "id.resp_h.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 9,
+        "y": 15
+      },
+      "id": 14
+    },
+    {
       "title": "Top destination ports",
-      "type": "table"
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "id.resp_p",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 14,
+        "y": 15
+      },
+      "id": 15
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
-      "id": 6,
-      "options": { "showHeader": true },
+      "title": "Connection states",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
       "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
       "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [ { "field": "conn_state.keyword", "id": "2", "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "15" }, "type": "terms" } ], "metrics": [ { "id": "1", "type": "count" } ], "query": "zeek_log_type:conn", "refId": "A", "timeField": "@timestamp" }
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "conn_state.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
       ],
-      "title": "Connection states (conn.log)",
-      "type": "table"
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 19,
+        "y": 15
+      },
+      "id": 16
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-      "id": 7,
-      "options": { "showHeader": true },
+      "title": "Top services",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
       "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
       "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [ { "field": "query.keyword", "id": "2", "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "20" }, "type": "terms" } ], "metrics": [ { "id": "1", "type": "count" } ], "query": "zeek_log_type:dns", "refId": "A", "timeField": "@timestamp" }
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "service.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
       ],
-      "title": "Top DNS queries (dns.log)",
-      "type": "table"
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 23
+      },
+      "id": 17
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "zeek_es" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
-      "id": 8,
-      "options": { "showHeader": true },
+      "title": "Top connection history",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
       "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
       "targets": [
-        { "datasource": { "type": "elasticsearch", "uid": "zeek_es" }, "bucketAggs": [ { "field": "server_name.keyword", "id": "2", "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "20" }, "type": "terms" } ], "metrics": [ { "id": "1", "type": "count" } ], "query": "zeek_log_type:ssl", "refId": "A", "timeField": "@timestamp" }
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "history.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
       ],
-      "title": "Top TLS server names / SNI (ssl.log)",
-      "type": "table"
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 23
+      },
+      "id": 18
+    },
+    {
+      "title": "Connections over time",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:conn",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "type": "date_histogram",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "id": 19
+    },
+    {
+      "type": "row",
+      "collapsed": false,
+      "title": "DNS (dns.log)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "id": 20,
+      "panels": []
+    },
+    {
+      "title": "Top DNS queries",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:dns",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "query.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 31
+      },
+      "id": 21
+    },
+    {
+      "title": "Query types",
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:dns",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "qtype_name.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "12"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 31
+      },
+      "id": 22
+    },
+    {
+      "title": "Response codes",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:dns",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "rcode_name.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "12"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 31
+      },
+      "id": 23
+    },
+    {
+      "title": "Top NXDOMAIN queries (DGA / exfil signal)",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:dns AND rcode_name:NXDOMAIN",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "query.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 24
+    },
+    {
+      "title": "Top DNS clients",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:dns",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "id.orig_h.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 25
+    },
+    {
+      "type": "row",
+      "collapsed": false,
+      "title": "TLS / SSL (ssl.log)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "id": 26,
+      "panels": []
+    },
+    {
+      "title": "Top server names (SNI)",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssl",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "server_name.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 49
+      },
+      "id": 27
+    },
+    {
+      "title": "TLS versions",
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssl",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "version.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 49
+      },
+      "id": 28
+    },
+    {
+      "title": "Cert validation status",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssl",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "validation_status.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "12"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 49
+      },
+      "id": 29
+    },
+    {
+      "title": "Top ciphers",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssl",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "cipher.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 58
+      },
+      "id": 30
+    },
+    {
+      "title": "Top ALPN / next protocol",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssl",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "next_protocol.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 58
+      },
+      "id": 31
+    },
+    {
+      "type": "row",
+      "collapsed": false,
+      "title": "HTTP (http.log)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 66
+      },
+      "id": 32,
+      "panels": []
+    },
+    {
+      "title": "Methods",
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:http",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "method.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 67
+      },
+      "id": 33
+    },
+    {
+      "title": "Status codes",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:http",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "status_code",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 67
+      },
+      "id": 34
+    },
+    {
+      "title": "Top user agents",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:http",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "user_agent.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 67
+      },
+      "id": 35
+    },
+    {
+      "title": "Top URIs",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:http",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "uri.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 76
+      },
+      "id": 36
+    },
+    {
+      "type": "row",
+      "collapsed": false,
+      "title": "Security signals \u2014 Notices / Weird / SSH / Certs",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 84
+      },
+      "id": 37,
+      "panels": []
+    },
+    {
+      "title": "Notices by type",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:notice",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "note.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 85
+      },
+      "id": 38
+    },
+    {
+      "title": "Notice messages",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:notice",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "msg.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 8,
+        "y": 85
+      },
+      "id": 39
+    },
+    {
+      "title": "Weird events",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:weird",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "name.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 94
+      },
+      "id": 40
+    },
+    {
+      "title": "SSH servers (auth attempts)",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssh",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "sum",
+              "field": "auth_attempts"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "id.resp_h.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "1",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 94
+      },
+      "id": 41
+    },
+    {
+      "title": "SSH clients (software)",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:ssh",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "client.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 94
+      },
+      "id": 42
+    },
+    {
+      "title": "Certificate issuers",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:x509",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "certificate.issuer.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 103
+      },
+      "id": 43
+    },
+    {
+      "title": "Certificate subjects",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "zeek_es"
+      },
+      "pluginVersion": "12.4.2",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "zeek_es"
+          },
+          "query": "zeek_log_type:x509",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "certificate.subject.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "15"
+              }
+            }
+          ]
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 103
+      },
+      "id": 44
     }
   ],
   "refresh": "1m",
   "schemaVersion": 39,
-  "tags": [ "zeek", "soc" ],
-  "templating": { "list": [] },
-  "time": { "from": "now-6h", "to": "now" },
+  "tags": [
+    "zeek",
+    "soc",
+    "nsm"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "filters",
+        "type": "adhoc",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "zeek_es"
+        },
+        "label": "Filter",
+        "hide": 0
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Zeek — Network Security Monitor",
+  "title": "Zeek \u2014 Network Security Monitor",
   "uid": "zeek-nsm",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
