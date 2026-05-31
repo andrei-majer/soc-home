@@ -171,3 +171,50 @@
   </rule>
 
 </group>
+
+<!-- ================= Zeek (lean Wazuh integration, 2026-05-31) =================
+     Zeek notice.log + dns.log arrive from the .120 agent as JSON localfiles and
+     are parsed by Wazuh's built-in JSON decoder (NO custom decoder). The bundled
+     0635-owlh-zeek_rules.xml (66001-66004) is dead: it matches an obsolete
+     'bro_engine' field absent from Zeek 8.x JSON. We alert on Zeek's curated
+     notices and on NXDOMAIN bursts (DGA / DNS-exfil) that the ELK/Grafana path
+     cannot alert on. Frequency rules MUST use <same_field>id.orig_h</same_field>
+     (not <same_source_ip/>) because the JSON decoder keeps Zeek's literal dotted
+     key id.orig_h and never maps it to srcip. -->
+<group name="zeek,ids,">
+
+  <!-- notice.log: every record has a top-level "note" (Suricata eve does not) -->
+  <rule id="100200" level="5">
+    <decoded_as>json</decoded_as>
+    <field name="note" type="pcre2">.+</field>
+    <description>Zeek notice: $(note)</description>
+    <group>zeek_notice,</group>
+  </rule>
+
+  <!-- escalate high-severity notice classes -->
+  <rule id="100201" level="10">
+    <if_sid>100200</if_sid>
+    <field name="note" type="pcre2">Intel::|Scan::|Invalid_Server_Cert|SSH::Password_Guessing|SSH::Login_By_Password_Guesser</field>
+    <description>Zeek notice (high severity): $(note)</description>
+    <group>zeek_notice,attack,</group>
+  </rule>
+
+  <!-- dns.log NXDOMAIN: Zeek-specific top-level qtype_name + rcode_name.
+       Level 0 = silent base for correlation only (no per-query alert). -->
+  <rule id="100210" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="qtype_name" type="pcre2">.+</field>
+    <field name="rcode_name" type="pcre2">^NXDOMAIN$</field>
+    <description>Zeek DNS NXDOMAIN (silent base)</description>
+    <group>zeek_dns,</group>
+  </rule>
+
+  <!-- NXDOMAIN burst from the same host within 60s -> DGA / DNS-exfil signal -->
+  <rule id="100211" level="10" frequency="20" timeframe="60">
+    <if_matched_sid>100210</if_matched_sid>
+    <same_field>id.orig_h</same_field>
+    <description>Zeek: NXDOMAIN burst from same host (possible DGA / DNS exfil)</description>
+    <group>zeek_dns,attack,</group>
+  </rule>
+
+</group>

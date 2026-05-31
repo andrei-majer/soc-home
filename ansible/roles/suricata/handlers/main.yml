@@ -61,3 +61,8 @@
 - name: Deploy Zeek
   ansible.builtin.command: "{{ zeek_prefix }}/bin/zeekctl deploy"
   changed_when: true
+
+- name: Restart wazuh-agent
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    state: restarted

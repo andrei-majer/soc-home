@@ -705,3 +705,25 @@
     group: grafana
     mode: "0640"
   notify: Restart grafana-server
+
+# ---------- Zeek -> Wazuh agent (lean integration) ----------
+# The .120 agent ossec.conf is NOT fully templated by Ansible (set up manually),
+# so append only the Zeek localfiles via a marker-delimited block. Wazuh's
+# built-in JSON decoder parses these; manager local rules 1002xx do the alerting.
+- name: Add Zeek log inputs to Wazuh agent (notice + dns)
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} ANSIBLE MANAGED: Zeek localfiles -->"
+    insertafter: EOF
+    block: |
+      <ossec_config>
+        <localfile>
+          <log_format>json</log_format>
+          <location>/opt/zeek/logs/current/notice.log</location>
+        </localfile>
+        <localfile>
+          <log_format>json</log_format>
+          <location>/opt/zeek/logs/current/dns.log</location>
+        </localfile>
+      </ossec_config>
+  notify: Restart wazuh-agent
