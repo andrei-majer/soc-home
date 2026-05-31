@@ -50,10 +50,10 @@
       register: rules_120
       failed_when: false
       changed_when: false
-    - name: EVE log freshness (.120)
+    - name: EVE log freshness in seconds (.120)
       ansible.builtin.shell: |
-        last=$(stat -c %Y /var/log/suricata/eve.json 2>/dev/null) || { echo missing; exit 0; }
-        echo "$(( $(date +%s) - last ))s ago"
+        last=$(stat -c %Y /var/log/suricata/eve.json 2>/dev/null) || { echo -1; exit 0; }
+        echo "$(( $(date +%s) - last ))"
       args:
         executable: /bin/bash
       register: eve_age_120
@@ -80,10 +80,10 @@
       register: zeek_status_120
       failed_when: false
       changed_when: false
-    - name: Zeek conn.log freshness (.120)
+    - name: Zeek conn.log freshness in seconds (.120)
       ansible.builtin.shell: |
         f=/opt/zeek/logs/current/conn.log
-        [ -f "$f" ] && echo "$(( $(date +%s) - $(stat -c %Y "$f") ))s ago" || echo missing
+        [ -f "$f" ] && echo "$(( $(date +%s) - $(stat -c %Y "$f") ))" || echo -1
       args:
         executable: /bin/bash
       register: zeek_conn_age_120
@@ -258,8 +258,10 @@
           {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
           {% endfor %}
           rules loaded : {{ hostvars['suricata-120']['rules_120']['stdout'] | default('n/a') | trim }}
-          eve.json     : {{ hostvars['suricata-120']['eve_age_120']['stdout'] | default('n/a') | trim }}
-          Zeek         : {{ '[OK]   running' if 'running' in (hostvars['suricata-120']['zeek_status_120']['stdout'] | default('')) else '[FAIL] not running' }}, conn.log {{ hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('n/a') | trim }}
+          {% set eve_secs = hostvars['suricata-120']['eve_age_120']['stdout'] | default('-1') | trim | int %}
+          eve.json     : {{ 'missing [FAIL]' if eve_secs < 0 else (eve_secs ~ 's ago' ~ (' [FAIL]' if eve_secs > 300 else (' [WARN]' if eve_secs > 60 else ''))) }}
+          {% set zk_secs = hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('-1') | trim | int %}
+          Zeek         : {{ '[OK]   running' if 'running' in (hostvars['suricata-120']['zeek_status_120']['stdout'] | default('')) else '[FAIL] not running' }}, conn.log {{ 'missing [FAIL]' if zk_secs < 0 else (zk_secs ~ 's ago' ~ (' [FAIL]' if zk_secs > 300 else (' [WARN]' if zk_secs > 60 else ''))) }}
           MISP rules   : {{ hostvars['suricata-120']['misp_rules_count_120']['stdout'] | default('?') | trim }} rules, {{ (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) // 3600 }}h old{{ ' [FAIL] file missing' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) < 0 else (' [WARN]' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('0') | trim | int) > 28800 else '') }}
           disk         : {{ hostvars['suricata-120']['disk_pct_120']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {{ hostvars['suricata-120']['disk_120']['stdout'] | default('n/a') }}
@@ -320,6 +322,13 @@
         msg: "Wazuh API not responding on .133 port 55000 — run health-check to see details"
       when: hostvars['elk-133']['wazuh_api_133']['status'] | default(-1) not in [200, 401]
 
+    - name: Fail if router uhttpd or AdGuardHome down
+      ansible.builtin.fail:
+        msg: "Router uhttpd (LuCI) or AdGuardHome stopped on .1 — DNS (AdGuard) or admin UI broken"
+      when: >
+        'running' not in (hostvars['router-1']['uhttpd_state']['stdout'] | default(''))
+        or 'running' not in (hostvars['router-1']['adguard_state']['stdout'] | default(''))
+
     - name: Fail if any VM not running on .15
       ansible.builtin.fail:
         msg: "One or more VMs not running on .15 — see summary above"
@@ -358,3 +367,17 @@
       ansible.builtin.fail:
         msg: "MISP enabled feed count != 8 — check /feeds in MISP UI for disabled/added feeds"
       when: (hostvars['elk-133']['misp_feeds_133']['stdout'] | default('-1') | trim | int) != 8
+
+    - name: Fail if Suricata EVE log stale or missing
+      ansible.builtin.fail:
+        msg: "Suricata eve.json missing or > 300s stale on .120 — daemon up but SPAN/capture pipeline broken (WARN shows at >60s)"
+      when: >
+        (hostvars['suricata-120']['eve_age_120']['stdout'] | default('-1') | trim | int) < 0
+        or (hostvars['suricata-120']['eve_age_120']['stdout'] | default('0') | trim | int) > 300
+
+    - name: Fail if Zeek conn.log stale or missing
+      ansible.builtin.fail:
+        msg: "Zeek conn.log missing or > 300s stale on .120 — zeekctl reports running but SPAN tap may be broken (WARN shows at >60s)"
+      when: >
+        (hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('-1') | trim | int) < 0
+        or (hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('0') | trim | int) > 300
