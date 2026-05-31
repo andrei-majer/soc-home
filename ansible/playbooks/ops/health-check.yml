@@ -1,4 +1,24 @@
 ---
+- name: Pre-flight — hypervisor .15 reachable
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Ping hypervisor .15
+      ansible.builtin.command: ping -c1 -W2 192.168.1.15
+      register: hv_ping
+      changed_when: false
+      failed_when: false
+    - name: Abort early if hypervisor .15 is down
+      ansible.builtin.fail:
+        msg: >-
+          Hypervisor .15 is DOWN — every SOC VM (.120/.133/.135/.130/.125) is
+          unreachable until it is back up. Recover: WoL .15 from .13 (magic packet
+          to MAC B4:2E:99:34:9C:6B), wait ~2-3 min for the VMs to cold-boot, then
+          re-run this health check.
+      when: hv_ping.rc != 0
+
 - name: Health check — Suricata host (.120)
   hosts: suricata-120
   gather_facts: true

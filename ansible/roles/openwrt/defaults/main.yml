@@ -32,3 +32,7 @@ openwrt_optional_files:
     dest: wol-cgi
   - src: /etc/dropbear/authorized_keys
     dest: dropbear-authorized_keys
+  - src: /etc/dropbear/dropbear_ed25519_host_key
+    dest: dropbear_ed25519_host_key
+  - src: /etc/dropbear/dropbear_rsa_host_key
+    dest: dropbear_rsa_host_key
