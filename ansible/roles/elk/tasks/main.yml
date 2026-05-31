@@ -133,3 +133,14 @@
     mode: "0755"
     owner: root
     group: root
+
+- name: Deploy Logstash zeek.conf
+  ansible.builtin.template:
+    src: zeek.conf.j2
+    dest: /etc/logstash/conf.d/zeek.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify:
+    - Restart logstash

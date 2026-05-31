@@ -1,0 +1,25 @@
+# Ansible managed — Zeek logs (Filebeat on .120 tags them "zeek").
+# Shares the beats input (port 5044) defined in suricata.conf; this file only
+# adds a tag-guarded filter + output so Zeek docs land in their own index.
+filter {
+  if "zeek" in [tags] {
+    grok {
+      match => { "[log][file][path]" => "/(?<zeek_log_type>[^/]+)\.log$" }
+      tag_on_failure => []
+    }
+    date {
+      match => ["ts", "ISO8601", "UNIX", "UNIX_MS"]
+      target => "@timestamp"
+    }
+  }
+}
+
+output {
+  if "zeek" in [tags] {
+    elasticsearch {
+      hosts => ["localhost:9200"]
+      index => "zeek-%{+YYYY.MM.dd}"
+      manage_template => false
+    }
+  }
+}

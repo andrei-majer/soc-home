@@ -63,3 +63,9 @@ sinkhole_script: /usr/local/bin/sinkhole.py
 
 # Network interface
 promisc_interface_config: /etc/network/interfaces.d/enp0s8-promisc
+
+# ── Zeek (network security monitor on the SPAN interface) ─────────────────────
+zeek_prefix: /opt/zeek
+zeek_log_dir: /opt/zeek/logs
+zeek_interface: enp0s8
+zeek_log_expire_days: 7

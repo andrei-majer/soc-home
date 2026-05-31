@@ -1,4 +1,4 @@
-# {{ ansible_managed }}
+# Ansible managed
 input {
   beats {
     port => 5044
@@ -26,7 +26,7 @@ filter {
     geoip {
       source   => "src_ip"
       target   => "source_geo"
-      database => "/usr/share/logstash/vendor/bundle/jruby/3.1.0/gems/logstash-filter-geoip-{{ logstash_geoip_plugin_version }}-java/vendor/GeoLite2-ASN.mmdb"
+      database => "/usr/share/logstash/vendor/bundle/jruby/3.1.0/gems/logstash-filter-geoip-8.0.0-java/vendor/GeoLite2-ASN.mmdb"
       fields   => ["AUTONOMOUS_SYSTEM_NUMBER", "AUTONOMOUS_SYSTEM_ORGANIZATION"]
     }
   }
@@ -34,7 +34,7 @@ filter {
     geoip {
       source   => "dest_ip"
       target   => "dest_geo"
-      database => "/usr/share/logstash/vendor/bundle/jruby/3.1.0/gems/logstash-filter-geoip-{{ logstash_geoip_plugin_version }}-java/vendor/GeoLite2-ASN.mmdb"
+      database => "/usr/share/logstash/vendor/bundle/jruby/3.1.0/gems/logstash-filter-geoip-8.0.0-java/vendor/GeoLite2-ASN.mmdb"
       fields   => ["AUTONOMOUS_SYSTEM_NUMBER", "AUTONOMOUS_SYSTEM_ORGANIZATION"]
     }
   }
@@ -78,9 +78,12 @@ filter {
 }
 
 output {
-  elasticsearch {
-    hosts => ["localhost:9200"]
-    index => "suricata-%{+YYYY.MM.dd}"
-    manage_template => false
+  # Zeek docs (tagged by Filebeat) are routed by zeek.conf — keep them out of suricata-*
+  if "zeek" not in [tags] {
+    elasticsearch {
+      hosts => ["localhost:9200"]
+      index => "suricata-%{+YYYY.MM.dd}"
+      manage_template => false
+    }
   }
 }

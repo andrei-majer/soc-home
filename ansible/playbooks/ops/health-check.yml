@@ -75,6 +75,20 @@
       register: misp_rules_count_120
       failed_when: false
       changed_when: false
+    - name: Zeek node status (.120)
+      ansible.builtin.command: /opt/zeek/bin/zeekctl status
+      register: zeek_status_120
+      failed_when: false
+      changed_when: false
+    - name: Zeek conn.log freshness (.120)
+      ansible.builtin.shell: |
+        f=/opt/zeek/logs/current/conn.log
+        [ -f "$f" ] && echo "$(( $(date +%s) - $(stat -c %Y "$f") ))s ago" || echo missing
+      args:
+        executable: /bin/bash
+      register: zeek_conn_age_120
+      failed_when: false
+      changed_when: false
 
 - name: Health check — ELK host (.133)
   hosts: elk-133
@@ -241,6 +255,7 @@
           {% endfor %}
           rules loaded : {{ hostvars['suricata-120']['rules_120']['stdout'] | default('n/a') | trim }}
           eve.json     : {{ hostvars['suricata-120']['eve_age_120']['stdout'] | default('n/a') | trim }}
+          Zeek         : {{ '[OK]   running' if 'running' in (hostvars['suricata-120']['zeek_status_120']['stdout'] | default('')) else '[FAIL] not running' }}, conn.log {{ hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('n/a') | trim }}
           MISP rules   : {{ hostvars['suricata-120']['misp_rules_count_120']['stdout'] | default('?') | trim }} rules, {{ (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) // 3600 }}h old{{ ' [FAIL] file missing' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) < 0 else (' [WARN]' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('0') | trim | int) > 28800 else '') }}
           disk         : {{ hostvars['suricata-120']['disk_pct_120']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 85 else '' }}
           {{ hostvars['suricata-120']['disk_120']['stdout'] | default('n/a') }}

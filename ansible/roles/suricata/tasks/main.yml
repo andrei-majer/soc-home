@@ -615,3 +615,73 @@
     hour: "*/4"
     job: "/usr/local/bin/soc-ansible-state.sh --drift >/dev/null 2>&1"
     user: root
+
+# ---------- Zeek (network security monitor on the SPAN interface) ----------
+
+- name: Add Zeek apt signing key
+  ansible.builtin.get_url:
+    url: https://download.opensuse.org/repositories/security:zeek/Debian_12/Release.key
+    dest: /etc/apt/trusted.gpg.d/security_zeek.asc
+    mode: "0644"
+
+- name: Add Zeek apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb http://download.opensuse.org/repositories/security:/zeek/Debian_12/ /"
+    filename: "security:zeek"
+    state: present
+
+- name: Install Zeek
+  ansible.builtin.apt:
+    name: zeek-lts
+    state: present
+    update_cache: true
+
+- name: Deploy Zeek node.cfg (standalone, SPAN interface)
+  ansible.builtin.template:
+    src: zeek-node.cfg.j2
+    dest: "{{ zeek_prefix }}/etc/node.cfg"
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify: Deploy Zeek
+
+- name: Enable Zeek JSON logs with ISO8601 timestamps
+  ansible.builtin.blockinfile:
+    path: "{{ zeek_prefix }}/share/zeek/site/local.zeek"
+    marker: "# {mark} ANSIBLE MANAGED — JSON output"
+    block: |
+      redef LogAscii::use_json = T;
+      redef LogAscii::json_timestamps = JSON::TS_ISO8601;
+  notify: Deploy Zeek
+
+- name: Set Zeek log retention/cleanup in zeekctl.cfg
+  ansible.builtin.lineinfile:
+    path: "{{ zeek_prefix }}/etc/zeekctl.cfg"
+    regexp: "^{{ item.key }} ="
+    line: "{{ item.key }} = {{ item.value }}"
+  loop:
+    - { key: "LogExpireInterval", value: "{{ zeek_log_expire_days }}" }
+    - { key: "StatsLogExpireInterval", value: "{{ zeek_log_expire_days }}" }
+    - { key: "CrashExpireInterval", value: "{{ zeek_log_expire_days }}" }
+  loop_control:
+    label: "{{ item.key }}"
+  notify: Deploy Zeek
+
+- name: Schedule zeekctl cron (rotate, archive, expire, restart-if-crashed)
+  ansible.builtin.cron:
+    name: "zeekctl"
+    minute: "*/5"
+    job: "{{ zeek_prefix }}/bin/zeekctl cron >/dev/null 2>&1"
+    user: root
+
+- name: Check Zeek node status
+  ansible.builtin.command: "{{ zeek_prefix }}/bin/zeekctl status"
+  register: zeek_status
+  changed_when: false
+  failed_when: false
+
+- name: Deploy Zeek if not running
+  ansible.builtin.command: "{{ zeek_prefix }}/bin/zeekctl deploy"
+  when: "'running' not in zeek_status.stdout"
+  changed_when: true

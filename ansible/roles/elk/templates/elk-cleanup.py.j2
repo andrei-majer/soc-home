@@ -4,6 +4,7 @@
 Run daily via cron on 192.168.1.133.
 Retention:
   suricata-*              {{ retention_suricata }} days
+  zeek-*                  {{ retention_zeek }} days
   wazuh-archives-4.x-*   {{ retention_wazuh_archives }} days  (large, ~600MB/day)
   wazuh-alerts-4.x-*     {{ retention_wazuh_alerts }} days
   wazuh-suricata-*        {{ retention_wazuh_suricata }} days
@@ -38,6 +39,7 @@ def all_indices():
 # (prefix, date_fmt_or_"week", retention_days)
 POLICIES = [
     ("suricata-",              "%Y.%m.%d", {{ retention_suricata }}),
+    ("zeek-",                  "%Y.%m.%d", {{ retention_zeek }}),
     ("wazuh-archives-4.x-",   "%Y.%m.%d", {{ retention_wazuh_archives }}),
     ("wazuh-alerts-4.x-",     "%Y.%m.%d", {{ retention_wazuh_alerts }}),
     ("wazuh-suricata-",        "%Y.%m.%d", {{ retention_wazuh_suricata }}),

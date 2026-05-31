@@ -8,6 +8,15 @@ filebeat.inputs:
   json.add_error_key: true
   json.message_key: event_type
 
+- type: log
+  enabled: true
+  paths:
+    - {{ zeek_log_dir }}/current/*.log
+  exclude_files: ['stdout\.log$', 'stderr\.log$', 'loaded_scripts\.log$', 'telemetry\.log$', 'packet_filter\.log$']
+  json.keys_under_root: true
+  json.add_error_key: true
+  tags: ["zeek"]
+
 output.logstash:
   hosts: ["{{ filebeat_logstash_host }}"]
 

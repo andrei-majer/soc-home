@@ -57,3 +57,7 @@
   ansible.builtin.command:
     cmd: netfilter-persistent save
   changed_when: false
+
+- name: Deploy Zeek
+  ansible.builtin.command: "{{ zeek_prefix }}/bin/zeekctl deploy"
+  changed_when: true
