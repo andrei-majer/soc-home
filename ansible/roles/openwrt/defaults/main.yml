@@ -30,3 +30,5 @@ openwrt_optional_files:
     dest: acme-renew.sh
   - src: /usr/share/wol-relay/cgi-bin/wol
     dest: wol-cgi
+  - src: /etc/dropbear/authorized_keys
+    dest: dropbear-authorized_keys
