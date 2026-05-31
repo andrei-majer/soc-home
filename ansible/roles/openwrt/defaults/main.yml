@@ -36,3 +36,5 @@ openwrt_optional_files:
     dest: dropbear_ed25519_host_key
   - src: /etc/dropbear/dropbear_rsa_host_key
     dest: dropbear_rsa_host_key
+  - src: /usr/local/bin/soc-watchdog.sh
+    dest: soc-watchdog.sh
