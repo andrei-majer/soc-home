@@ -15,6 +15,10 @@ def terms(field, size=10, order_by="_count", min_doc="1", bid="2"):
 def datehist(bid="2"):
     return {"field": "@timestamp", "id": bid, "type": "date_histogram", "settings": {"interval": "auto", "min_doc_count": "0"}}
 
+def statbucket():
+    # single wide bucket: 1 bucket per dashboard window -> stat reduce = exact total
+    return {"field": "@timestamp", "id": "2", "type": "date_histogram", "settings": {"interval": "1y", "min_doc_count": "0"}}
+
 def target(query="", bucket_aggs=None, metrics=None, refId="A"):
     return {"datasource": DS, "query": query, "refId": refId, "timeField": "@timestamp",
             "metrics": metrics or [{"id": "1", "type": "count"}],
@@ -77,14 +81,14 @@ L = Layout()
 
 # ===== Overview =====
 L.newrow("Overview")
-L.add(stat("Total events", target()), 3, 4)
-L.add(stat("Connections", target(query="zeek_log_type:conn")), 3, 4)
-L.add(stat("Unique src IPs", target(metrics=[{"id": "1", "type": "cardinality", "field": "id.orig_h.keyword"}])), 3, 4)
-L.add(stat("Unique dst IPs", target(metrics=[{"id": "1", "type": "cardinality", "field": "id.resp_h.keyword"}])), 3, 4)
-L.add(stat("DNS queries", target(query="zeek_log_type:dns")), 3, 4)
-L.add(stat("TLS sessions", target(query="zeek_log_type:ssl")), 3, 4)
-L.add(stat("HTTP txns", target(query="zeek_log_type:http")), 3, 4)
-L.add(stat("Notices", target(query="zeek_log_type:notice"), red_above=1), 3, 4)
+L.add(stat("Total events", target(bucket_aggs=[statbucket()])), 3, 4)
+L.add(stat("Connections", target(query="zeek_log_type:conn", bucket_aggs=[statbucket()])), 3, 4)
+L.add(stat("Unique src IPs", target(metrics=[{"id": "1", "type": "cardinality", "field": "id.orig_h.keyword"}], bucket_aggs=[statbucket()])), 3, 4)
+L.add(stat("Unique dst IPs", target(metrics=[{"id": "1", "type": "cardinality", "field": "id.resp_h.keyword"}], bucket_aggs=[statbucket()])), 3, 4)
+L.add(stat("DNS queries", target(query="zeek_log_type:dns", bucket_aggs=[statbucket()])), 3, 4)
+L.add(stat("TLS sessions", target(query="zeek_log_type:ssl", bucket_aggs=[statbucket()])), 3, 4)
+L.add(stat("HTTP txns", target(query="zeek_log_type:http", bucket_aggs=[statbucket()])), 3, 4)
+L.add(stat("Notices", target(query="zeek_log_type:notice", bucket_aggs=[statbucket()]), red_above=1), 3, 4)
 L.add(tseries("Events over time, by log type",
       target(bucket_aggs=[terms("zeek_log_type.keyword", 12, "_term", "0", "3"), datehist("2")])), 16, 9)
 L.add(pie("Events by log type", target(bucket_aggs=[terms("zeek_log_type.keyword", 15)])), 8, 9)
