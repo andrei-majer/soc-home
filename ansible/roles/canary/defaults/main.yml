@@ -1,0 +1,32 @@
+---
+canary_opencanary_venv: /opt/opencanary-venv
+canary_opencanary_log: /var/tmp/opencanary.log
+canary_opencanary_config: /etc/opencanaryd/opencanary.conf
+canary_node_id: fs1-140
+
+# Banner ports. SSH module DISABLED (collides with real sshd on 0.0.0.0:22).
+canary_modules:
+  ftp: {port: 21}
+  telnet: {port: 23}
+  http: {port: 80}
+  https: {port: 443}
+  smb: {port: 445}
+  mysql: {port: 3306}
+  rdp: {port: 3389}
+  vnc: {port: 5900}
+
+# SMB shares
+canary_smb_share_dir: /srv/smb-decoys
+canary_smb_netbiosname: FS1
+canary_smb_serverstring: fs1 backup share
+canary_smb_shares:
+  - HR
+  - Backups
+  - IT
+
+# sinkhole.py (relocated from .120)
+canary_sinkhole_bin: /usr/local/bin/sinkhole.py
+canary_sinkhole_log: /var/log/sinkhole.json
+
+# Total expected listening ports (health-check): 8 OpenCanary + 14 sinkhole
+canary_expected_port_count: 22

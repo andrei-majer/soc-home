@@ -61,3 +61,44 @@
   when: tpot_type == "SENSOR"
   register: fetch_netconf
   failed_when: fetch_netconf.failed and "not found" not in (fetch_netconf.msg | default(""))
+
+# ============================================================================
+# Wazuh agent localfile inputs — JSON honeypot logs (added 2026-06-01).
+# Agent install is manual (matches existing convention; see docs/runbooks/
+# tpot-rebuild.md Wazuh agent section). Only the localfile block is
+# Ansible-managed via blockinfile — matches the Zeek-on-.120 idiom.
+# JSON-emitting honeypots only — Heralding (CSV), RDPY/Mailoney/Citrixhoneypot
+# (text) deferred until decoders exist.
+# ============================================================================
+
+- name: Add T-Pot JSON honeypot inputs to Wazuh agent
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: '<!-- {mark} ANSIBLE MANAGED: tpot localfiles -->'
+    insertbefore: '</ossec_config>'
+    block: |
+      <localfile>
+        <location>{{ tpot_install_path }}/data/cowrie/log/cowrie.json</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
+        <location>{{ tpot_install_path }}/data/dionaea/log/dionaea.json</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
+        <location>{{ tpot_install_path }}/data/heralding/log/log_session.json</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
+        <location>{{ tpot_install_path }}/data/honeytrap/log/attackers.json</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
+        <location>{{ tpot_install_path }}/data/tanner/log/tanner_report.json</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
+        <location>{{ tpot_install_path }}/data/elasticpot/log/elasticpot.json</location>
+        <log_format>json</log_format>
+      </localfile>
+  notify: Restart wazuh-agent

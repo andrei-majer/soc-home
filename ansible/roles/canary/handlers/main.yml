@@ -1,0 +1,29 @@
+---
+- name: Restart opencanary
+  ansible.builtin.systemd:
+    name: opencanary
+    state: restarted
+
+- name: Restart sinkhole
+  ansible.builtin.systemd:
+    name: sinkhole
+    state: restarted
+
+- name: Restart wazuh-agent
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    state: restarted
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart smbd
+  ansible.builtin.systemd:
+    name: smbd
+    state: restarted
+
+- name: Restart rsyslog
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: restarted

@@ -138,3 +138,31 @@ docker ps | wc -l       # ~32 containers
 docker logs logstash 2>&1 | grep -E "Hive|Connected|SSL"
 ```
 Expect "Connected" / successful SSL handshake entries.
+
+
+## Wazuh agent (post-rebuild step, added 2026-06-01)
+
+T-Pot rebuilds wipe `/var/ossec`. Re-install the agent after the rebuild
+so internal-source hits keep paging via .133 + ntfy.
+
+```bash
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import
+chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list
+apt-get update
+WAZUH_MANAGER='192.168.1.133' apt-get install -y wazuh-agent=4.14.5-1
+echo "wazuh-agent hold" | dpkg --set-selections
+systemctl enable --now wazuh-agent
+```
+
+Then converge the IaC to restore the localfile blockinfile:
+
+```bash
+ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-130|tpot-sensor-125>'
+```
+
+Verify agent enrolled (count should return to 8):
+
+```bash
+ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml'
+```

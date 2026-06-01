@@ -186,8 +186,9 @@
   hosts: tpot
   gather_facts: true
   tasks:
-    - name: T-Pot systemd service state  # noqa: command-instead-of-module
-      ansible.builtin.command: systemctl is-active tpot
+    - name: T-Pot systemd services state  # noqa: command-instead-of-module
+      ansible.builtin.command: "systemctl is-active {{ item }}"
+      loop: [tpot, wazuh-agent]
       register: svc_tpot
       failed_when: false
       changed_when: false
@@ -206,6 +207,42 @@
     - name: Disk detail (T-Pot)
       ansible.builtin.command: df -h /
       register: disk_tpot
+      failed_when: false
+      changed_when: false
+
+- name: Health check — canary (.140 fs1)
+  hosts: canary
+  gather_facts: true
+  tasks:
+    - name: Check systemd services (.140)  # noqa: command-instead-of-module
+      ansible.builtin.command: "systemctl is-active {{ item }}"
+      loop: [opencanary, sinkhole, wazuh-agent, smbd]
+      register: svc_140
+      failed_when: false
+      changed_when: false
+    - name: Canary listening port count (.140)
+      ansible.builtin.shell: ss -tln | grep -v ':22 ' | grep -c LISTEN
+      args:
+        executable: /bin/bash
+      register: ports_140
+      failed_when: false
+      changed_when: false
+    - name: OpenCanary log stat (.140)
+      ansible.builtin.stat:
+        path: /var/tmp/opencanary.log
+      register: ocan_log_140
+    - name: Sinkhole log stat (.140)
+      ansible.builtin.stat:
+        path: /var/log/sinkhole.json
+      register: sink_log_140
+    - name: Disk pct (.140)
+      ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
+      register: disk_pct_140
+      failed_when: false
+      changed_when: false
+    - name: Disk detail (.140)
+      ansible.builtin.command: df -h /
+      register: disk_140
       failed_when: false
       changed_when: false
 
@@ -247,7 +284,7 @@
   hosts: suricata-120
   gather_facts: false
   vars:
-    expected_vms: ['Suricata', 'ELK', 'T-Pot Hive', 'T-Pot Sensor', 'OpenCTi']
+    expected_vms: ['Suricata', 'ELK', 'T-Pot Hive', 'T-Pot Sensor', 'OpenCTi', 'OpenCanary']
   tasks:
     - name: Summary table
       ansible.builtin.debug:
@@ -290,9 +327,26 @@
           {% if hostvars[h]['svc_tpot'] is not defined %}
           [UNREACH] {{ h }}: facts not gathered (host unreachable)
           {% else %}
-          {{ '[OK]  ' if hostvars[h]['svc_tpot']['stdout'] == 'active' else '[FAIL]' }} {{ h }}: containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') | trim }} disk={{ hostvars[h]['disk_pct_tpot']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars[h]['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 80 else '' }}
+          {% set bad = hostvars[h]['svc_tpot']['results'] | selectattr('stdout', '!=', 'active') | list | length %}
+          {{ '[OK]  ' if bad == 0 else '[FAIL]' }} {{ h }}: containers={{ hostvars[h]['docker_tpot']['stdout'] | default('n/a') | trim }} disk={{ hostvars[h]['disk_pct_tpot']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars[h]['disk_pct_tpot']['stdout'] | default('0') | trim | int) >= 80 else '' }}{% for r in hostvars[h]['svc_tpot']['results'] %}{% if r.stdout != 'active' %} [{{ r.item }}={{ r.stdout }}]{% endif %}{% endfor %}
+
           {% endif %}
           {% endfor %}
+
+          --- .140 canary services ---
+          {% if hostvars['fileserver-140']['svc_140'] is defined %}
+          {% for r in hostvars['fileserver-140']['svc_140']['results'] %}
+          {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
+          {% endfor %}
+          listening    : {{ hostvars['fileserver-140']['ports_140']['stdout'] | default('?') | trim }} ports{{ ' [FAIL] expected >=22' if (hostvars['fileserver-140']['ports_140']['stdout'] | default('0') | trim | int) < 22 else '' }}
+          opencanary.log : {{ 'present' if hostvars['fileserver-140']['ocan_log_140']['stat']['exists'] | default(false) else '[FAIL] missing' }}
+          sinkhole.json  : {{ 'present' if hostvars['fileserver-140']['sink_log_140']['stat']['exists'] | default(false) else '[FAIL] missing' }}
+          disk         : {{ hostvars['fileserver-140']['disk_pct_140']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['fileserver-140']['disk_pct_140']['stdout'] | default('0') | trim | int) >= 80 else '' }}
+          {{ hostvars['fileserver-140']['disk_140']['stdout'] | default('n/a') }}
+          {% else %}
+          [UNREACH] .140 fileserver-140: facts not gathered
+          {% endif %}
+
           --- Router ---
           {{ '[OK]  ' if 'running' in hostvars['router-1']['uhttpd_state']['stdout'] else '[FAIL]' }} uhttpd
           {{ '[OK]  ' if 'running' in hostvars['router-1']['adguard_state']['stdout'] else '[FAIL]' }} AdGuardHome
@@ -314,8 +368,30 @@
         hostvars['suricata-120']['svc_120']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0
         or hostvars['elk-133']['svc_133']['results'] | default([]) | selectattr('stdout', '!=', 'active') | list | length > 0
         or hostvars['opencti-135']['svc_135']['stdout'] | default('') != 'active'
-        or (hostvars['tpot-hive-130']['svc_tpot'] is defined and hostvars['tpot-hive-130']['svc_tpot']['stdout'] != 'active')
-        or (hostvars['tpot-sensor-125']['svc_tpot'] is defined and hostvars['tpot-sensor-125']['svc_tpot']['stdout'] != 'active')
+        or (hostvars['tpot-hive-130']['svc_tpot'] is defined and hostvars['tpot-hive-130']['svc_tpot']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
+        or (hostvars['tpot-sensor-125']['svc_tpot'] is defined and hostvars['tpot-sensor-125']['svc_tpot']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
+        or (hostvars['fileserver-140']['svc_140'] is defined and hostvars['fileserver-140']['svc_140']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
+
+    - name: Fail if canary listening port count drifted
+      ansible.builtin.fail:
+        msg: "Canary listening port count < 22 on .140 — OpenCanary or sinkhole missing ports (expected 8 banner + 14 sinkhole)"
+      when:
+        - hostvars['fileserver-140']['ports_140'] is defined
+        - (hostvars['fileserver-140']['ports_140']['stdout'] | default('0') | trim | int) < 22
+
+    - name: Fail if canary log files missing
+      ansible.builtin.fail:
+        msg: "Canary log file(s) missing on .140 — OpenCanary or sinkhole never wrote anything"
+      when:
+        - hostvars['fileserver-140']['svc_140'] is defined
+        - >
+          not (hostvars['fileserver-140']['ocan_log_140']['stat']['exists'] | default(false))
+          or not (hostvars['fileserver-140']['sink_log_140']['stat']['exists'] | default(false))
+
+    - name: Fail if Wazuh agent count drifted
+      ansible.builtin.fail:
+        msg: "Wazuh enrolled agent count != 8 — check /var/ossec/etc/client.keys on .133 (existing 4 + .140 + .130 + .125 + WSL-147K = 8)"
+      when: (hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('-1') | trim | int) != 8
 
     - name: Fail if Wazuh API is down
       ansible.builtin.fail:

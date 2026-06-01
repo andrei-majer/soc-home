@@ -1,0 +1,260 @@
+---
+# ============================================================================
+# OpenCanary install + config (.140 / fs1)
+# Tasks gated on inventory_hostname in groups['canary'] so the .120 cutover
+# block (added in Phase 6) can share the same role file. See spec
+# docs/specs/2026-06-01-canary-design.md.
+# ============================================================================
+
+- name: Install OpenCanary system dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-venv
+      - python3-pip
+      - libssl-dev
+      - libffi-dev
+      - build-essential
+      - samba
+      - rsync
+      - rsyslog
+    state: present
+    update_cache: true
+  when: inventory_hostname in groups['canary']
+
+- name: Create OpenCanary venv
+  ansible.builtin.command: python3 -m venv {{ canary_opencanary_venv }}
+  args:
+    creates: "{{ canary_opencanary_venv }}/bin/python"
+  when: inventory_hostname in groups['canary']
+
+- name: Install OpenCanary into venv
+  ansible.builtin.pip:
+    name: opencanary
+    state: present
+    virtualenv: "{{ canary_opencanary_venv }}"
+  when: inventory_hostname in groups['canary']
+
+- name: Ensure /etc/opencanaryd exists
+  ansible.builtin.file:
+    path: /etc/opencanaryd
+    state: directory
+    mode: '0755'
+  when: inventory_hostname in groups['canary']
+
+- name: Deploy OpenCanary config
+  ansible.builtin.template:
+    src: opencanary.conf.j2
+    dest: "{{ canary_opencanary_config }}"
+    mode: '0644'
+  notify: Restart opencanary
+  when: inventory_hostname in groups['canary']
+
+- name: Deploy OpenCanary systemd unit
+  ansible.builtin.copy:
+    src: opencanary.service
+    dest: /etc/systemd/system/opencanary.service
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Restart opencanary
+  when: inventory_hostname in groups['canary']
+
+- name: Ensure OpenCanary log file exists with correct mode
+  ansible.builtin.file:
+    path: "{{ canary_opencanary_log }}"
+    state: touch
+    mode: '0640'
+    modification_time: preserve
+    access_time: preserve
+  when: inventory_hostname in groups['canary']
+
+- name: Ensure SMB share root exists
+  ansible.builtin.file:
+    path: "{{ canary_smb_share_dir }}"
+    state: directory
+    mode: '0755'
+  when: inventory_hostname in groups['canary']
+
+- name: Deploy SMB decoy file tree
+  ansible.builtin.copy:
+    src: share-decoys/
+    dest: "{{ canary_smb_share_dir }}/"
+    mode: '0644'
+    directory_mode: '0755'
+  notify: Restart opencanary
+  when: inventory_hostname in groups['canary']
+
+# Samba config — serve fake shares + full_audit to syslog. OpenCanary's
+# SMB module just tails the audit log; smbd does the actual SMB serving.
+- name: Disable nmbd and winbind (not needed for canary)
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: [nmbd, winbind]
+  failed_when: false
+  when: inventory_hostname in groups['canary']
+
+- name: Deploy samba smb.conf with fake shares + full_audit
+  ansible.builtin.template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    mode: '0644'
+    validate: testparm -s %s
+  notify: Restart smbd
+  when: inventory_hostname in groups['canary']
+
+- name: Deploy rsyslog drop-in routing smbd_audit to /var/log/samba-audit.log
+  ansible.builtin.copy:
+    src: samba-audit-rsyslog.conf
+    dest: /etc/rsyslog.d/30-samba-audit.conf
+    mode: '0644'
+  notify: Restart rsyslog
+  when: inventory_hostname in groups['canary']
+
+- name: Ensure samba audit log exists and is world-readable for opencanary tail
+  ansible.builtin.file:
+    path: /var/log/samba-audit.log
+    state: touch
+    mode: '0644'
+    modification_time: preserve
+    access_time: preserve
+  when: inventory_hostname in groups['canary']
+
+- name: Enable and start smbd
+  ansible.builtin.systemd:
+    name: smbd
+    enabled: true
+    state: started
+  when: inventory_hostname in groups['canary']
+
+- name: Enable and start opencanary.service
+  ansible.builtin.systemd:
+    name: opencanary
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: inventory_hostname in groups['canary']
+
+- name: Wait for OpenCanary to listen on key ports
+  ansible.builtin.wait_for:
+    host: 192.168.1.140
+    port: "{{ item }}"
+    timeout: 30
+  loop: [21, 80, 445, 3306]
+  when: inventory_hostname in groups['canary']
+
+# ============================================================================
+# sinkhole.py + systemd unit (relocated from .120)
+# ============================================================================
+
+- name: Deploy sinkhole.py
+  ansible.builtin.copy:
+    src: sinkhole.py
+    dest: '{{ canary_sinkhole_bin }}'
+    mode: '0755'
+  notify: Restart sinkhole
+  when: inventory_hostname in groups['canary']
+
+- name: Deploy sinkhole.service systemd unit
+  ansible.builtin.copy:
+    src: sinkhole.service
+    dest: /etc/systemd/system/sinkhole.service
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Restart sinkhole
+  when: inventory_hostname in groups['canary']
+
+- name: Ensure sinkhole log exists
+  ansible.builtin.file:
+    path: '{{ canary_sinkhole_log }}'
+    state: touch
+    mode: '0640'
+    modification_time: preserve
+    access_time: preserve
+  when: inventory_hostname in groups['canary']
+
+- name: Enable and start sinkhole.service
+  ansible.builtin.systemd:
+    name: sinkhole
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: inventory_hostname in groups['canary']
+
+- name: Wait for sinkhole to listen on canonical port (4444)
+  ansible.builtin.wait_for:
+    host: 192.168.1.140
+    port: 4444
+    timeout: 30
+  when: inventory_hostname in groups['canary']
+
+# ============================================================================
+# Wazuh agent localfile inputs (.140) — same blockinfile idiom as Zeek/.120.
+# Agent ossec.conf is not otherwise Ansible-managed; only canary inputs come
+# from IaC. Notifies Restart wazuh-agent.
+# ============================================================================
+
+- name: Add canary log inputs to Wazuh agent (.140)
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: '<!-- {mark} ANSIBLE MANAGED: canary localfiles -->'
+    insertbefore: '</ossec_config>'
+    block: |
+      <localfile>
+        <location>{{ canary_opencanary_log }}</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
+        <location>{{ canary_sinkhole_log }}</location>
+        <log_format>json</log_format>
+      </localfile>
+  notify: Restart wazuh-agent
+  when: inventory_hostname in groups['canary']
+
+# ============================================================================
+# .120 cutover — decommission legacy .121 alias + sinkhole.service.
+# Gated on inventory_hostname == 'suricata-120'. Reversible from git.
+# Runs only via the canary_cutover-tagged play in site.yml.
+# ============================================================================
+
+- name: Stop and disable legacy sinkhole.service on .120
+  ansible.builtin.systemd:
+    name: sinkhole
+    state: stopped
+    enabled: false
+    daemon_reload: true
+  failed_when: false
+  when: inventory_hostname == 'suricata-120'
+
+- name: Remove legacy sinkhole.service unit file from .120
+  ansible.builtin.file:
+    path: /etc/systemd/system/sinkhole.service
+    state: absent
+  notify: Reload systemd
+  when: inventory_hostname == 'suricata-120'
+
+- name: Remove legacy sinkhole.py from .120
+  ansible.builtin.file:
+    path: /usr/local/bin/sinkhole.py
+    state: absent
+  when: inventory_hostname == 'suricata-120'
+
+- name: Remove legacy .121 alias interface config from .120
+  ansible.builtin.file:
+    path: /etc/network/interfaces.d/sinkhole
+    state: absent
+  register: alias_removed
+  when: inventory_hostname == 'suricata-120'
+
+- name: Tear down .121 alias immediately (ip addr del)
+  ansible.builtin.command: ip addr del 192.168.1.121/24 dev enp0s3
+  changed_when: true
+  failed_when:
+    - ip_del.rc != 0
+    - "'Cannot assign requested address' not in ip_del.stderr"
+  register: ip_del
+  when:
+    - inventory_hostname == 'suricata-120'
+    - alias_removed.changed

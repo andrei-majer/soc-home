@@ -1,0 +1,16 @@
+[Unit]
+Description=OpenCanary internal trip-wire
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/opencanary-venv/bin/opencanaryd --dev --uid=root --gid=root
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/tmp/opencanary.log
+StandardError=append:/var/tmp/opencanary.log
+
+[Install]
+WantedBy=multi-user.target

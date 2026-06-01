@@ -1,0 +1,64 @@
+{
+    "device.node_id": "{{ canary_node_id }}",
+    "ip.ignorelist": [],
+    "logger": {
+        "class": "PyLogger",
+        "kwargs": {
+            "handlers": {
+                "file": {
+                    "class": "logging.FileHandler",
+                    "filename": "{{ canary_opencanary_log }}"
+                }
+            }
+        }
+    },
+
+    "ftp.enabled": true,
+    "ftp.port": {{ canary_modules.ftp.port }},
+    "ftp.banner": "FTP server ready",
+
+    "telnet.enabled": true,
+    "telnet.port": {{ canary_modules.telnet.port }},
+    "telnet.banner": "Welcome to {{ canary_smb_netbiosname | lower }}",
+
+    "http.enabled": true,
+    "http.port": {{ canary_modules.http.port }},
+    "http.banner": "Apache/2.4.41 (Ubuntu)",
+    "http.skin": "nasLogin",
+
+    "https.enabled": true,
+    "https.port": {{ canary_modules.https.port }},
+    "https.skin": "nasLogin",
+
+    "smb.enabled": true,
+    "smb.port": {{ canary_modules.smb.port }},
+    "smb.netbiosname": "{{ canary_smb_netbiosname }}",
+    "smb.serverstring": "{{ canary_smb_serverstring }}",
+    "smb.domain": "WORKGROUP",
+    "smb.filelist": [
+{% for share in canary_smb_shares %}
+        {
+            "name": "{{ share }}",
+            "type": "folder",
+            "path": "{{ canary_smb_share_dir }}/{{ share }}"
+        }{% if not loop.last %},{% endif %}
+{% endfor %}
+    ],
+
+    "mysql.enabled": true,
+    "mysql.port": {{ canary_modules.mysql.port }},
+    "mysql.banner": "5.7.42-0ubuntu0.18.04.1",
+
+    "rdp.enabled": true,
+    "rdp.port": {{ canary_modules.rdp.port }},
+
+    "vnc.enabled": true,
+    "vnc.port": {{ canary_modules.vnc.port }},
+
+    "ssh.enabled": false,
+
+    "portscan.enabled": true,
+    "portscan.synrate": 5,
+    "portscan.nmaposrate": 5,
+    "portscan.lorate": 3
+}

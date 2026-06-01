@@ -91,3 +91,20 @@
     - name: Show w32tm output
       ansible.builtin.debug:
         var: w32tm_result.stdout_lines
+
+# Play 8: Canary host (.140 fs1) — internal trip-wire
+- name: Canary host
+  hosts: canary
+  become: true
+  roles:
+    - common
+    - canary
+
+# Play 9: Canary cutover on .120 (decommission legacy sinkhole)
+- name: Canary cutover on .120
+  hosts: suricata-120
+  become: true
+  roles:
+    - canary
+  tags:
+    - canary_cutover
