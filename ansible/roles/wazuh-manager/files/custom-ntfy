@@ -1,12 +1,55 @@
 #!/usr/bin/env python3
-import json, sys, os, urllib.request
+import json, sys, os, time, urllib.request
 from datetime import datetime
 
 LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'logs', 'integrations.log')
 
+# Per-(rule, source) dedup state. Stops a single SMB browse (dozens of audit
+# events) or a Cowrie session (many JSON events) from spamming ntfy + hitting
+# the public 429 rate limit. Wazuh's frequency-based correlation rules can't
+# fire on the FIRST hit (frequency must be >=2), so we dedupe here instead.
+DEDUP_STATE_FILE = '/tmp/ntfy_dedup_state.json'  # /var/ossec/integrations/ is root:wazuh 750, wazuh user can't write
+DEDUP_WINDOW_SEC = 3600
+
+# Rules that bypass dedup — every event is unique intel (e.g. credential captures
+# where each attempted username/password pair matters)
+DEDUP_BYPASS_RULES = {'100303'}
+
+
 def log(msg):
     with open(LOG_FILE, 'a') as f:
         f.write(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + ' custom-ntfy: ' + msg + '\n')
+
+
+def load_state():
+    try:
+        with open(DEDUP_STATE_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_state(state):
+    try:
+        os.makedirs(os.path.dirname(DEDUP_STATE_FILE), exist_ok=True)
+        with open(DEDUP_STATE_FILE, 'w') as f:
+            json.dump(state, f)
+    except Exception as e:
+        log('WARN: could not persist dedup state: ' + str(e))
+
+
+def extract_source(alert):
+    d = alert.get('data', {}) or {}
+    # canary OpenCanary uses src_host; sinkhole uses client_ip;
+    # T-Pot Cowrie/Suricata/Zeek/Elasticpot use src_ip; Tanner nests peer.ip;
+    # Honeytrap nests attack_connection.remote_ip; Sysmon uses win.eventdata.destinationIp
+    return (d.get('src_host') or d.get('client_ip') or d.get('src_ip')
+            or d.get('dest_ip')
+            or (d.get('peer') or {}).get('ip')
+            or (d.get('attack_connection') or {}).get('remote_ip')
+            or (d.get('win', {}).get('eventdata', {}) or {}).get('destinationIp')
+            or 'unknown')
+
 
 def main(args):
     if len(args) < 4:
@@ -20,20 +63,37 @@ def main(args):
     except Exception as e:
         log('ERROR reading alert file: ' + str(e))
         sys.exit(1)
+
     rule      = alert.get('rule', {})
-    rule_id   = rule.get('id', '?')
+    rule_id   = str(rule.get('id', '?'))
     rule_desc = rule.get('description', 'Wazuh alert')
     level     = rule.get('level', 0)
     timestamp = alert.get('timestamp', '')[:19].replace('T', ' ')
-    evtdata   = alert.get('data', {}).get('win', {}).get('eventdata', {})
-    ioc = (evtdata.get('destinationIp') or evtdata.get('queryName') or
-           alert.get('data', {}).get('src_ip') or alert.get('data', {}).get('dest_ip') or '')
-    title   = '[SOC] Rule ' + str(rule_id) + ' - Level ' + str(level)
+
+    src = extract_source(alert)
+
+    # Per-(rule, source) hourly dedup unless rule is in bypass set
+    if rule_id not in DEDUP_BYPASS_RULES:
+        state = load_state()
+        now = time.time()
+        # Prune expired entries
+        state = {k: v for k, v in state.items() if now - v < DEDUP_WINDOW_SEC}
+        dedup_key = rule_id + ':' + src
+        if dedup_key in state:
+            log('SUPPRESSED rule=' + rule_id + ' src=' + src + ' (dedup window active)')
+            save_state(state)
+            sys.exit(0)
+        state[dedup_key] = now
+        save_state(state)
+
+    ioc = src if src != 'unknown' else ''
+    title   = '[SOC] Rule ' + rule_id + ' - Level ' + str(level)
     message = rule_desc + '\n'
     if ioc:
         message += 'IOC: ' + ioc + '\n'
     message += 'Time: ' + timestamp + ' UTC'
-    priority = 'high' if level >= 10 else 'default'
+    priority = 'urgent' if level >= 12 else ('high' if level >= 10 else 'default')
+
     try:
         req = urllib.request.Request(
             hook_url,
@@ -42,10 +102,11 @@ def main(args):
             method='POST'
         )
         with urllib.request.urlopen(req, timeout=10) as r:
-            log('OK rule=' + str(rule_id) + ' ioc=' + ioc + ' status=' + str(r.status))
+            log('OK rule=' + rule_id + ' src=' + src + ' status=' + str(r.status))
     except Exception as e:
         log('ERROR sending to ntfy: ' + str(e))
         sys.exit(1)
+
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -238,29 +238,33 @@
     <description>Canary hit on .140 (base, silent)</description>
   </rule>
 
-  <!-- LAN source + banner port (FTP/Telnet/HTTP/HTTPS) - silent base -->
-  <rule id="100301" level="3">
+  <!-- All source rules fire at their full alert level. Per-(rule,src) hourly
+       dedup is handled by custom-ntfy script (DEDUP_WINDOW_SEC=3600), NOT
+       by Wazuh correlation rules - the latter cannot fire on the first hit
+       (frequency must be >= 2) which would miss single-shot probes.
+       Rule 100303 (cred capture) is in the script's DEDUP_BYPASS_RULES set
+       so every unique cred attempt always pages. -->
+
+  <!-- LAN source + banner port (FTP/Telnet/HTTP/HTTPS) -->
+  <rule id="100301" level="10">
     <if_sid>100300</if_sid>
     <field name="src_host" type="pcre2">^192\.168\.1\.</field>
     <field name="dst_port" type="pcre2">^(21|23|80|443)$</field>
-    <description>Canary banner-port hit from LAN (silent base): $(src_host) -> :$(dst_port)</description>
+    <description>Canary banner-port hit from LAN: $(src_host) -> :$(dst_port)</description>
     <group>canary_banner,</group>
   </rule>
 
-  <!-- LAN source + critical port (SMB/MySQL/RDP/VNC) - silent base.
-       For SMB (port 445), one SMB session generates dozens of audit events
-       per share access; the firing rule 100312 below dedupes via
-       frequency+ignore so the user gets ONE ntfy per source per hour. -->
-  <rule id="100302" level="3">
+  <!-- LAN source + critical port (SMB/MySQL/RDP/VNC) -->
+  <rule id="100302" level="12">
     <if_sid>100300</if_sid>
     <field name="src_host" type="pcre2">^192\.168\.1\.</field>
     <field name="dst_port" type="pcre2">^(445|3306|3389|5900)$</field>
-    <description>Canary critical-port hit from LAN (silent base): $(src_host) -> :$(dst_port)</description>
+    <description>Canary critical-port hit from LAN: $(src_host) -> :$(dst_port)</description>
     <group>canary_critical,</group>
   </rule>
 
   <!-- Credential capture: OpenCanary logs logdata.USERNAME on failed FTP/Telnet/MySQL login.
-       Intentionally NOT deduplicated - each cred pair is intel. -->
+       In DEDUP_BYPASS_RULES - every cred pair always pages. -->
   <rule id="100303" level="12">
     <if_sid>100300</if_sid>
     <field name="logdata.USERNAME" type="pcre2">.+</field>
@@ -275,41 +279,11 @@
     <description>Sinkhole hit on .140 (base, silent)</description>
   </rule>
 
-  <!-- Sinkhole LAN source - silent base; 100313 below carries the ntfy -->
-  <rule id="100307" level="3">
+  <!-- Sinkhole LAN source -->
+  <rule id="100307" level="12">
     <if_sid>100306</if_sid>
     <field name="client_ip" type="pcre2">^192\.168\.1\.</field>
-    <description>Sinkhole C2-port hit from LAN (silent base): $(client_ip) -> :$(dst_port)</description>
-    <group>canary_critical,</group>
-  </rule>
-
-  <!-- ============================================================
-       Aggregator/ntfy rules.
-       frequency=1 + ignore=3600 = fire on the FIRST hit from a given
-       source, then suppress same-source hits for an hour. Implements
-       the per-source-per-hour dedup the spec promised - which the
-       initial dedup pattern (correlation rule AFTER threshold) did NOT
-       deliver since it never gated the source rule's alerts. These are
-       the rule IDs added to the custom-ntfy <rule_id> list.
-       ============================================================ -->
-  <rule id="100311" level="10" frequency="2" timeframe="3600" ignore="3600">
-    <if_matched_sid>100301</if_matched_sid>
-    <same_field>src_host</same_field>
-    <description>Canary banner-port hit from LAN: $(src_host) -> :$(dst_port) [2nd in 1h - dedup window starts]</description>
-    <group>canary_banner,</group>
-  </rule>
-
-  <rule id="100312" level="12" frequency="2" timeframe="3600" ignore="3600">
-    <if_matched_sid>100302</if_matched_sid>
-    <same_field>src_host</same_field>
-    <description>Canary critical-port hit from LAN: $(src_host) -> :$(dst_port) [2nd in 1h - dedup window starts]</description>
-    <group>canary_critical,</group>
-  </rule>
-
-  <rule id="100313" level="12" frequency="2" timeframe="3600" ignore="3600">
-    <if_matched_sid>100307</if_matched_sid>
-    <same_field>client_ip</same_field>
-    <description>Sinkhole C2-port hit from LAN: $(client_ip) -> :$(dst_port) [2nd in 1h - dedup window starts]</description>
+    <description>Sinkhole C2-port hit from LAN: $(client_ip) -> :$(dst_port)</description>
     <group>canary_critical,</group>
   </rule>
 
@@ -340,21 +314,55 @@
     <description>T-Pot Cowrie hit (silent base)</description>
   </rule>
 
-  <!-- LAN source - silent base; 100411 below carries the ntfy -->
-  <rule id="100401" level="3">
+  <!-- LAN source - fires on FIRST hit. Per-(rule,src) dedup in custom-ntfy. -->
+  <rule id="100401" level="12">
     <if_sid>100400</if_sid>
     <field name="src_ip" type="pcre2">^192\.168\.1\.</field>
-    <description>T-Pot Cowrie LAN-source hit (silent base): $(src_ip)</description>
-    <group>tpot,</group>
+    <description>T-Pot Cowrie lateral movement: $(src_ip) -> .130 SSH</description>
+    <group>tpot,attack,</group>
   </rule>
 
-  <!-- Aggregator: frequency=2 ignore=3600 same as canary rules.
-       fires on 2nd LAN-source hit per src_ip within 1h, then suppresses
-       for an hour. Single-shot scans miss; multi-event sessions trigger. -->
-  <rule id="100411" level="12" frequency="2" timeframe="3600" ignore="3600">
-    <if_matched_sid>100401</if_matched_sid>
-    <same_field>src_ip</same_field>
-    <description>T-Pot lateral movement: $(src_ip) hit honeypot [2nd in 1h - dedup window starts]</description>
+  <!-- Honeytrap (generic TCP catch-all on .130 high ports). Decoded as
+       attack_connection.remote_ip, .local_port, .protocol nested. -->
+  <rule id="100402" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="attack_connection.protocol" type="pcre2">.+</field>
+    <description>T-Pot Honeytrap hit (silent base)</description>
+  </rule>
+
+  <rule id="100403" level="12">
+    <if_sid>100402</if_sid>
+    <field name="attack_connection.remote_ip" type="pcre2">^192\.168\.1\.</field>
+    <description>T-Pot Honeytrap lateral movement: $(attack_connection.remote_ip) -> .130:$(attack_connection.local_port)</description>
+    <group>tpot,attack,</group>
+  </rule>
+
+  <!-- Tanner (HTTP). Decoded as peer.ip / peer.port nested. -->
+  <rule id="100404" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="peer.ip" type="pcre2">.+</field>
+    <field name="path" type="pcre2">.+</field>
+    <description>T-Pot Tanner HTTP hit (silent base)</description>
+  </rule>
+
+  <rule id="100405" level="12">
+    <if_sid>100404</if_sid>
+    <field name="peer.ip" type="pcre2">^192\.168\.1\.</field>
+    <description>T-Pot Tanner lateral movement: $(peer.ip) -> .130 HTTP $(method) $(path)</description>
+    <group>tpot,attack,</group>
+  </rule>
+
+  <!-- Elasticpot (fake Elasticsearch :9200). Decoded as src_ip top-level + eventid:elasticpot.* -->
+  <rule id="100406" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="eventid" type="pcre2">^elasticpot\.</field>
+    <description>T-Pot Elasticpot hit (silent base)</description>
+  </rule>
+
+  <rule id="100407" level="12">
+    <if_sid>100406</if_sid>
+    <field name="src_ip" type="pcre2">^192\.168\.1\.</field>
+    <description>T-Pot Elasticpot lateral movement: $(src_ip) -> .130:9200 $(eventid)</description>
     <group>tpot,attack,</group>
   </rule>
 
