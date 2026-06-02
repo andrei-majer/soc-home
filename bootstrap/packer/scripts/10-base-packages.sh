@@ -13,8 +13,13 @@ apt-get -y install \
   curl \
   ca-certificates \
   gnupg \
-  chrony \
-  virtualbox-guest-utils
+  chrony
+
+# Note: VirtualBox guest additions (virtualbox-guest-utils) live in Debian's
+# 'contrib' component and aren't needed for the SOC lab flow - Ansible doesn't
+# require them, Vagrant uses scp-based provisioning, and chrony handles time
+# sync. If shared folders ever become a need, enable contrib in preseed.cfg
+# (d-i apt-setup/contrib boolean true) and add the package back.
 
 # Disable predictable NIC names (so adapters are eth0, eth1, eth2...)
 # Required for the Vagrant first-boot shell provisioner that writes
