@@ -8,3 +8,4 @@ bootstrap/.vagrant/
 bootstrap/vagrant/.vagrant/
 bootstrap/.deploy-config.local
 bootstrap/logs/
+bootstrap/packer/packer_cache/

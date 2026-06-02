@@ -3,14 +3,16 @@
 
 variable "iso_url" {
   type    = string
-  default = "https://cdimage.debian.org/debian-cd/12.5.0/amd64/iso-cd/debian-12.5.0-amd64-netinst.iso"
+  # Pinned to 12.9.0 (latest 12.x point release before Debian moved cdimage
+  # current/ to 13.x in mid-2026). Bump when 12.10.0 ships, or migrate to
+  # Debian 13 separately (will require role-compatibility testing).
+  default = "https://cdimage.debian.org/cdimage/archive/12.9.0/amd64/iso-cd/debian-12.9.0-amd64-netinst.iso"
 }
 
 variable "iso_checksum" {
   type    = string
-  # Update when bumping iso_url. SHA256SUMS at
-  # https://cdimage.debian.org/debian-cd/12.5.0/amd64/iso-cd/SHA256SUMS
-  default = "sha256:013f5b44670d81280b5b1bc02455842b250df2f0c6763398feb69af1a805a14f"
+  # SHA256SUMS at https://cdimage.debian.org/cdimage/archive/12.9.0/amd64/iso-cd/SHA256SUMS
+  default = "sha256:1257373c706d8c07e6917942736a865dfff557d21d76ea3040bb1039eb72a054"
 }
 
 variable "vm_name" {
