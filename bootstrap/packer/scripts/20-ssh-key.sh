@@ -28,10 +28,8 @@ for line in 'UseDNS no' 'GSSAPIAuthentication no' 'IPQoS cs0 cs0'; do
   fi
 done
 
-# Debian 12 ships ssh.socket (socket activation). It races with first-boot
-# connections - Vagrant connects before the ephemeral ssh@-...service is ready,
-# producing "Connection timed out during banner exchange". Force classic
-# ssh.service instead.
-systemctl disable --now ssh.socket 2>/dev/null || true
-systemctl mask ssh.socket           2>/dev/null || true
-systemctl enable ssh.service        2>/dev/null || true
+# NOTE: an earlier version of this script masked ssh.socket and force-enabled
+# ssh.service, trying to dodge a suspected first-boot race. That broke sshd
+# entirely - Debian 12's openssh-server requires ssh.socket to bind port 22;
+# ssh.service alone doesn't listen. Rolled back 2026-06-02 after .15 smoke
+# test reproduced the same hang as .13. Default Debian sshd setup is fine.
