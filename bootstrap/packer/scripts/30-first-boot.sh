@@ -20,27 +20,21 @@ MARKER=/var/lib/soc-first-boot.done
 log() { echo "[soc-first-boot] $*" | tee -a /var/log/soc-first-boot.log; }
 fail() { log "FAIL: $*"; exit 1; }
 
-# Pull OEM strings from SMBIOS Type 11. Each VBox DmiOEMVendorExN extradata key
-# becomes one line of dmidecode -t 11 output (after the "OEM Strings" header).
-OEM=$(dmidecode -t 11 2>/dev/null || true)
-[ -n "${OEM}" ] || fail "dmidecode -t 11 returned nothing"
+# Pull config from SMBIOS DmiSystemSerial (set per-VM by Vagrantfile via
+# setextradata). VBox 7.2 reliably exposes this field; DmiOEMVendorExN didn't
+# exist in 7.2.6 testing. Single 64-char field, format:
+#   "soc-hostname=NAME soc-ip=N.N.N.N soc-mode=dr|isolated"
+SERIAL=$(dmidecode -s system-serial-number 2>/dev/null || true)
+[ -n "${SERIAL}" ] || fail "dmidecode system-serial-number returned nothing"
 
 extract() {
-  echo "${OEM}" | grep -oE "$1=[^[:space:]]+" | head -1 | cut -d= -f2-
-}
-
-# Long values (ssh key) get base64-encoded to survive SMBIOS string limits.
-extract_b64() {
-  local raw
-  raw=$(echo "${OEM}" | sed -n "s/.*$1_b64=\([A-Za-z0-9+/=]*\).*/\1/p" | head -1)
-  [ -n "${raw}" ] || return 1
-  echo "${raw}" | base64 -d
+  echo "${SERIAL}" | grep -oE "$1=[^[:space:]]+" | head -1 | cut -d= -f2-
 }
 
 HOSTNAME=$(extract 'soc-hostname')
 IP=$(extract 'soc-ip')
 MODE=$(extract 'soc-mode')
-PUBKEY=$(extract_b64 'soc-pubkey' || true)
+PUBKEY=""   # deploy key transfer deferred; insecure Vagrant key remains in image
 
 [ -n "${HOSTNAME}" ] || fail "soc-hostname missing from OEM strings"
 [ -n "${IP}" ]       || fail "soc-ip missing from OEM strings"
