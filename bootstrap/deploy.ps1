@@ -91,7 +91,56 @@ function Write-Fail($msg) {
   throw $msg
 }
 
-function Invoke-Preflight    { Write-Step "preflight: not yet implemented (Task 1B-8)" }
+function Invoke-Preflight {
+  Write-Step "preflight: VBox / Packer / Vagrant / secrets / MTU / bridge NIC"
+
+  # VirtualBox
+  $vboxPath = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
+  if (-not (Test-Path $vboxPath)) { Write-Fail "VirtualBox not found at $vboxPath" }
+  $vboxVersion = & $vboxPath --version
+  Write-Step "  VirtualBox: $vboxVersion"
+  $expectedPin = '7.2.6r172322'
+  if ($vboxVersion -notlike "$expectedPin*") {
+    Write-Step "  WARN: expected VBox $expectedPin, found $vboxVersion (proceeding - pin is advisory)"
+  }
+
+  # Packer
+  if (-not (Get-Command packer -ErrorAction SilentlyContinue)) {
+    Write-Fail "packer not in PATH - install via 'winget install Hashicorp.Packer'"
+  }
+  $packerVer = (packer version 2>&1 | Select-Object -First 1)
+  Write-Step "  Packer: $packerVer"
+
+  # Vagrant
+  if (-not (Get-Command vagrant -ErrorAction SilentlyContinue)) {
+    Write-Fail "vagrant not in PATH - install via 'winget install Hashicorp.Vagrant'"
+  }
+  $vagrantVer = ((vagrant --version 2>&1) -join ' ')
+  Write-Step "  Vagrant: $vagrantVer"
+
+  # secrets/
+  $secretsDir = Join-Path $script:BootstrapRoot 'secrets'
+  $needed = @('vault_pass.txt', 'id_ed25519', 'id_ed25519.pub')
+  foreach ($f in $needed) {
+    $p = Join-Path $secretsDir $f
+    if (-not (Test-Path $p)) {
+      Write-Fail "secrets/$f missing - see bootstrap/docs/secrets-checklist.md"
+    }
+  }
+  Write-Step "  secrets/: present (vault_pass + ssh keypair)"
+
+  # NIC autodetect + MTU check land here in Task 1B-9
+  if ($Mode -eq 'dr') {
+    if (-not $BridgedNic) {
+      Write-Fail "DR mode requires -BridgedNic '<name>' for now (autodetect in Task 1B-9)"
+    }
+    $script:ResolvedBridge = $BridgedNic
+    Write-Step "  bridged NIC: $($script:ResolvedBridge) (from -BridgedNic flag)"
+    $env:SOC_BRIDGED_NIC = $script:ResolvedBridge
+  }
+
+  Write-Step "preflight: PASS"
+}
 function Invoke-PhaseImage   { Write-Step "phase image: not yet implemented (Task 1B-10)" }
 function Invoke-PhaseVms     { Write-Step "phase vms: not yet implemented (Task 1B-10)" }
 function Invoke-PhaseConverge{ Write-Step "phase converge: not yet implemented (Task 1B-10)" }
