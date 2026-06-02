@@ -1,7 +1,15 @@
 # bootstrap/vagrant/specs.yml
 # Per-VM resource specs. Hostnames MUST match ansible/inventory/hosts.yml.
-# Defaults below mirror the documented .15 allocations. Adjust after first
-# deploy if actual .15 settings differ.
+#
+# TODO BEFORE FIRST REAL DEPLOY: replace the ram/cpu/disk values below with
+# the actual .15 VM allocations. The current values are reasonable estimates
+# from the design doc; they have not been confirmed against the live VMs.
+#
+# To capture actuals, run on .15:
+#   foreach ($vm in 'Suricata','ELK','OpenCTi','T-Pot Hive','T-Pot Sensor','OpenCanary') {
+#     & 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe' showvminfo $vm --machinereadable |
+#       Select-String -Pattern '^(memory|cpus)=' | ForEach-Object { "[$vm] $_" }
+#   }
 
 suricata-120:
   ip: 192.168.1.120

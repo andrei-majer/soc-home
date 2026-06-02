@@ -49,10 +49,15 @@ DEPLOY_PUBKEY_B64 = Base64.strict_encode64(File.read(PUBKEY_FILE).strip)
 Vagrant.configure("2") do |config|
   config.vm.box = "soc-lab/debian-12"
 
-  # No SSH from Vagrant. The first-boot service inside the VM does the
-  # post-boot configuration; Ansible (from deploy.ps1) talks to each VM
-  # via its bridged IP after first-boot completes.
-  config.vm.communicator = :none
+  # NOTE: Vagrant 2.4.9 does NOT recognize `communicator = :none` (or "none") -
+  # it errors with "The requested communicator 'none' could not be found." So
+  # we leave the default `:ssh` communicator. `vagrant up` will probe SSH on
+  # the NAT-forwarded port and hit a timeout (VBox NAT loopback on Win11 is
+  # unreliable + we don't have the Vagrant insecure key bound to root).
+  #
+  # deploy.ps1's Invoke-PhaseVms tolerates that vagrant-up SSH-timeout: the
+  # VM still boots, soc-first-boot.service configures eth1 from DMI strings,
+  # and Ansible reaches it over the bridged IP.
 
   specs.each do |hostname, spec|
     config.vm.define hostname do |vm|

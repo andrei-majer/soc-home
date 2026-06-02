@@ -34,11 +34,23 @@ extract() {
 HOSTNAME=$(extract 'soc-hostname')
 IP=$(extract 'soc-ip')
 MODE=$(extract 'soc-mode')
-PUBKEY=""   # deploy key transfer deferred; insecure Vagrant key remains in image
+PUBKEY=""   # TODO: deploy key transport - SSH key doesn't fit in DmiSystemSerial
+            #       (64-char limit). Options for Phase 2:
+            #         (a) bake into image at Packer build time (ties .box to a key)
+            #         (b) cloud-init NoCloud ISO (canonical, needs cloud-init pkg)
+            #         (c) deploy.ps1 serves the key via HTTP on default NAT gw,
+            #             first-boot does `curl http://10.0.2.2:PORT/pubkey`
 
-[ -n "${HOSTNAME}" ] || fail "soc-hostname missing from OEM strings"
-[ -n "${IP}" ]       || fail "soc-ip missing from OEM strings"
-[ -n "${MODE}" ]     || MODE=dr
+# Fail-safe: if no DMI config is present (smoke test, recovery boot, etc.),
+# log and exit success. Don't break boot just because the per-VM config wasn't
+# injected. The VM still comes up; you can SSH via the baked vagrant insecure
+# key on whatever NIC is configured.
+if [ -z "${HOSTNAME}" ] || [ -z "${IP}" ]; then
+  log "no DMI config (hostname/ip missing) - skipping network/hostname setup"
+  touch "${MARKER}"
+  exit 0
+fi
+[ -n "${MODE}" ] || MODE=dr
 log "configuring hostname=${HOSTNAME} ip=${IP} mode=${MODE}"
 
 hostnamectl set-hostname "${HOSTNAME}"
@@ -82,8 +94,9 @@ chmod 0755 /usr/local/sbin/soc-first-boot.sh
 cat > /etc/systemd/system/soc-first-boot.service <<'EOS'
 [Unit]
 Description=SOC Lab first-boot configuration
-Wants=network-pre.target
-Before=network-pre.target
+# Deliberately no Wants=/Before= network-pre.target. A failure or hang in this
+# service must not block boot. The script is best-effort: it applies DMI-injected
+# config when present, otherwise exits silently. eth0 (default DHCP) still works.
 ConditionPathExists=!/var/lib/soc-first-boot.done
 
 [Service]
