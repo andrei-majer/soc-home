@@ -91,6 +91,56 @@ function Write-Fail($msg) {
   throw $msg
 }
 
+function Resolve-BridgedNic {
+  # Returns the best bridged-interface candidate, or $null if ambiguous.
+  $excludePattern = '^(Loopback|VirtualBox Host-Only|vEthernet|VMware|Tailscale|tap|tun|WireGuard|TAP-)'
+
+  # Pull all up adapters with an active IPv4 default route. Force array
+  # so .Count behaves cleanly on 0 or 1 results.
+  $candidates = @(Get-NetAdapter |
+    Where-Object {
+      $_.Status -eq 'Up' -and
+      $_.Name -notmatch $excludePattern -and
+      $_.MediaType -ne 'Native 802.11'
+    } |
+    Where-Object {
+      $iface = $_.ifIndex
+      $null -ne (Get-NetRoute -InterfaceIndex $iface -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue)
+    } |
+    Select-Object Name, InterfaceDescription, ifIndex)
+
+  if ($candidates.Count -eq 0) { return $null }
+  if ($candidates.Count -eq 1) {
+    Write-Step "  NIC autodetect: $($candidates[0].Name) (single Ethernet candidate)"
+    return $candidates[0].Name
+  }
+
+  Write-Step "  NIC autodetect: $($candidates.Count) candidates"
+  $candidates | ForEach-Object { Write-Host ("    {0,-30}  {1}" -f $_.Name, $_.InterfaceDescription) }
+  if ($Force) {
+    Write-Fail "multiple bridged NIC candidates - pass -BridgedNic '<name>'"
+  }
+  $picked = Read-Host "Enter NIC name to use"
+  if (-not ($candidates | Where-Object Name -eq $picked)) {
+    Write-Fail "'$picked' is not in the candidate list"
+  }
+  return $picked
+}
+
+function Test-Mtu {
+  param([string]$NicName)
+  $adapter = Get-NetAdapter -Name $NicName -ErrorAction Stop
+  $mtu = $adapter.MtuSize
+  Write-Step "  bridge MTU: $mtu"
+  if ($OverrideMtu -gt 0) {
+    Write-Step "  -OverrideMtu $OverrideMtu - skipping MTU check"
+    return
+  }
+  if ($mtu -lt 1500) {
+    Write-Fail "bridge MTU $mtu < 1500 (VPN/Tailscale likely on bridge). Disable VPN or pass -OverrideMtu $mtu"
+  }
+}
+
 function Invoke-Preflight {
   Write-Step "preflight: VBox / Packer / Vagrant / secrets / MTU / bridge NIC"
 
@@ -129,13 +179,30 @@ function Invoke-Preflight {
   }
   Write-Step "  secrets/: present (vault_pass + ssh keypair)"
 
-  # NIC autodetect + MTU check land here in Task 1B-9
+  # Bridge NIC (DR mode only)
   if ($Mode -eq 'dr') {
-    if (-not $BridgedNic) {
-      Write-Fail "DR mode requires -BridgedNic '<name>' for now (autodetect in Task 1B-9)"
+    if ($BridgedNic) {
+      $script:ResolvedBridge = $BridgedNic
+      Write-Step "  bridged NIC: $($script:ResolvedBridge) (from -BridgedNic flag)"
+    } else {
+      $cacheFile = Join-Path $script:BootstrapRoot '.deploy-config.local'
+      if (Test-Path $cacheFile) {
+        $cache = Get-Content $cacheFile | ConvertFrom-StringData
+        if ($cache.BridgedNic) {
+          $script:ResolvedBridge = $cache.BridgedNic
+          Write-Step "  bridged NIC: $($script:ResolvedBridge) (from cache)"
+        }
+      }
+      if (-not $script:ResolvedBridge) {
+        $script:ResolvedBridge = Resolve-BridgedNic
+        if (-not $script:ResolvedBridge) {
+          Write-Fail "no bridged NIC candidate after filtering - pass -BridgedNic '<name>'"
+        }
+        "BridgedNic=$($script:ResolvedBridge)" | Out-File -FilePath $cacheFile -Encoding ascii
+        Write-Step "  cached selection to .deploy-config.local"
+      }
     }
-    $script:ResolvedBridge = $BridgedNic
-    Write-Step "  bridged NIC: $($script:ResolvedBridge) (from -BridgedNic flag)"
+    Test-Mtu -NicName $script:ResolvedBridge
     $env:SOC_BRIDGED_NIC = $script:ResolvedBridge
   }
 
