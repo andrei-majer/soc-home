@@ -53,29 +53,46 @@ For testing on a constrained host (e.g. alongside the live lab):
 
 ## Known issues
 
-**SSH banner exchange timeout via NAT port-forward (Phase 1B end-to-end).**
-After `packer build` produces a `.box` and `vagrant box add` registers it,
-`vagrant up` boots the VM successfully but `vagrant ssh` and raw `ssh` to the
-NAT-forwarded port both hang at "Connection timed out during banner exchange".
-TCP handshake completes; sshd never sends `SSH-2.0` line. Reproduced on Windows
-11 + VBox 7.2.6 + Debian 12.9.0 (build 2026-06-02). Investigation continues
-in the followups list below.
+**SSH-over-NAT-port-forward intermittent on .13 (build host).**
+Multiple Packer builds on .13 (Windows 11 + VBox 7.2.6r172322 + Debian 12.9.0)
+hit "Timeout waiting for SSH" at 30-60 min - the Debian installer completes
+but Packer can't reach the VM's sshd via the NAT port-forward to 127.0.0.1.
+Build #2 (2026-06-02) succeeded once in ~16 min; builds #3 and #4 each timed
+out. Same root cause blocks `vagrant ssh` / raw `ssh` after `vagrant up`:
+TCP handshake completes, banner never arrives.
 
-This blocks Vagrant's `vm.provision` shell step (which installs the deploy SSH
-key + configures `eth1` with static IP). Workarounds being explored:
+**Suspected: Tailscale on .13 interferes with VBox NAT loopback.**
+`Tailscale Tunnel` adapter present + active on .13 (MTU 65535). Tailscale's
+TUN driver hooks the Windows network stack and can intercept connections to
+127.0.0.1. Vagrant + Packer both use 127.0.0.1:<NAT-forward-port> for SSH.
+Build #2 succeeded because... unclear (Tailscale was running then too).
+Possibly a Defender scan or system load racing with the SSH banner emit.
 
-- Disable `ssh.socket` + force `ssh.service` in the Packer provisioner (the
-  intuitive fix; Packer build then hit its own 30 min SSH wait and never got
-  to apply the fix — likely a separate NAT-NIC issue)
-- Set NIC type explicitly to `virtio` via `--nictype1 virtio` in Packer's
-  `vboxmanage` block
-- Bake the deploy SSH key directly into the Packer image (no Vagrant
-  provisioner needed for ssh) and switch eth1 config to systemd-networkd
-  with templating via a small first-boot script
+**Current design (committed in this branch) avoids the runtime path that was
+failing:**
 
-The Packer image itself builds correctly (~16 min, 600 MB `.box`). The deploy.ps1
-preflight + image phase work end-to-end. Only the `vms`+`converge` phases are
-blocked until SSH-over-NAT is reliable.
+- Packer bakes `/usr/local/sbin/soc-first-boot.sh` + a systemd unit that runs
+  it once on first boot. Script reads SMBIOS Type 11 OEM strings (via
+  `dmidecode -t 11`) to configure hostname, eth1 static IP, and root's
+  authorized_keys.
+- Vagrantfile sets `config.vm.communicator = :none` (skips Vagrant SSH
+  entirely) and injects per-VM hostname / IP / mode / deploy SSH key as
+  SMBIOS OEM strings via `setextradata DmiOEMVendorEx0/1`.
+- `deploy.ps1` `vms` phase no longer calls `vagrant provision`.
+
+This bypasses Vagrant's SSH-over-NAT step — but **Packer's build step still
+uses NAT-forwarded SSH**, so the build itself remains intermittent on .13.
+
+**Workarounds for the build:**
+- Run Packer on a host without Tailscale (test on .15 if .15 doesn't have it,
+  or stop Tailscale on .13 with `tailscale down` then retry)
+- Switch Packer's NIC to bridged instead of NAT (VM gets DHCP IP on real LAN
+  during build; needs `ssh_host` discovery, more invasive)
+- Stop Windows Defender real-time scanning during build (security tradeoff)
+
+**Status:** Image-build phase works occasionally (build #2). Once a build
+succeeds, the new DMI-OEM-strings approach should let the full pipeline work
+- but end-to-end validation pending a successful image build.
 
 ## See also
 
