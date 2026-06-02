@@ -27,7 +27,7 @@ source "virtualbox-iso" "debian12" {
 
   ssh_username = var.ssh_username
   ssh_password = var.ssh_password
-  ssh_timeout  = "30m"
+  ssh_timeout  = "60m"
 
   shutdown_command = "echo 'vagrant' | sudo -S shutdown -P now"
 
@@ -70,6 +70,7 @@ build {
       "scripts/00-update.sh",
       "scripts/10-base-packages.sh",
       "scripts/20-ssh-key.sh",
+      "scripts/30-first-boot.sh",
       "scripts/90-cleanup.sh"
     ]
   }
