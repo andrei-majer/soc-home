@@ -266,19 +266,21 @@ function Invoke-PhaseVms {
     $env:SOC_HOSTS   = $Hosts
     $env:SOC_PROFILE = $Profile
 
-    $args = @('up', '--no-provision')
+    # No --no-provision / no separate provision step: the Vagrantfile uses
+    # config.vm.communicator = :none. VBox boots the VM, the Packer-baked
+    # soc-first-boot service reads DMI OEM strings and configures everything.
+    $args = @('up')
     if ($Hosts) { $args += ($Hosts.Split(',') | ForEach-Object { $_.Trim() }) }
 
     & vagrant @args
     if ($LASTEXITCODE -ne 0) { Write-Fail "vagrant up failed" }
-
-    & vagrant provision
-    if ($LASTEXITCODE -ne 0) { Write-Fail "vagrant provision failed" }
   } finally {
     Pop-Location
   }
 
-  Write-Step "  VMs up - SSH-reachable on per-VM IPs"
+  Write-Step "  VMs created. Waiting 60s for first-boot service to apply networking..."
+  Start-Sleep -Seconds 60
+  Write-Step "  VMs should now be reachable on per-VM bridged IPs"
 }
 
 function Invoke-PhaseConverge {

@@ -1,9 +1,17 @@
 # bootstrap/vagrant/Vagrantfile
-# Reads specs.yml + mode override, defines per-VM config.
-# Mode files (modes/dr.rb, modes/isolated.rb) own NIC and IP logic.
+# Reads specs.yml + mode override, defines per-VM config. Mode files
+# (modes/dr.rb, modes/isolated.rb) own NIC and IP logic.
+#
+# This Vagrantfile uses NO shell provisioner. Each VM picks up its hostname,
+# IP, mode, and deploy SSH key from VBox SMBIOS OEM strings injected via
+# setextradata (DmiOEMVendorEx0/1/2). The Packer image has a first-boot
+# systemd unit (soc-first-boot.service) that reads dmidecode -t 11 and
+# applies the config. config.vm.communicator = :none avoids the
+# SSH-over-NAT race that blocked the earlier shell-provisioner approach.
 
 require 'yaml'
 require 'fileutils'
+require 'base64'
 
 SPECS_FILE = File.expand_path('specs.yml', __dir__)
 MODE       = ENV.fetch('SOC_MODE', 'dr')
@@ -13,17 +21,15 @@ PROFILE    = ENV.fetch('SOC_PROFILE', 'full')   # full | minimal
 abort "specs.yml not found at #{SPECS_FILE}" unless File.exist?(SPECS_FILE)
 specs = YAML.load_file(SPECS_FILE)
 
-# -Hosts filter
 unless HOSTS_ENV.empty?
   wanted = HOSTS_ENV.split(',').map(&:strip)
   specs = specs.select { |k, _| wanted.include?(k) }
   abort "no specs match SOC_HOSTS=#{HOSTS_ENV}" if specs.empty?
 end
 
-# -Profile minimal scaling
 if PROFILE == 'minimal'
   specs.each do |_, spec|
-    spec['ram'] = [spec['ram'], 6144].min     # cap each VM at 6 GB
+    spec['ram'] = [spec['ram'], 6144].min
     spec['cpu'] = [spec['cpu'], 2].min
   end
 end
@@ -33,23 +39,23 @@ abort "unknown mode '#{MODE}' (no #{mode_file})" unless File.exist?(mode_file)
 require mode_file
 config_for_mode = SocLabMode
 
-# Where to write Ansible inventory overrides
 OVERRIDE_DIR = File.expand_path('../.vagrant/ansible-overrides/host_vars', __dir__)
 FileUtils.mkdir_p(OVERRIDE_DIR)
 
-# Read deploy SSH public key (must exist before vagrant up)
 PUBKEY_FILE = File.expand_path('../secrets/id_ed25519.pub', __dir__)
 abort "deploy public key missing at #{PUBKEY_FILE}" unless File.exist?(PUBKEY_FILE)
-DEPLOY_PUBKEY = File.read(PUBKEY_FILE).strip
+DEPLOY_PUBKEY_B64 = Base64.strict_encode64(File.read(PUBKEY_FILE).strip)
 
 Vagrant.configure("2") do |config|
   config.vm.box = "soc-lab/debian-12"
-  config.ssh.insert_key = false
+
+  # No SSH from Vagrant. The first-boot service inside the VM does the
+  # post-boot configuration; Ansible (from deploy.ps1) talks to each VM
+  # via its bridged IP after first-boot completes.
+  config.vm.communicator = :none
 
   specs.each do |hostname, spec|
     config.vm.define hostname do |vm|
-      vm.vm.hostname = hostname
-
       vm.vm.provider :virtualbox do |vb|
         vb.name   = hostname
         vb.memory = spec['ram']
@@ -72,31 +78,22 @@ Vagrant.configure("2") do |config|
                         '--medium', extra_disk]
         end
 
+        # Inject per-VM config as SMBIOS Type 11 OEM strings. The Packer-baked
+        # /usr/local/sbin/soc-first-boot.sh reads them via dmidecode -t 11.
+        # Format chosen to be greppable inside the script:
+        #   Ex0: "soc-hostname=NAME soc-ip=N.N.N.N soc-mode=dr|isolated"
+        #   Ex1: "soc-pubkey_b64=BASE64..."
+        oem0 = "soc-hostname=#{hostname} soc-ip=#{spec['ip']} soc-mode=#{MODE}"
+        oem1 = "soc-pubkey_b64=#{DEPLOY_PUBKEY_B64}"
+        vb.customize ['setextradata', :id,
+                      'VBoxInternal/Devices/pcbios/0/Config/DmiOEMVendorEx0', oem0]
+        vb.customize ['setextradata', :id,
+                      'VBoxInternal/Devices/pcbios/0/Config/DmiOEMVendorEx1', oem1]
+
         config_for_mode.apply_nics(vb, spec)
       end
 
-      # First-boot shell provisioner: install deploy key + configure static IP on eth1.
-      # The Packer image sets net.ifnames=0 so the second NIC is reliably eth1.
-      vm.vm.provision "shell", inline: <<-SHELL, env: { 'DEPLOY_PUBKEY' => DEPLOY_PUBKEY }
-        set -e
-        echo "$DEPLOY_PUBKEY" >> /root/.ssh/authorized_keys
-        sort -u /root/.ssh/authorized_keys -o /root/.ssh/authorized_keys
-        chmod 0600 /root/.ssh/authorized_keys
-        cat > /etc/network/interfaces.d/eth1 <<EOF
-auto eth1
-iface eth1 inet static
-  address #{spec['ip']}
-  netmask 255.255.255.0
-EOF
-        if [ "#{MODE}" = "dr" ]; then
-          cat >> /etc/network/interfaces.d/eth1 <<EOF
-  gateway 192.168.1.1
-  dns-nameservers 192.168.1.1
-EOF
-        fi
-        ifup eth1 || systemctl restart networking
-      SHELL
-
+      # Write Ansible inventory override (ansible_host = bridged IP)
       override_path = File.join(OVERRIDE_DIR, hostname)
       FileUtils.mkdir_p(override_path)
       File.write(File.join(override_path, 'bootstrap.yml'),
