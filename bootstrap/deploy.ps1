@@ -208,9 +208,110 @@ function Invoke-Preflight {
 
   Write-Step "preflight: PASS"
 }
-function Invoke-PhaseImage   { Write-Step "phase image: not yet implemented (Task 1B-10)" }
-function Invoke-PhaseVms     { Write-Step "phase vms: not yet implemented (Task 1B-10)" }
-function Invoke-PhaseConverge{ Write-Step "phase converge: not yet implemented (Task 1B-10)" }
+function Invoke-PhaseImage {
+  Write-Step "phase image: building Debian 12 golden box"
+
+  $packerDir = Join-Path $script:BootstrapRoot 'packer'
+  $boxFile   = Join-Path $packerDir 'soc-lab-debian-12.box'
+  $hashFile  = Join-Path $packerDir 'soc-lab-debian-12.box.sha'
+
+  # Source hash: sha256 of all packer/ files except outputs and the box itself
+  $srcFiles = Get-ChildItem -Path $packerDir -Recurse -File |
+    Where-Object {
+      $_.FullName -notmatch '\.(box|sha)$' -and
+      $_.FullName -notmatch 'output-' -and
+      $_.FullName -notmatch 'packer_cache'
+    } |
+    Sort-Object FullName
+  $combined = ($srcFiles | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash }) -join "`n"
+  $tmp = [System.IO.Path]::GetTempFileName()
+  [System.IO.File]::WriteAllText($tmp, $combined, [System.Text.UTF8Encoding]::new($false))
+  $currentHashStr = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
+  Remove-Item $tmp -Force
+
+  if ((Test-Path $boxFile) -and (Test-Path $hashFile) -and -not $ForceImage) {
+    $storedHash = (Get-Content $hashFile -Raw).Trim()
+    if ($storedHash -eq $currentHashStr) {
+      Write-Step "  image up to date (hash matches) - skipping build. Use -ForceImage to override."
+      return
+    }
+    Write-Step "  source changed since last build - rebuilding"
+  }
+
+  Push-Location $packerDir
+  try {
+    & packer init .
+    if ($LASTEXITCODE -ne 0) { Write-Fail "packer init failed" }
+    & packer build -force .
+    if ($LASTEXITCODE -ne 0) { Write-Fail "packer build failed" }
+  } finally {
+    Pop-Location
+  }
+
+  if (-not (Test-Path $boxFile)) { Write-Fail "packer reported success but .box not found" }
+  Set-Content -LiteralPath $hashFile -Value $currentHashStr -Encoding ascii -NoNewline
+  Write-Step "  image built, hash recorded"
+
+  & vagrant box add --force soc-lab/debian-12 $boxFile
+  if ($LASTEXITCODE -ne 0) { Write-Fail "vagrant box add failed" }
+}
+
+function Invoke-PhaseVms {
+  Write-Step "phase vms: vagrant up"
+
+  $vagrantDir = Join-Path $script:BootstrapRoot 'vagrant'
+  Push-Location $vagrantDir
+  try {
+    $env:SOC_MODE    = $Mode
+    $env:SOC_HOSTS   = $Hosts
+    $env:SOC_PROFILE = $Profile
+
+    $args = @('up', '--no-provision')
+    if ($Hosts) { $args += ($Hosts.Split(',') | ForEach-Object { $_.Trim() }) }
+
+    & vagrant @args
+    if ($LASTEXITCODE -ne 0) { Write-Fail "vagrant up failed" }
+
+    & vagrant provision
+    if ($LASTEXITCODE -ne 0) { Write-Fail "vagrant provision failed" }
+  } finally {
+    Pop-Location
+  }
+
+  Write-Step "  VMs up - SSH-reachable on per-VM IPs"
+}
+
+function Invoke-PhaseConverge {
+  Write-Step "phase converge: ansible-playbook site.yml"
+
+  if (-not (Get-Command ansible-playbook -ErrorAction SilentlyContinue)) {
+    Write-Fail "ansible-playbook not in PATH. Install via 'pip install ansible-core>=2.15' or run convergence remotely from the new .120 control node."
+  }
+
+  $repoRoot     = Split-Path -Parent $script:BootstrapRoot
+  $invPrimary   = Join-Path $repoRoot 'ansible/inventory/hosts.yml'
+  $invOverrides = Join-Path $script:BootstrapRoot '.vagrant/ansible-overrides'
+
+  if (-not (Test-Path $invPrimary))   { Write-Fail "primary Ansible inventory missing at $invPrimary" }
+  if (-not (Test-Path $invOverrides)) { Write-Fail "inventory overrides not generated - did vms phase run?" }
+
+  $vaultPass = Join-Path $script:BootstrapRoot 'secrets/vault_pass.txt'
+  $sshKey    = Join-Path $script:BootstrapRoot 'secrets/id_ed25519'
+  $playbook  = Join-Path $repoRoot 'ansible/playbooks/site.yml'
+
+  $argList = @(
+    $playbook,
+    '-i', $invPrimary,
+    '-i', $invOverrides,
+    '--vault-password-file', $vaultPass,
+    '--private-key', $sshKey
+  )
+  if ($Hosts) { $argList += @('--limit', $Hosts) }
+
+  & ansible-playbook @argList
+  if ($LASTEXITCODE -ne 0) { Write-Fail "ansible-playbook failed" }
+  Write-Step "  converge complete"
+}
 function Invoke-PhaseRestore { Write-Step "phase restore: no-op in Phase 1B (ships in Phase 2)" }
 
 Write-Step "deploy.ps1 starting - Mode=$Mode Phase=$Phase Hosts='$Hosts' Profile=$Profile"
