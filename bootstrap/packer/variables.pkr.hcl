@@ -48,5 +48,8 @@ variable "ssh_password" {
 
 variable "output_directory" {
   type    = string
-  default = "output-virtualbox-iso"
+  # MUST be outside OneDrive on .13 to avoid OneDrive auto-sync grabbing the
+  # .vdi while VBox writes to it (causes kernel soft-lockup during Debian
+  # installer partitioner phase). Build #2 succeeded by luck; #3/#4/#5 stalled.
+  default = "C:/temp/packer-soc-output"
 }
