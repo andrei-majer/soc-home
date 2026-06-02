@@ -1,0 +1,46 @@
+# bootstrap/vagrant/specs.yml
+# Per-VM resource specs. Hostnames MUST match ansible/inventory/hosts.yml.
+# Defaults below mirror the documented .15 allocations. Adjust after first
+# deploy if actual .15 settings differ.
+
+suricata-120:
+  ip: 192.168.1.120
+  ram: 8192        # MB
+  cpu: 4
+  disk: 60         # GB (Vagrant attaches second disk if >20)
+  monitoring_nic: true   # Adds second adapter, promiscuous "Allow All" for SPAN/IDS
+
+elk-133:
+  ip: 192.168.1.133
+  ram: 16384
+  cpu: 4
+  disk: 80
+  monitoring_nic: false
+
+opencti-135:
+  ip: 192.168.1.135
+  ram: 8192
+  cpu: 4
+  disk: 60
+  monitoring_nic: false
+
+tpot-hive-130:
+  ip: 192.168.1.130
+  ram: 12288
+  cpu: 4
+  disk: 100
+  monitoring_nic: false
+
+tpot-sensor-125:
+  ip: 192.168.1.125
+  ram: 8192
+  cpu: 2
+  disk: 60
+  monitoring_nic: false
+
+fileserver-140:
+  ip: 192.168.1.140
+  ram: 2048
+  cpu: 2
+  disk: 20
+  monitoring_nic: false
