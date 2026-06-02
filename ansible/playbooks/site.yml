@@ -16,6 +16,7 @@
   hosts: suricata-120
   roles:
     - suricata
+    - backups
 
 # Play 3: ELK/SIEM host (.133)
 - name: ELK host
@@ -24,12 +25,14 @@
     - elk
     - wazuh-manager
     - misp
+    - backups
 
 # Play 4: OpenCTI host (.135)
 - name: OpenCTI host
   hosts: opencti-135
   roles:
     - opencti
+    - backups
 
 # Play 5: T-Pot backup (pull-only, no changes pushed)
 - name: T-Pot config backup

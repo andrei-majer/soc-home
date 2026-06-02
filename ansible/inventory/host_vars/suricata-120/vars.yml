@@ -1,0 +1,6 @@
+---
+# soc-ansible/inventory/host_vars/suricata-120/vars.yml
+# Non-secret host vars. Secrets stay in vault.yml.
+
+backup_enable_velociraptor: true
+backup_enable_grafana: true

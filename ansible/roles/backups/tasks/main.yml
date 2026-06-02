@@ -1,0 +1,66 @@
+---
+# soc-ansible/roles/backups/tasks/main.yml
+- name: Ensure backup base directory exists
+  ansible.builtin.file:
+    path: "{{ backup_base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Ensure per-service backup directories exist
+  ansible.builtin.file:
+    path: "{{ backup_base_dir }}/{{ item.svc }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - { svc: misp, enabled: "{{ backup_enable_misp }}" }
+    - { svc: opencti, enabled: "{{ backup_enable_opencti }}" }
+    - { svc: wazuh, enabled: "{{ backup_enable_wazuh }}" }
+    - { svc: kibana, enabled: "{{ backup_enable_kibana }}" }
+    - { svc: velociraptor, enabled: "{{ backup_enable_velociraptor }}" }
+    - { svc: grafana, enabled: "{{ backup_enable_grafana }}" }
+  when: item.enabled | bool
+
+- name: Deploy backup scripts
+  ansible.builtin.copy:
+    src: "{{ item.script }}"
+    dest: "/usr/local/sbin/{{ item.script }}"
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - { script: misp-backup.sh, enabled: "{{ backup_enable_misp }}" }
+    - { script: opencti-backup.sh, enabled: "{{ backup_enable_opencti }}" }
+    - { script: wazuh-backup.sh, enabled: "{{ backup_enable_wazuh }}" }
+    - { script: kibana-backup.sh, enabled: "{{ backup_enable_kibana }}" }
+    - { script: velociraptor-backup.sh, enabled: "{{ backup_enable_velociraptor }}" }
+    - { script: grafana-backup.sh, enabled: "{{ backup_enable_grafana }}" }
+  when: item.enabled | bool
+
+- name: Install nightly cron for daily backups
+  ansible.builtin.cron:
+    name: "backup-{{ item.svc }}"
+    user: root
+    minute: "{{ backup_cron_minute }}"
+    hour: "{{ backup_cron_hour }}"
+    job: "/usr/local/sbin/{{ item.script }}"
+  loop:
+    - { svc: misp, script: misp-backup.sh, enabled: "{{ backup_enable_misp }}" }
+    - { svc: wazuh, script: wazuh-backup.sh, enabled: "{{ backup_enable_wazuh }}" }
+    - { svc: kibana, script: kibana-backup.sh, enabled: "{{ backup_enable_kibana }}" }
+    - { svc: velociraptor, script: velociraptor-backup.sh, enabled: "{{ backup_enable_velociraptor }}" }
+    - { svc: grafana, script: grafana-backup.sh, enabled: "{{ backup_enable_grafana }}" }
+  when: item.enabled | bool
+
+- name: Install weekly cron for OpenCTI (Sunday 03:00)
+  ansible.builtin.cron:
+    name: "backup-opencti"
+    user: root
+    minute: "0"
+    hour: "{{ backup_opencti_weekly_hour }}"
+    weekday: "{{ backup_opencti_weekly_dow }}"
+    job: "/usr/local/sbin/opencti-backup.sh"
+  when: backup_enable_opencti | bool

@@ -1,0 +1,5 @@
+---
+# soc-ansible/inventory/host_vars/elk-133/vars.yml
+backup_enable_misp: true
+backup_enable_wazuh: true
+backup_enable_kibana: true
