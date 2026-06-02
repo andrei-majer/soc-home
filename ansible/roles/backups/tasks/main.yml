@@ -40,12 +40,13 @@
     - { script: grafana-backup.sh, enabled: "{{ backup_enable_grafana }}" }
   when: item.enabled | bool
 
-- name: Install nightly cron for daily backups
+- name: Install monthly cron for backups (1st of month, 02:00)
   ansible.builtin.cron:
     name: "backup-{{ item.svc }}"
     user: root
     minute: "{{ backup_cron_minute }}"
     hour: "{{ backup_cron_hour }}"
+    day: "{{ backup_cron_day }}"
     job: "/usr/local/sbin/{{ item.script }}"
   loop:
     - { svc: misp, script: misp-backup.sh, enabled: "{{ backup_enable_misp }}" }
@@ -55,12 +56,12 @@
     - { svc: grafana, script: grafana-backup.sh, enabled: "{{ backup_enable_grafana }}" }
   when: item.enabled | bool
 
-- name: Install weekly cron for OpenCTI (Sunday 03:00)
+- name: Install monthly cron for OpenCTI (1st of month, 03:00)
   ansible.builtin.cron:
     name: "backup-opencti"
     user: root
     minute: "0"
-    hour: "{{ backup_opencti_weekly_hour }}"
-    weekday: "{{ backup_opencti_weekly_dow }}"
+    hour: "{{ backup_opencti_cron_hour }}"
+    day: "{{ backup_cron_day }}"
     job: "/usr/local/sbin/opencti-backup.sh"
   when: backup_enable_opencti | bool

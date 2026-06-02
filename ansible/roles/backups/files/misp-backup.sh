@@ -10,7 +10,7 @@ TS=$(date +%Y%m%d-%H%M%S)
 WORK=$(mktemp -d)
 TARGET="${BACKUP_DIR}/${SERVICE}-${TS}.tar.gz"
 LOG=/var/log/${SERVICE}-backup.log
-RETENTION_DAYS=7
+RETENTION_DAYS=180
 
 log()  { echo "[$(date +%FT%T)] $*" | tee -a "${LOG}"; }
 cleanup() {

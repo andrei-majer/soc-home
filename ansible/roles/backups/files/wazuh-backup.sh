@@ -9,7 +9,7 @@ BACKUP_DIR=/backup/${SERVICE}
 TS=$(date +%Y%m%d-%H%M%S)
 TARGET="${BACKUP_DIR}/${SERVICE}-${TS}.tar.gz"
 LOG=/var/log/${SERVICE}-backup.log
-RETENTION_DAYS=7
+RETENTION_DAYS=180
 OSSEC=/var/ossec
 
 PATHS=(

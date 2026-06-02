@@ -11,7 +11,7 @@ TS=$(date +%Y%m%d-%H%M%S)
 WORK=$(mktemp -d)
 TARGET="${BACKUP_DIR}/${SERVICE}-${TS}.tar.gz"
 LOG=/var/log/${SERVICE}-backup.log
-RETENTION_DAYS=35
+RETENTION_DAYS=180
 COMPOSE_DIR=/opt/opencti
 VOLUMES=(opencti_esdata opencti_s3data opencti_redisdata opencti_amqpdata)
 

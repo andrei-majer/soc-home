@@ -10,7 +10,7 @@ BACKUP_DIR=/backup/${SERVICE}
 TS=$(date +%Y%m%d-%H%M%S)
 TARGET="${BACKUP_DIR}/${SERVICE}-${TS}.ndjson.gz"
 LOG=/var/log/${SERVICE}-backup.log
-RETENTION_DAYS=7
+RETENTION_DAYS=180
 
 KIBANA_URL=${KIBANA_URL:-http://localhost:5601}
 

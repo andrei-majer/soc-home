@@ -1,11 +1,14 @@
 ---
 # soc-ansible/roles/backups/defaults/main.yml
 backup_base_dir: /backup
-backup_retention_daily: 7
-backup_retention_weekly: 4
+backup_retention_days: 180
 backup_log_dir: /var/log
-backup_cron_hour: 2          # nightly 02:00 local
+
+# Monthly schedule: 1st of every month at 02:00 local (OpenCTI at 03:00)
 backup_cron_minute: 0
+backup_cron_hour: 2
+backup_cron_day: "1"
+backup_opencti_cron_hour: 3
 
 # Per-service flags (overridden in host_vars when host owns the data)
 backup_enable_misp: false
@@ -14,7 +17,3 @@ backup_enable_wazuh: false
 backup_enable_kibana: false
 backup_enable_velociraptor: false
 backup_enable_grafana: false
-
-# OpenCTI requires brief stop - schedule weekly to minimize service impact
-backup_opencti_weekly_dow: 0  # Sunday
-backup_opencti_weekly_hour: 3
