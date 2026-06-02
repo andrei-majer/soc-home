@@ -1,0 +1,9 @@
+# Bootstrap (Phase 1B+)
+bootstrap/secrets/*
+!bootstrap/secrets/.gitkeep
+bootstrap/packer/output-*/
+bootstrap/packer/*.box
+bootstrap/packer/*.box.sha
+bootstrap/.vagrant/
+bootstrap/.deploy-config.local
+bootstrap/logs/
