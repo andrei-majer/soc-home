@@ -61,12 +61,24 @@ Build #2 (2026-06-02) succeeded once in ~16 min; builds #3 and #4 each timed
 out. Same root cause blocks `vagrant ssh` / raw `ssh` after `vagrant up`:
 TCP handshake completes, banner never arrives.
 
-**Suspected: Tailscale on .13 interferes with VBox NAT loopback.**
-`Tailscale Tunnel` adapter present + active on .13 (MTU 65535). Tailscale's
-TUN driver hooks the Windows network stack and can intercept connections to
-127.0.0.1. Vagrant + Packer both use 127.0.0.1:<NAT-forward-port> for SSH.
-Build #2 succeeded because... unclear (Tailscale was running then too).
-Possibly a Defender scan or system load racing with the SSH banner emit.
+**Tested 2026-06-02: not Tailscale, not OneDrive, not ssh.socket.**
+Investigated each candidate on .13:
+- Tailscale tunnel down (`tailscale down`) → still hangs
+- OneDrive output dir moved outside `OneDrive/` → build succeeds (#6), but
+  `vagrant up` afterwards still hangs at banner
+- Packer image rebuilt with `ssh.socket` masked + `ssh.service` forced +
+  UseDNS/GSSAPI off → still hangs
+- Raw TCP probe to `127.0.0.1:2222` shows TCP handshake completes (Established +
+  CloseWait in `Get-NetTCPConnection`) but no bytes ever transit
+
+**Root cause on .13 is the VBox NAT engine's loopback handling.** Build #6
+succeeded — Packer's own SSH-via-NAT worked end-to-end (used a high random
+port). But `vagrant up` afterwards (using port 2222 by default) hits the
+banner timeout. Several candidates remain:
+- Npcap loopback adapter (visible in `Get-NetAdapter`) intercepts 127.0.0.1
+- Hyper-V virtual switch routes loopback differently
+- Defender real-time scan hits some VBox NAT process file
+- VBox kernel driver state corrupted after several failed builds (needs reboot)
 
 **Current design (committed in this branch) avoids the runtime path that was
 failing:**
