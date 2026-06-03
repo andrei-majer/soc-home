@@ -70,3 +70,9 @@ zeek_log_dir: /opt/zeek/logs
 zeek_interface: enp0s8
 zeek_log_expire_days: 7
 grafana_zeek_es_url: "http://192.168.1.133:9200"
+
+# AF_PACKET capture tuning (added 2026-06-03 to fix ~60% kernel drops on .120 SPAN)
+suricata_af_packet_ring_size: 200000
+suricata_af_packet_block_size: 1048576
+suricata_max_pending_packets: 8192
+suricata_set_cpu_affinity: true
