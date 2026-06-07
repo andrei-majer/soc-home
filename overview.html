@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOC Home Lab — High-Level Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070a0d;
+    --bg-grid:#0c1117;
+    --panel:#0e141b;
+    --panel-2:#111922;
+    --panel-3:#162029;
+    --line:#1d2731;
+    --line-bright:#27343f;
+    --ink:#c9d4de;
+    --ink-bright:#e6ecf2;
+    --ink-dim:#7d8b97;
+    --ink-faint:#52606b;
+    --ok:#3ddc84;
+    --ok-glow:rgba(61,220,132,.35);
+    --warn:#ffb454;
+    --fail:#ff5c6c;
+    --info:#4dc4ff;
+    --accent:#3ddc84;
+    --mono:'JetBrains Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+    --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-weight:300;
+    line-height:1.65;
+    font-size:15.5px;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      linear-gradient(var(--bg-grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--bg-grid) 1px,transparent 1px);
+    background-size:34px 34px;
+    background-position:-1px -1px;
+    min-height:100vh;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(ellipse 80% 60% at 50% 0%,transparent 40%,rgba(0,0,0,.55) 100%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.025;
+    background:repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 3px);
+  }
+
+  .wrap{max-width:1200px;margin:0 auto;padding:48px 32px 80px;position:relative;z-index:2}
+
+  /* ============ HERO ============ */
+  .hero{
+    border:1px solid var(--line-bright);
+    background:linear-gradient(180deg,#0c1218,#0a0e13);
+    padding:38px 40px 32px;
+    margin-bottom:42px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--ok) 30%,var(--ok) 70%,transparent);
+    opacity:.7;
+  }
+  .hero .tag{
+    font-family:var(--mono);font-size:11px;letter-spacing:2.5px;color:var(--ok);
+    text-transform:uppercase;font-weight:700;margin-bottom:14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .hero .tag .blink{
+    width:8px;height:8px;background:var(--ok);border-radius:50%;
+    box-shadow:0 0 10px var(--ok-glow);animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .hero h1{
+    font-family:var(--sans);font-weight:600;font-size:36px;letter-spacing:-1px;
+    color:var(--ink-bright);line-height:1.15;margin-bottom:12px;
+  }
+  .hero .sub{
+    color:var(--ink-dim);font-size:16px;font-weight:300;max-width:760px;
+  }
+
+  /* stats strip */
+  .stats{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:1px;
+    margin-top:34px;background:var(--line);border:1px solid var(--line);
+  }
+  .stat{background:var(--panel);padding:18px 16px;text-align:center}
+  .stat .n{
+    font-family:var(--mono);font-weight:800;font-size:22px;color:var(--ok);
+    display:block;line-height:1.2;
+  }
+  .stat .l{
+    font-family:var(--mono);font-size:10px;color:var(--ink-faint);
+    letter-spacing:1.2px;text-transform:uppercase;margin-top:6px;display:block;
+  }
+  @media (max-width:780px){.stats{grid-template-columns:repeat(3,1fr)}}
+
+  /* ============ SECTIONS ============ */
+  section{margin-bottom:48px}
+  .sec-head{
+    display:flex;align-items:baseline;gap:14px;
+    margin-bottom:22px;padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
+  .sec-head .idx{
+    font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ok);
+    letter-spacing:1.5px;
+  }
+  .sec-head h2{
+    font-family:var(--sans);font-weight:600;font-size:22px;color:var(--ink-bright);
+    letter-spacing:-.3px;
+  }
+  .sec-head .meta{
+    margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-faint);
+    letter-spacing:1px;
+  }
+
+  p{color:var(--ink);margin-bottom:14px}
+  p strong{color:var(--ink-bright);font-weight:500}
+  code{
+    font-family:var(--mono);font-size:13px;background:var(--panel-2);
+    color:var(--ok);padding:1px 6px;border-radius:2px;border:1px solid var(--line);
+  }
+
+  /* ============ DEFENSE LAYERS ============ */
+  .layers{display:flex;flex-direction:column;gap:10px}
+  .layer{
+    display:grid;grid-template-columns:64px 200px 1fr 90px;align-items:center;
+    background:var(--panel);border:1px solid var(--line);
+    padding:16px 20px;gap:18px;transition:border-color .15s;
+  }
+  .layer:hover{border-color:var(--line-bright)}
+  .layer .num{
+    font-family:var(--mono);font-weight:800;font-size:24px;color:var(--ok-glow);
+    text-align:center;
+  }
+  .layer .name{
+    font-family:var(--mono);font-weight:700;font-size:13px;color:var(--ink-bright);
+    letter-spacing:.5px;text-transform:uppercase;
+  }
+  .layer .desc{color:var(--ink);font-size:14px;line-height:1.55}
+  .layer .desc b{color:var(--ink-bright);font-weight:500}
+  .layer .badge{
+    font-family:var(--mono);font-size:10px;letter-spacing:1px;
+    text-align:center;padding:4px 8px;border:1px solid var(--line-bright);
+    color:var(--ink-dim);text-transform:uppercase;
+  }
+  @media (max-width:780px){
+    .layer{grid-template-columns:48px 1fr;gap:14px}
+    .layer .name{grid-column:2}
+    .layer .desc{grid-column:1/-1;padding-top:6px;border-top:1px dashed var(--line)}
+    .layer .badge{display:none}
+  }
+
+  /* ============ STACK GRID ============ */
+  .stack{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .card{
+    background:var(--panel);border:1px solid var(--line);padding:18px 20px;
+  }
+  .card h3{
+    font-family:var(--mono);font-size:11px;letter-spacing:1.8px;
+    color:var(--ok);text-transform:uppercase;font-weight:700;
+    margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--line);
+  }
+  .card ul{list-style:none;padding:0}
+  .card li{
+    color:var(--ink);font-size:13.5px;padding:5px 0;line-height:1.5;
+    display:flex;gap:10px;
+  }
+  .card li::before{
+    content:"▸";color:var(--ok);font-family:var(--mono);
+    font-size:11px;flex:none;margin-top:3px;
+  }
+  .card li b{color:var(--ink-bright);font-weight:500}
+  @media (max-width:780px){.stack{grid-template-columns:1fr}}
+
+  /* ============ FLOW DIAGRAM ============ */
+  .flow{
+    background:var(--panel);border:1px solid var(--line);padding:24px 28px;
+    font-family:var(--mono);font-size:12.5px;line-height:1.9;
+    color:var(--ink);overflow-x:auto;white-space:pre;
+  }
+  .flow .h{color:var(--ok);font-weight:700}
+  .flow .a{color:var(--info)}
+  .flow .w{color:var(--warn)}
+  .flow .d{color:var(--ink-faint)}
+
+  /* ============ HIGHLIGHTS ============ */
+  .highlights{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .hl{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);border-left:3px solid var(--ok);
+    padding:16px 20px;
+  }
+  .hl .t{
+    font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:var(--ok);
+    text-transform:uppercase;font-weight:700;margin-bottom:8px;
+  }
+  .hl .b{color:var(--ink);font-size:14px;line-height:1.55}
+  .hl .b b{color:var(--ink-bright);font-weight:500}
+  @media (max-width:780px){.highlights{grid-template-columns:1fr}}
+
+  /* ============ FOOTER ============ */
+  footer{
+    margin-top:60px;padding-top:24px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;font-family:var(--mono);
+    font-size:11px;color:var(--ink-faint);letter-spacing:.5px;
+  }
+  footer a{color:var(--info);text-decoration:none}
+  footer a:hover{color:var(--ok)}
+  @media (max-width:600px){footer{flex-direction:column;gap:6px}}
+
+  /* prompt line */
+  .prompt{
+    font-family:var(--mono);color:var(--ink-faint);font-size:12px;
+    margin-bottom:8px;letter-spacing:.5px;
+  }
+  .prompt .p{color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="tag"><span class="blink"></span>SOC Home Lab · Operational Overview</div>
+    <h1>A self-hosted Security Operations Centre,<br>built like production.</h1>
+    <p class="sub">
+      Detection, threat intelligence, deception, forensics, and operations — all stitched
+      together, all captured as Infrastructure-as-Code. Running 24/7 on a single Windows 11
+      workstation at ~30 W idle.
+    </p>
+
+    <div class="stats">
+      <div class="stat"><span class="n">329k+</span><span class="l">IDS rules</span></div>
+      <div class="stat"><span class="n">47k+</span><span class="l">Blocked IPs</span></div>
+      <div class="stat"><span class="n">6</span><span class="l">Wazuh agents</span></div>
+      <div class="stat"><span class="n">11+1</span><span class="l">Honeypots</span></div>
+      <div class="stat"><span class="n">5</span><span class="l">TI connectors</span></div>
+      <div class="stat"><span class="n">&lt;5 min</span><span class="l">Edge ban</span></div>
+    </div>
+  </div>
+
+  <!-- USE CASE -->
+  <section id="usecase">
+    <div class="sec-head">
+      <span class="idx">01</span>
+      <h2>Use case</h2>
+      <span class="meta">why this exists</span>
+    </div>
+    <p class="prompt"><span class="p">$</span> soc@home:~# whoami</p>
+    <p>
+      End-to-end ownership of the same tooling SOC analysts and detection engineers use in
+      production. Real internet traffic, real alerts, real incidents — and the operational
+      discipline (IaC, drift detection, disaster recovery) to keep all of it healthy.
+    </p>
+    <p>
+      Concretely, the lab is used to <b>detect</b> intrusion attempts at multiple layers,
+      <b>investigate</b> them with full-packet capture and endpoint forensics, <b>enrich</b>
+      findings against curated threat intelligence, <b>share back</b> what's seen so the
+      intel loop is bidirectional, and <b>respond</b> by dropping confirmed offenders at the
+      network edge within minutes — without manual intervention.
+    </p>
+  </section>
+
+  <!-- DEFENSE IN DEPTH -->
+  <section id="defense">
+    <div class="sec-head">
+      <span class="idx">02</span>
+      <h2>Defense in depth — seven independent layers</h2>
+      <span class="meta">edge → inward</span>
+    </div>
+
+    <div class="layers">
+
+      <div class="layer">
+        <div class="num">01</div>
+        <div class="name">DNS</div>
+        <div class="desc">
+          <b>AdGuard Home</b> on the OpenWrt router blocks 47k+ ad/tracker/malware domains
+          before resolution. <b>Unbound</b> provides full DNSSEC recursion upstream — no
+          Cloudflare/Google/Quad9 dependency. DoT, DoQ, and DoH endpoints exposed.
+          DNS bypass (outbound :53, :853, known DoH IPs) firewalled — clients can't escape.
+        </div>
+        <div class="badge">EDGE</div>
+      </div>
+
+      <div class="layer">
+        <div class="num">02</div>
+        <div class="name">IP Reputation</div>
+        <div class="desc">
+          <b>BanIP</b> (nftables) drops 47k+ known-bad IPs at line rate from 5 feeds:
+          <b>Hagezi</b>, Spamhaus DROP, DShield, threat, threatview — IPv4 + IPv6.
+          SIEM detections feed back into this set via fail2ban, closing the loop.
+        </div>
+        <div class="badge">EDGE</div>
+      </div>
+
+      <div class="layer">
+        <div class="num">03</div>
+        <div class="name">Network IDS / NSM</div>
+        <div class="desc">
+          <b>Suricata 7</b> (329k+ rules, JA3/JA4, GeoIP, iprep) and <b>Zeek 8</b>
+          (protocol analysis, DNS NXDOMAIN-burst DGA detection) on a SPAN-mirrored port.
+          <b>Arkime</b> captures full PCAP for retrospective session replay.
+        </div>
+        <div class="badge">NETWORK</div>
+      </div>
+
+      <div class="layer">
+        <div class="num">04</div>
+        <div class="name">Host HIDS</div>
+        <div class="desc">
+          <b>Wazuh 4.14</b> across 8 agents (Linux servers, Windows workstation, honeypots,
+          canary, router). FIM, SCA compliance, CVE scanning cross-referenced with CISA KEV.
+          Custom rules for Zeek and canary log sources.
+        </div>
+        <div class="badge">ENDPOINT</div>
+      </div>
+
+      <div class="layer">
+        <div class="num">05</div>
+        <div class="name">Deception</div>
+        <div class="desc">
+          <b>T-Pot HIVE</b> (11 keep-list honeypots — Cowrie, Dionaea, Heralding,
+          Honeytrap, …) plus an <b>internal canary</b> (<code>fs1</code> — OpenCanary
+          banners across 8 protocols, fake SMB shares with plausible filenames, sinkhole
+          on 14 C2/exotic ports).
+        </div>
+        <div class="badge">TRAP</div>
+      </div>
+
+      <div class="layer">
+        <div class="num">06</div>
+        <div class="name">Threat Intelligence</div>
+        <div class="desc">
+          <b>MISP 2.5</b> aggregates 8 OSINT feeds. <b>OpenCTI 6.9</b> sits above with 5
+          connectors (MISP, MITRE ATT&amp;CK, URLhaus, ThreatFox, CISA KEV). A <b>TAXII
+          server</b> pushes live indicators back into Wazuh CDB rules every 30 minutes.
+        </div>
+        <div class="badge">INTEL</div>
+      </div>
+
+      <div class="layer">
+        <div class="num">07</div>
+        <div class="name">Response</div>
+        <div class="desc">
+          3 tier-matched Suricata alerts in 5 min → <b>fail2ban</b> → SSH → router's
+          <b>BanIP</b> set → packets dropped at the edge within 5 minutes end-to-end.
+          Alerts fan out to <b>ntfy</b> push (self-hosted) with per-(rule, source)
+          hourly dedup.
+        </div>
+        <div class="badge">ACTION</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- STACK -->
+  <section id="stack">
+    <div class="sec-head">
+      <span class="idx">03</span>
+      <h2>Stack</h2>
+      <span class="meta">what runs where</span>
+    </div>
+
+    <div class="stack">
+
+      <div class="card">
+        <h3>Edge — OpenWrt R7800</h3>
+        <ul>
+          <li><b>AdGuard Home</b> · LAN resolver, 47k blocked domains</li>
+          <li><b>Unbound</b> · DNSSEC recursive (lo:5335)</li>
+          <li><b>BanIP</b> · 47k entries · Hagezi + Spamhaus DROP + DShield + threat + threatview</li>
+          <li><b>nftables</b> · DNS-bypass firewalling, IoT VLAN isolation</li>
+          <li><b>Tailscale</b> · subnet router + exit node</li>
+          <li><b>soc-watchdog</b> · 5-min cron · survives full hypervisor loss</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Detection — IDS host (.120)</h3>
+        <ul>
+          <li><b>Suricata 7.0.10</b> · 329k rules · AF_PACKET workers</li>
+          <li><b>Zeek 8.0.6</b> · protocol logs · 38-panel Grafana dashboard</li>
+          <li><b>Arkime 5.8.3</b> · full PCAP capture</li>
+          <li><b>Filebeat + Promtail</b> · log shipping</li>
+          <li><b>Wazuh agent</b> · with Zeek notice + DNS NXDOMAIN-burst rules</li>
+          <li><b>fail2ban</b> · 3-strike response → router</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>SIEM &amp; storage — ELK host (.133)</h3>
+        <ul>
+          <li><b>Elasticsearch 8.x + Kibana</b> · Cyber Defense Center + SIEM Workbench</li>
+          <li><b>Logstash</b> · GeoIP enrich, CVE flatten, iprep normalise</li>
+          <li><b>Wazuh 4.14 manager + dashboard</b> · 8 agents</li>
+          <li><b>MISP 2.5</b> · 8 OSINT feeds · bidirectional Suricata sync</li>
+          <li><b>EveBox 0.24.0</b> · alert triage console</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Threat Intelligence — OpenCTI host (.135)</h3>
+        <ul>
+          <li><b>OpenCTI 6.9.28</b> · TIP above MISP · on-demand savestate</li>
+          <li><b>MISP connector</b> · 5-min sync</li>
+          <li><b>MITRE ATT&amp;CK</b> · full TTP framework</li>
+          <li><b>URLhaus · ThreatFox · CISA KEV</b> · live IOC feeds</li>
+          <li><b>TAXII 2.1 server</b> · feeds Wazuh CDB every 30 min</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Deception</h3>
+        <ul>
+          <li><b>T-Pot HIVE (.130)</b> · combined collector+sensor · 11 keep-list honeypots, ~39 containers</li>
+          <li><b>Internal canary (.140 / <code>fs1</code>)</b> · OpenCanary + fake SMB + sinkhole</li>
+          <li>Wazuh rules 1003xx · per-source dedup</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Forensics &amp; Observability</h3>
+        <ul>
+          <li><b>Velociraptor 0.75.6</b> · Linux + Windows endpoints · VQL hunting</li>
+          <li><b>Grafana</b> · Suricata + Snort + Zeek dashboards</li>
+          <li><b>Loki + Promtail</b> · real-time log tailing</li>
+          <li><b>alert-review CLI</b> · one-shot terminal context for any alert</li>
+          <li><b>Self-hosted ntfy</b> · mobile push with dedup</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- DATA FLOW -->
+  <section id="flow">
+    <div class="sec-head">
+      <span class="idx">04</span>
+      <h2>Data flow</h2>
+      <span class="meta">packet → alert → response</span>
+    </div>
+
+    <div class="flow">
+<span class="d">┌─ INGRESS ─────────────────────────────────────────────────────────────┐</span>
+
+  WAN  ──▶  <span class="h">OpenWrt</span>  ──▶  <span class="a">BanIP</span> drops 47k known-bad IPs at nftables
+            │
+            ├──▶  <span class="a">AdGuard Home</span> ──▶ <span class="a">Unbound (DNSSEC)</span>     <span class="d">[blocks 47k domains]</span>
+            │
+            └──▶  LAN clients
+
+<span class="d">└──────────────────────────────────────────────────────────────────────┘</span>
+
+<span class="d">┌─ DETECTION ───────────────────────────────────────────────────────────┐</span>
+
+  SPAN mirror ──▶  <span class="h">Suricata</span>  ──▶ EVE JSON ──▶ Filebeat ──▶ Logstash ──▶ ES
+                   <span class="h">Zeek</span>       ──▶ logs/*    ──▶ Filebeat ──▶ Logstash ──▶ ES
+                                                          └──▶ Promtail ──▶ Loki
+
+  Hosts        ──▶  <span class="h">Wazuh agents</span>  ──▶ Wazuh manager ──▶ ES + custom-ntfy
+  Honeypots    ──▶  T-Pot ES cluster
+  Canary       ──▶  OpenCanary + sinkhole logs ──▶ Wazuh ──▶ rules 1003xx
+
+<span class="d">└──────────────────────────────────────────────────────────────────────┘</span>
+
+<span class="d">┌─ INTEL LOOP ──────────────────────────────────────────────────────────┐</span>
+
+  External feeds ──▶  <span class="h">MISP</span>  ──▶ Suricata rules (6h refresh)
+                       ▲ │
+                       │ └──▶ <span class="h">OpenCTI</span> ──▶ TAXII ──▶ Wazuh CDB (30 min)
+                       │
+                       └──── Suricata sightings (hourly)
+
+<span class="d">└──────────────────────────────────────────────────────────────────────┘</span>
+
+<span class="d">┌─ RESPONSE ────────────────────────────────────────────────────────────┐</span>
+
+  Alert lvl ≥ 10        ──▶  <span class="a">ntfy push</span> (dedup)
+  3-strike trigger      ──▶  <span class="w">fail2ban</span> ──▶ SSH ──▶ router BanIP set
+                                                          └──▶ packet drop at edge
+                                                              <span class="d">[&lt; 5 min e2e]</span>
+
+<span class="d">└──────────────────────────────────────────────────────────────────────┘</span>
+    </div>
+  </section>
+
+  <!-- OPS -->
+  <section id="ops">
+    <div class="sec-head">
+      <span class="idx">05</span>
+      <h2>Operations</h2>
+      <span class="meta">infrastructure as code</span>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <h3>IaC repository</h3>
+        <ul>
+          <li><code>/opt/soc-ansible/</code> on .120 · public mirror <code>andrei-majer/soc-home</code></li>
+          <li><b>8 roles</b> (common, suricata, elk, wazuh-manager, misp, opencti, canary, tpot, openwrt)</li>
+          <li><b>7 ops playbooks</b> (health-check, ti-health, rule-update, es-cleanup, cert-renew, backup, restart-services)</li>
+          <li><b>Vault-encrypted</b> per-host secrets</li>
+          <li><b>ansible-lint clean</b> at <code>production</code> profile</li>
+          <li><b>Idempotent</b> — 0 changed / 0 failed on clean re-converge</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Daily loop</h3>
+        <ul>
+          <li>Morning <b>health-check</b>: service liveness, MISP rule age, OpenCTI/RabbitMQ flow</li>
+          <li>Freshness FAIL gates on <code>eve.json</code> and <code>conn.log</code></li>
+          <li>Disk WARN/FAIL thresholds (80% / 90%) on every host including router</li>
+          <li>Suricata loaded-rule count via <code>suricatasc -c dump-counters</code></li>
+          <li>Wazuh agent count drift assert</li>
+          <li>Canary services + listening port count</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Disaster recovery</h3>
+        <ul>
+          <li><b>Self-remediating disk-alert</b> — vacuum + gzip at 92%, ntfy push</li>
+          <li><code>journald</code> capped at 200 MB cluster-wide</li>
+          <li><b>Router-side <code>soc-watchdog</code></b> — independent monitor that survives full hypervisor loss</li>
+          <li><b>Monthly backups</b> — Ansible role + Windows OneDrive sync</li>
+          <li><b>git-bundle</b> snapshots of the IaC repo itself with vault password</li>
+          <li>Proven in a real outage (2026-05-31 disk-full incident → hardening now in IaC)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Bootstrap &amp; provisioning</h3>
+        <ul>
+          <li><b>Packer + Vagrant</b> — base Debian image bake</li>
+          <li><b><code>deploy.ps1</code></b> — Windows-side orchestrator</li>
+          <li><b>Repacked Velociraptor MSI</b> for zero-touch Windows agent enrolment</li>
+          <li><b>Hypervisor tuning</b> codified — HVCI/VBS/WSL removal, virtio NIC + storage</li>
+          <li><b>Windows runbooks</b> for the bits Ansible can't reach (<code>.13</code> + <code>.15</code>)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <section id="highlights">
+    <div class="sec-head">
+      <span class="idx">06</span>
+      <h2>What makes this different from a tutorial lab</h2>
+      <span class="meta">load-bearing details</span>
+    </div>
+
+    <div class="highlights">
+      <div class="hl">
+        <div class="t">Closed-loop intel</div>
+        <div class="b">
+          Detection → sighting → enrichment → rule update completes without manual touch.
+          Suricata pushes sightings into MISP; OpenCTI pulls MISP and enriches; TAXII
+          ships indicators back to Wazuh; Wazuh escalates matches at severity 10.
+        </div>
+      </div>
+
+      <div class="hl">
+        <div class="t">Edge enforcement</div>
+        <div class="b">
+          Active response lives <b>on the router</b>, not on a host that could go down.
+          BanIP holds the line whether the SIEM is up or not — and the SIEM only adds
+          to it, never depends on it.
+        </div>
+      </div>
+
+      <div class="hl">
+        <div class="t">DR-tested IaC</div>
+        <div class="b">
+          A real disk-full outage exposed gaps; the resulting hardening
+          (self-remediating disk-alert, journald caps, router watchdog) is now committed.
+          IaC isn't a slide — it's how the lab gets restored.
+        </div>
+      </div>
+
+      <div class="hl">
+        <div class="t">Independent watchdog</div>
+        <div class="b">
+          Alerting that depends on the alerting host is not alerting. The router runs a
+          5-min cron that pings the hypervisor and IDS host and pushes ntfy on outage —
+          the only path that survives a full VM-stack loss.
+        </div>
+      </div>
+
+      <div class="hl">
+        <div class="t">Internal canary</div>
+        <div class="b">
+          <code>fs1</code> looks like a real fileserver: real Samba, plausible share names,
+          plausible filenames. Any touch is a high-confidence signal — distinct from
+          external honeypots that just measure internet noise.
+        </div>
+      </div>
+
+      <div class="hl">
+        <div class="t">Quiet by design</div>
+        <div class="b">
+          Aggressive hypervisor tuning (native VT-x, virtio everywhere, snapshot
+          consolidation, CPU pinning) keeps the full stack at <b>~30 W idle</b> on a
+          single workstation — near-silent, 24/7.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>SOC Home Lab · Andrei Majer · 2025–2026</span>
+    <span><a href="https://github.com/andrei-majer/soc-home">github.com/andrei-majer/soc-home</a></span>
+  </footer>
+
+</div>
+</body>
+</html>
