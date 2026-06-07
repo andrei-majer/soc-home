@@ -125,9 +125,9 @@ Latest snapshots known to the lab (kept up to date manually — these are *expec
 | `.120` config tarball | `soc-s-backup-20260402-121604.tar.gz` | 2026-04-02 | 5.6 MB |
 | `.120` config tarball (with binaries) | `soc-s-backup-20260329-092037.tar.gz` | 2026-03-29 | 242 MB |
 | `.133` config tarball | `soc-e-backup-20260329-095516.tar.gz` | 2026-03-29 | 891 KB |
-| SOC Ansible bundle | `soc-ansible-20260412-165801.bundle` | 2026-04-12 | 146 KB |
-| SOC Ansible untracked | `soc-ansible-untracked-20260412-165801.tar.gz` | 2026-04-12 | 70 MB |
-| Vault password | `vault_pass-20260412-165801.txt` | 2026-04-12 | 33 B |
+| SOC Ansible bundle | `soc-ansible-20260607-154706.bundle` | 2026-06-07 | 734 KB |
+| SOC Ansible untracked | `soc-ansible-untracked-20260607-154706.tar.gz` | 2026-06-07 | 70 MB |
+| Vault password | `vault_pass-20260607-154706.txt` | 2026-06-07 | 33 B |
 
 ---
 
