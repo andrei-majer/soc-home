@@ -94,10 +94,6 @@
         <log_format>json</log_format>
       </localfile>
       <localfile>
-        <location>{{ tpot_install_path }}/data/tanner/log/tanner_report.json</location>
-        <log_format>json</log_format>
-      </localfile>
-      <localfile>
         <location>{{ tpot_install_path }}/data/elasticpot/log/elasticpot.json</location>
         <log_format>json</log_format>
       </localfile>

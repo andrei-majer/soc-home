@@ -176,7 +176,6 @@
       - elk-133
       - opencti-135
       - tpot-hive-130
-      - tpot-sensor-125
   tasks:
     - name: Ensure log directory exists
       ansible.builtin.file:
