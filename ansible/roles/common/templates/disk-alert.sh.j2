@@ -13,7 +13,7 @@ note() { echo "$(date '+%F %T') $1" >> "$LOGFILE"; logger -t disk-alert -p local
 ntfy() {
     [ -z "$NTFY_TOPIC" ] && return 0
     curl -fsS -m 10 -H "Title: SOC disk: $HOST" -H "Priority: $2" \
-         -d "$1" "https://ntfy.sh/$NTFY_TOPIC" >/dev/null 2>&1 || true
+         -d "$1" "{{ ntfy_base_url }}/$NTFY_TOPIC" >/dev/null 2>&1 || true
 }
 
 # Highest-used real filesystem

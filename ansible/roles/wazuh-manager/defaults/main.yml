@@ -18,7 +18,7 @@ wazuh_systemd_timeout: 180
 
 # ---------- ntfy integration ----------
 wazuh_ntfy_topic: "{{ vault_ntfy_topic }}"
-wazuh_ntfy_hook_url: "http://192.168.1.135:8090/{{ wazuh_ntfy_topic }}"
+wazuh_ntfy_hook_url: "{{ ntfy_base_url }}/{{ wazuh_ntfy_topic }}"
 wazuh_ntfy_rule_ids: "100030,100031,100040,100041"
 
 # ---------- OpenCTI TAXII pull ----------

@@ -18,6 +18,10 @@ opencti_host: 192.168.1.135
 misp_host: 192.168.1.133
 router_host: 192.168.1.1
 
+ntfy_host: 192.168.1.120
+ntfy_port: 8090
+ntfy_base_url: "http://{{ ntfy_host }}:{{ ntfy_port }}"
+
 backup_dir: /opt/soc-ansible/backups
 
 ntp_server: "{{ router_host }}"
