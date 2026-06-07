@@ -99,6 +99,7 @@
 
 - name: Collect state from opencti-135
   hosts: opencti-135
+  ignore_unreachable: true
   gather_facts: false
   vars:
     ansible_shell_executable: /bin/bash

@@ -25,6 +25,7 @@
 
 - name: TI health — OpenCTI (.135)
   hosts: opencti-135
+  ignore_unreachable: true
   gather_facts: false
   vars:
     expected_connectors: [MITRE ATT&CK, ThreatFox, URLhaus, CISA KEV, MISP]

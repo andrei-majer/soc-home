@@ -10,10 +10,24 @@
       register: hv_ping
       changed_when: false
       failed_when: false
+    - name: Probe OpenCTI .135 SSH reachability (distinguishes running vs saved/off)
+      ansible.builtin.wait_for:
+        host: 192.168.1.135
+        port: 22
+        timeout: 3
+        state: started
+      register: opencti_probe
+      failed_when: false
+      changed_when: false
+      when: hv_ping.rc == 0
+    - name: Set opencti_vm_state fact
+      ansible.builtin.set_fact:
+        opencti_vm_state: "{{ 'running' if (opencti_probe.state | default('') == 'started') else 'saved' }}"
+      when: hv_ping.rc == 0
     - name: Abort early if hypervisor .15 is down
       ansible.builtin.fail:
         msg: >-
-          Hypervisor .15 is DOWN — every SOC VM (.120/.133/.135/.130) is
+          Hypervisor .15 is DOWN — every SOC VM (.120/.133/.130; .135 on-demand) is
           unreachable until it is back up. Recover: WoL .15 from .13 (magic packet
           to MAC B4:2E:99:34:9C:6B), wait ~2-3 min for the VMs to cold-boot, then
           re-run this health check.
@@ -139,6 +153,10 @@
       changed_when: false
 
 - name: Health check — OpenCTI host (.135)
+  vars:
+    opencti_vm_state: "{{ hostvars['localhost']['opencti_vm_state'] | default('unknown') }}"
+  any_errors_fatal: false
+  ignore_unreachable: true
   hosts: opencti-135
   gather_facts: true
   tasks:
@@ -284,7 +302,8 @@
   hosts: suricata-120
   gather_facts: false
   vars:
-    expected_vms: ['Suricata', 'ELK', 'T-Pot Hive', 'OpenCTi', 'OpenCanary']
+    opencti_vm_state: "{{ hostvars['localhost']['opencti_vm_state'] | default('unknown') }}"
+    expected_vms: ['Suricata', 'ELK', 'T-Pot Hive', 'OpenCanary']
   tasks:
     - name: Summary table
       ansible.builtin.debug:
@@ -314,13 +333,17 @@
           disk         : {{ hostvars['elk-133']['disk_pct_133']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {{ hostvars['elk-133']['disk_133']['stdout'] | default('n/a') }}
 
-          --- .135 opencti ---
-          {{ '[OK]  ' if hostvars['opencti-135']['svc_135']['stdout'] == 'active' else '[FAIL]' }} opencti svc
+          --- .135 opencti ({{ opencti_vm_state | default('unknown') }}) ---
+          {% if (opencti_vm_state | default('unknown')) == 'saved' %}
+          [SAVED] OpenCTI VM is in on-demand savestate mode — wake with opencti-wake.ps1 (.13) if needed
+          {% else %}
+          {{ '[OK]  ' if (hostvars['opencti-135']['svc_135'] is defined and hostvars['opencti-135']['svc_135']['stdout'] == 'active') else '[FAIL]' }} opencti svc
           containers   : {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') | trim }}
           {% set octi = (hostvars['opencti-135']['opencti_core_135']['stdout'] | default('-1 -1 -1 unknown')).split() %}
           core restarts: {{ octi[0] }} (up {{ octi[1] }}h, {{ octi[3] }}){{ ' [WARN] restart loop?' if (octi[3] != 'running') or ((octi[0] | int) > 2 and (octi[2] | int) >= 0 and (octi[2] | int) < 10) else '' }}
           disk         : {{ hostvars['opencti-135']['disk_pct_135']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {{ hostvars['opencti-135']['disk_135']['stdout'] | default('n/a') }}
+          {% endif %}
 
           --- T-Pot hosts ---
           {% for h in ['tpot-hive-130'] %}
@@ -367,7 +390,7 @@
       when: >
         hostvars['suricata-120']['svc_120']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0
         or hostvars['elk-133']['svc_133']['results'] | default([]) | selectattr('stdout', '!=', 'active') | list | length > 0
-        or hostvars['opencti-135']['svc_135']['stdout'] | default('') != 'active'
+        or ((opencti_vm_state | default('unknown')) == 'running' and hostvars['opencti-135']['svc_135']['stdout'] | default('') != 'active')
         or (hostvars['tpot-hive-130']['svc_tpot'] is defined and hostvars['tpot-hive-130']['svc_tpot']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
         or (hostvars['fileserver-140']['svc_140'] is defined and hostvars['fileserver-140']['svc_140']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
 
@@ -411,7 +434,6 @@
         'Suricata' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
         or 'ELK' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
         or 'T-Pot Hive' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
-        or 'OpenCTi' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
 
     - name: Fail if .15 C drive free space critically low
       ansible.builtin.fail:
@@ -424,7 +446,7 @@
       when: >
         (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 90
         or (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 90
-        or (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 90
+        or ((opencti_vm_state | default('unknown')) == 'running' and (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 90)
         or (hostvars['tpot-hive-130']['disk_pct_tpot'] is defined and (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | trim | int) >= 90)
         or (hostvars['router-1']['disk_pct_router'] is defined and (hostvars['router-1']['disk_pct_router']['stdout'] | trim | int) >= 90)
 
