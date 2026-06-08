@@ -362,12 +362,13 @@
   hosts: hypervisor-15
   gather_facts: false
   tasks:
-    - name: List running VMs (.15)
-      ansible.builtin.raw: '"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" list runningvms'
+    - name: List running VMs (.15)  # noqa: command-instead-of-module
+      ansible.builtin.command: VBoxManage list runningvms
       register: vms_15
       changed_when: false
-    - name: C drive free space GB (.15)
-      ansible.builtin.raw: 'powershell -NoProfile -Command "[math]::Round((Get-PSDrive C).Free/1GB,1)"'
+    - name: VM storage free GB (/mnt/vms on .15)
+      ansible.builtin.shell: |
+        df --output=avail /mnt/vms | tail -1 | awk '{printf "%.1f\n", $1/1024/1024}'
       register: disk_15
       changed_when: false
 
@@ -454,7 +455,7 @@
           {% for vm in expected_vms %}
           {{ '[OK]  ' if vm in running else '[FAIL]' }} {{ vm }}
           {% endfor %}
-          C: free      : {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 30 else '' }}
+          /mnt/vms free: {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 30 else '' }}
           ==========================================================
 
     - name: Fail if any service is down
@@ -508,9 +509,9 @@
         or 'ELK' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
         or 'T-Pot Hive' not in hostvars['hypervisor-15']['vms_15']['stdout'] | default('')
 
-    - name: Fail if .15 C drive free space critically low
+    - name: Fail if .15 /mnt/vms free space critically low
       ansible.builtin.fail:
-        msg: ".15 hypervisor C: free < 20 GB — VHD growth will starve all SOC VMs (WARN at 30 GB)"
+        msg: ".15 hypervisor /mnt/vms free < 20 GB — VDI growth will starve all SOC VMs (WARN at 30 GB)"
       when: (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 20
 
     - name: Fail if disk >= 90%
