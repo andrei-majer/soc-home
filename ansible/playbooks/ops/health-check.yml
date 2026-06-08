@@ -152,6 +152,79 @@
       failed_when: false
       changed_when: false
 
+    # ---------- Auto-remediation for wazuh-manager (opt-in via -e auto_remediate=true) ----------
+    # Safety: only fires when wazuh-manager is failed AND the box is otherwise healthy
+    # (ES API reachable, mem available, disk < 90%). A broader incident keeps this dormant.
+    - name: Auto-remediate wazuh-manager if failed (opt-in)
+      when:
+        - auto_remediate | default(false) | bool
+        - (svc_133.results | selectattr('item', 'equalto', 'wazuh-manager') | map(attribute='stdout') | first | trim) == 'failed'
+        - (disk_pct_133.stdout | default(99) | int) < 90
+        - (es_health_133.status | default(0)) == 200
+        - (ansible_memfree_mb | default(0) | int) > 1024
+      block:
+        - name: "[remediate] Stop wazuh-manager cleanly"
+          ansible.builtin.systemd:
+            name: wazuh-manager
+            state: stopped
+        - name: "[remediate] Kill any zombie wazuh-apid bound to :55000"
+          ansible.builtin.shell: |
+            set -e
+            pid=$(ss -tlnpH 'sport = :55000' 2>/dev/null | awk -F'pid=' '/python3/ {split($2,a,","); print a[1]}' | head -1)
+            if [ -n "$pid" ]; then
+              echo "killing zombie wazuh-apid pid=$pid"
+              kill -9 "$pid" 2>/dev/null || true
+              sleep 2
+            else
+              echo "no zombie apid"
+            fi
+          args:
+            executable: /bin/bash
+          register: kill_zombie
+          changed_when: "'killing' in kill_zombie.stdout"
+        - name: "[remediate] Wait for :55000 to fully release"
+          ansible.builtin.wait_for:
+            port: 55000
+            state: stopped
+            timeout: 30
+          failed_when: false
+        - name: "[remediate] Clear stale pidfiles and apid .failed marker"
+          ansible.builtin.shell: |
+            rm -f /var/ossec/var/run/*.pid /var/ossec/var/run/wazuh-apid.failed
+          args:
+            executable: /bin/bash
+          changed_when: true
+        - name: "[remediate] Reset systemd failed state"
+          ansible.builtin.command: systemctl reset-failed wazuh-manager
+          changed_when: true
+        - name: "[remediate] Start wazuh-manager"
+          ansible.builtin.systemd:
+            name: wazuh-manager
+            state: started
+        - name: "[remediate] Wait for API on :55000 (max 60s)"
+          ansible.builtin.wait_for:
+            port: 55000
+            timeout: 60
+        - name: "[remediate] Verify API responds (up to 6 retries × 5s)"
+          ansible.builtin.uri:
+            url: https://localhost:55000/
+            validate_certs: false
+            status_code: [200, 401]
+          register: post_remediate_api
+          retries: 6
+          delay: 5
+          until: post_remediate_api.status in [200, 401]
+        - name: "[remediate] Refresh wazuh-manager status for summary"  # noqa: command-instead-of-module
+          ansible.builtin.command: systemctl is-active wazuh-manager
+          register: wazuh_post_remediate
+          failed_when: false
+          changed_when: false
+        - name: "[remediate] Report"
+          ansible.builtin.debug:
+            msg: >-
+              wazuh-manager auto-remediated — service={{ wazuh_post_remediate.stdout | trim }},
+              api status={{ post_remediate_api.status }}
+
 - name: Health check — OpenCTI host (.135)
   vars:
     opencti_vm_state: "{{ hostvars['localhost']['opencti_vm_state'] | default('unknown') }}"
