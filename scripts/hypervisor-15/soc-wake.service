@@ -1,0 +1,11 @@
+[Unit]
+Description=Cold-boot all SOC VMs in the morning
+After=network.target
+
+[Service]
+Type=oneshot
+User=andrei
+ExecStart=/usr/local/bin/soc-wake.sh
+TimeoutStartSec=900
+StandardOutput=journal
+StandardError=journal

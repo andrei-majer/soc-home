@@ -1,0 +1,10 @@
+[Unit]
+Description=Trigger SOC VM wake at 06:00 daily
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+Unit=soc-wake.service
+
+[Install]
+WantedBy=timers.target
