@@ -371,6 +371,11 @@
         df --output=avail /mnt/vms | tail -1 | awk '{printf "%.1f\n", $1/1024/1024}'
       register: disk_15
       changed_when: false
+    - name: Encrypted storage free GB (/mnt/storage on .15)
+      ansible.builtin.shell: |
+        df --output=avail /mnt/storage | tail -1 | awk '{printf "%.1f\n", $1/1024/1024}'
+      register: disk_15_storage
+      changed_when: false
 
 - name: Print health summary and fail on issues
   hosts: suricata-120
@@ -456,6 +461,7 @@
           {{ '[OK]  ' if vm in running else '[FAIL]' }} {{ vm }}
           {% endfor %}
           /mnt/vms free: {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 30 else '' }}
+          /mnt/storage free: {{ hostvars['hypervisor-15']['disk_15_storage']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15_storage']['stdout'] | default('999') | trim | float) < 20 else '' }}
           ==========================================================
 
     - name: Fail if any service is down
@@ -513,6 +519,11 @@
       ansible.builtin.fail:
         msg: ".15 hypervisor /mnt/vms free < 20 GB — VDI growth will starve all SOC VMs (WARN at 30 GB)"
       when: (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 20
+
+    - name: Fail if .15 /mnt/storage free space critically low
+      ansible.builtin.fail:
+        msg: ".15 hypervisor /mnt/storage free < 10 GB (WARN at 20 GB)"
+      when: (hostvars['hypervisor-15']['disk_15_storage']['stdout'] | default('999') | trim | float) < 10
 
     - name: Fail if disk >= 90%
       ansible.builtin.fail:
