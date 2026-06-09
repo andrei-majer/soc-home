@@ -36,6 +36,24 @@ you want `OnCalendar=*-*-* HH:MM:SS` to refer to). On a fresh Ubuntu cloud
 image the default is UTC, which puts `23:00:00` at 02:00 local — set with
 `sudo timedatectl set-timezone Europe/Bucharest`.
 
+**SPAN NIC at boot.** The Suricata VM bridges its 2nd adapter to `enp4s0`
+(the Realtek port carrying the switch's SPAN mirror). Without an explicit
+netplan entry, `enp4s0` stays DOWN at boot and Suricata sees nothing.
+Append to `/etc/netplan/99-static-ip.yaml`:
+
+```yaml
+    enp4s0:
+      dhcp4: no
+      dhcp6: no
+      optional: true
+      link-local: []
+      accept-ra: false
+```
+
+Then `sudo netplan apply`. The interface comes up admin-UP without an IP;
+VirtualBox bridges into it directly. (`optional: true` keeps boot from
+hanging if the cable is unplugged.)
+
 ## VMs covered
 
 `Suricata` (.120), `ELK` (.133), `T-Pot Hive` (.130), `OpenCanary` (.140).

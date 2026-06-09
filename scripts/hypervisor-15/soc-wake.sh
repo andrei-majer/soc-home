@@ -12,6 +12,18 @@ PING_RETRIES=12
 PING_INTERVAL=15
 VBOX=/usr/bin/VBoxManage
 
+# Wait for vboxdrv to be available (boot race — module may load after the
+# timer fires when Persistent=true catches up a missed schedule).
+for i in $(seq 1 30); do
+  [ -c /dev/vboxdrv ] && break
+  echo "[$(date +%T)] waiting for /dev/vboxdrv (attempt $i)"
+  sleep 2
+done
+if [ ! -c /dev/vboxdrv ]; then
+  echo "FATAL: /dev/vboxdrv missing after 60s — aborting wake"
+  exit 1
+fi
+
 state_of() {
   "$VBOX" showvminfo "$1" --machinereadable 2>/dev/null \
     | awk -F= '/^VMState=/{print $2}' \
