@@ -1,0 +1,2 @@
+---
+ansible_become_password: "{{ vault_hypervisor_15_ssh_pass }}"
