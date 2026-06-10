@@ -172,6 +172,20 @@
     job: "{{ misp_push_script }}"
     user: root
 
+# ---------- GeoIP weekly update ----------
+
+- name: Deploy GeoIP weekly update cron
+  ansible.builtin.copy:
+    dest: /etc/cron.d/geoipupdate
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by Ansible (roles/suricata/tasks/main.yml)
+      # Update MaxMind GeoLite2 databases weekly (Wednesdays 06:30, after soc-wake 06:00)
+      # MaxMind releases updates on Tuesdays
+      30 6 * * 3 root /usr/bin/geoipupdate && systemctl restart arkimecapture suricata evebox
+
 # ---------- WAN IP updater ----------
 
 - name: Deploy WAN IP update script
