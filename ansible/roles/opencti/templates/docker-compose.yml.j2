@@ -99,7 +99,7 @@ services:
       - opencti
     deploy:
       mode: replicated
-      replicas: 3
+      replicas: 1
     restart: always
 
   connector-misp:
@@ -126,7 +126,7 @@ services:
       - MISP_IMPORT_FROM_DATE=2024-01-01
       - MISP_IMPORT_TAGS=
       - MISP_IMPORT_TAGS_NOT=
-      - MISP_INTERVAL=5
+      - MISP_INTERVAL=30
     restart: always
     depends_on:
       - opencti
@@ -161,7 +161,7 @@ services:
       - URLHAUS_CSV_URL=https://urlhaus.abuse.ch/downloads/csv_recent/
       - URLHAUS_IMPORT_OFFLINE=true
       - URLHAUS_THREATS_FROM_LABELS=true
-      - URLHAUS_INTERVAL=3
+      - URLHAUS_INTERVAL=60
     restart: always
     depends_on:
       - opencti
@@ -181,7 +181,7 @@ services:
       - THREATFOX_CREATE_INDICATORS=true
       - THREATFOX_CREATE_OBSERVABLES=true
       - THREATFOX_IMPORT_OFFLINE=true
-      - THREATFOX_INTERVAL=3
+      - THREATFOX_INTERVAL=60
       - THREATFOX_IOC_TO_IMPORT=ip:port,domain,url,md5_hash,sha256_hash
     restart: always
     depends_on:
