@@ -239,13 +239,13 @@
     <h1>A self-hosted Security Operations Centre,<br>built like production.</h1>
     <p class="sub">
       Detection, threat intelligence, deception, forensics, and operations — all stitched
-      together, all captured as Infrastructure-as-Code. Running 24/7 on a single Windows 11
-      workstation at ~30 W idle.
+      together, all captured as Infrastructure-as-Code. Running 24/7 on a single Ubuntu 24.04
+      workstation (i7-9700K · 64 GB · VirtualBox), SOC VMs on an automated nightly sleep/wake cycle.
     </p>
 
     <div class="stats">
-      <div class="stat"><span class="n">329k+</span><span class="l">IDS rules</span></div>
-      <div class="stat"><span class="n">47k+</span><span class="l">Blocked IPs</span></div>
+      <div class="stat"><span class="n">320k+</span><span class="l">IDS rules</span></div>
+      <div class="stat"><span class="n">52k+</span><span class="l">Blocked IPs</span></div>
       <div class="stat"><span class="n">6</span><span class="l">Wazuh agents</span></div>
       <div class="stat"><span class="n">11+1</span><span class="l">Honeypots</span></div>
       <div class="stat"><span class="n">5</span><span class="l">TI connectors</span></div>
@@ -301,7 +301,7 @@
         <div class="num">02</div>
         <div class="name">IP Reputation</div>
         <div class="desc">
-          <b>BanIP</b> (nftables) drops 47k+ known-bad IPs at line rate from 5 feeds:
+          <b>BanIP</b> (nftables) drops 52k+ known-bad IPs at line rate from 5 feeds:
           <b>Hagezi</b>, Spamhaus DROP, DShield, threat, threatview — IPv4 + IPv6.
           SIEM detections feed back into this set via fail2ban, closing the loop.
         </div>
@@ -312,7 +312,7 @@
         <div class="num">03</div>
         <div class="name">Network IDS / NSM</div>
         <div class="desc">
-          <b>Suricata 7</b> (329k+ rules, JA3/JA4, GeoIP, iprep) and <b>Zeek 8</b>
+          <b>Suricata 7</b> (320k+ rules, JA3/JA4, GeoIP, iprep) and <b>Zeek 8</b>
           (protocol analysis, DNS NXDOMAIN-burst DGA detection) on a SPAN-mirrored port.
           <b>Arkime</b> captures full PCAP for retrospective session replay.
         </div>
@@ -323,9 +323,9 @@
         <div class="num">04</div>
         <div class="name">Host HIDS</div>
         <div class="desc">
-          <b>Wazuh 4.14</b> across 8 agents (Linux servers, Windows workstation, honeypots,
-          canary, router). FIM, SCA compliance, CVE scanning cross-referenced with CISA KEV.
-          Custom rules for Zeek and canary log sources.
+          <b>Wazuh 4.14</b> across 6 agents (IDS + SIEM hosts, Windows workstation + WSL,
+          HIVE honeypot, canary, Ubuntu hypervisor). FIM, SCA compliance, CVE scanning
+          cross-referenced with CISA KEV. Custom rules for Zeek and canary log sources.
         </div>
         <div class="badge">ENDPOINT</div>
       </div>
@@ -383,7 +383,7 @@
         <ul>
           <li><b>AdGuard Home</b> · LAN resolver, 47k blocked domains</li>
           <li><b>Unbound</b> · DNSSEC recursive (lo:5335)</li>
-          <li><b>BanIP</b> · 47k entries · Hagezi + Spamhaus DROP + DShield + threat + threatview</li>
+          <li><b>BanIP</b> · 52k entries · Hagezi + Spamhaus DROP + DShield + threat + threatview</li>
           <li><b>nftables</b> · DNS-bypass firewalling, IoT VLAN isolation</li>
           <li><b>Tailscale</b> · subnet router + exit node</li>
           <li><b>soc-watchdog</b> · 5-min cron · survives full hypervisor loss</li>
@@ -393,7 +393,7 @@
       <div class="card">
         <h3>Detection — IDS host (.120)</h3>
         <ul>
-          <li><b>Suricata 7.0.10</b> · 329k rules · AF_PACKET workers</li>
+          <li><b>Suricata 7.0.10</b> · 320k rules · AF_PACKET workers</li>
           <li><b>Zeek 8.0.6</b> · protocol logs · 38-panel Grafana dashboard</li>
           <li><b>Arkime 5.8.3</b> · full PCAP capture</li>
           <li><b>Filebeat + Promtail</b> · log shipping</li>
@@ -407,7 +407,7 @@
         <ul>
           <li><b>Elasticsearch 8.x + Kibana</b> · Cyber Defense Center + SIEM Workbench</li>
           <li><b>Logstash</b> · GeoIP enrich, CVE flatten, iprep normalise</li>
-          <li><b>Wazuh 4.14 manager + dashboard</b> · 8 agents</li>
+          <li><b>Wazuh 4.14 manager + dashboard</b> · 6 agents</li>
           <li><b>MISP 2.5</b> · 8 OSINT feeds · bidirectional Suricata sync</li>
           <li><b>EveBox 0.24.0</b> · alert triage console</li>
         </ul>
@@ -458,7 +458,7 @@
     <div class="flow">
 <span class="d">┌─ INGRESS ─────────────────────────────────────────────────────────────┐</span>
 
-  WAN  ──▶  <span class="h">OpenWrt</span>  ──▶  <span class="a">BanIP</span> drops 47k known-bad IPs at nftables
+  WAN  ──▶  <span class="h">OpenWrt</span>  ──▶  <span class="a">BanIP</span> drops 52k known-bad IPs at nftables
             │
             ├──▶  <span class="a">AdGuard Home</span> ──▶ <span class="a">Unbound (DNSSEC)</span>     <span class="d">[blocks 47k domains]</span>
             │
@@ -550,8 +550,8 @@
           <li><b>Packer + Vagrant</b> — base Debian image bake</li>
           <li><b><code>deploy.ps1</code></b> — Windows-side orchestrator</li>
           <li><b>Repacked Velociraptor MSI</b> for zero-touch Windows agent enrolment</li>
-          <li><b>Hypervisor tuning</b> codified — HVCI/VBS/WSL removal, virtio NIC + storage</li>
-          <li><b>Windows runbooks</b> for the bits Ansible can't reach (<code>.13</code> + <code>.15</code>)</li>
+          <li><b>VM tuning</b> codified — virtio NIC + storage; HVCI/VBS/AppGuard audit-and-disable workflow for Windows hosts</li>
+          <li><b>Runbooks</b> for what Ansible can't reach — <code>.13</code> Windows workstation + <code>.15</code> Ubuntu hypervisor (Secure Boot + MOK-signed VBox modules)</li>
         </ul>
       </div>
     </div>
@@ -614,9 +614,9 @@
       <div class="hl">
         <div class="t">Quiet by design</div>
         <div class="b">
-          Aggressive hypervisor tuning (native VT-x, virtio everywhere, snapshot
-          consolidation, CPU pinning) keeps the full stack at <b>~30 W idle</b> on a
-          single workstation — near-silent, 24/7.
+          VM-level tuning (virtio NIC + storage, snapshot consolidation, CPU pinning) plus an
+          automated nightly sleep/wake cycle keep the full stack lean on a single
+          i7-9700K workstation — near-silent, 24/7.
         </div>
       </div>
     </div>
