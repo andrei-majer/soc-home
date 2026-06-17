@@ -26,7 +26,7 @@ A working home SOC isn't one box — it's an IDS, a SIEM, a threat intel platfor
 
 `soc-home` captures the **entire lab as code** — every Suricata YAML, every Zeek redef, every Wazuh rule, every Logstash pipeline, every fail2ban jail, every cron entry — across six hosts, in one repository.
 
-A single `ansible-playbook site.yml` brings the lab from a fresh Debian 12 install back to its known-good state. Day-2 ops (health checks, rule updates, ES cleanup, backups, service restarts) are one-line playbooks. Secrets stay encrypted with `ansible-vault`. Drift is detectable with `--check`. Disaster recovery for the Windows hosts (workstation + hypervisor) lives in runbooks alongside the code.
+A single `ansible-playbook site.yml` brings the lab from a fresh Debian 12 install back to its known-good state. Day-2 ops (health checks, rule updates, ES cleanup, backups, service restarts) are one-line playbooks. Secrets stay encrypted with `ansible-vault`. Drift is detectable with `--check`. Disaster recovery for the non-Ansible hosts (the Windows workstation and the Ubuntu hypervisor) lives in runbooks alongside the code.
 
 > **Scope.** This repo configures and operates the lab. It does **not** install T-Pot, OpenCTI, MISP, or the Snort 3 source build — those are one-shot installers run by hand and then captured by Ansible. Rebuild procedures for each are in `ansible/docs/runbooks/`.
 
@@ -36,7 +36,7 @@ A single `ansible-playbook site.yml` brings the lab from a fresh Debian 12 insta
 
 - **🏗️ Full IaC for 6 Hosts** — One `site.yml` converges Suricata + Zeek, ELK, OpenCTI, T-Pot HIVE, the internal canary, and the OpenWrt router from bare OS to production state
 - **🚨 Network Detection** — Suricata 7 (329k+ rules) + Zeek 8 protocol analyser on a shared SPAN port + Snort 3, with Filebeat → Logstash → Elasticsearch shipping and a 38-panel Grafana NSM dashboard for Zeek
-- **🛡️ Host Detection** — Wazuh 4.14.5 across **6 enrolled agents** (Linux servers, Windows workstation, HIVE honeypot, canary, router) with FIM, SCA, CVE scanning cross-referenced against CISA KEV
+- **🛡️ Host Detection** — Wazuh 4.14.5 across **6 enrolled agents** (IDS host, Windows workstation + WSL, HIVE honeypot, canary, Ubuntu hypervisor) reporting to the manager on the ELK host, with FIM, SCA, CVE scanning cross-referenced against CISA KEV
 - **📊 SIEM & Visualization** — Elasticsearch + Kibana (21-panel Cyber Defense Center + 33-panel SIEM Workbench), Grafana + Loki + Promtail for real-time log tailing, EveBox + Arkime for alert triage and PCAP review
 - **🧠 Threat Intelligence** — MISP 2.5 with 8 OSINT feeds and bidirectional Suricata sync, OpenCTI 6.9 above with 5 active connectors (MISP, MITRE ATT&CK, URLhaus, ThreatFox, CISA KEV), TAXII server pushing live IOCs into Wazuh CDB rules every 30 min
 - **🍯 External Honeypots** — T-Pot HIVE (.130) running 11 keep-list honeypot services across ~39 containers as a combined collector+sensor, backup-only (T-Pot self-manages, Ansible never pushes); ewsposter community sharing. The former separate Sensor on `.125` was retired — HIVE covers the honeypot role and the `.140` canary provides the second LAN-source signal at much lower cost
@@ -48,7 +48,7 @@ A single `ansible-playbook site.yml` brings the lab from a fresh Debian 12 insta
 - **🛟 Disaster Recovery Hardening** — Self-remediating disk-alert (journal vacuum + Wazuh archive gzip at 92%, ntfy push), journald capped cluster-wide, freshness FAIL gates on `eve.json` and `conn.log`, hypervisor pre-flight in health-check — all added in response to a real disk-full outage
 - **🚀 Bootstrap Pipeline** — Packer + Vagrant + `deploy.ps1` for rebuilding the Windows workstation from base ISO (see `bootstrap/`)
 - **🔐 Vault-Encrypted Secrets** — Per-host `vault.yml` files (AES256), single password unlocks all via `ansible.cfg`
-- **📓 Windows Runbooks** — `.13` workstation and `.15` hypervisor rebuild procedures live next to the code (Ansible can't run on Windows in this lab)
+- **📓 Host Runbooks** — rebuild procedures for the `.13` Windows workstation and the `.15` Ubuntu hypervisor live next to the code (neither is Ansible-managed)
 - **♻️ Bare-Metal Backup Scripts** — Pre-Ansible config-only tarball + restore for `.120` and `.133`, kept for full-host disaster recovery
 - **💾 Documented Backup Strategy** — Three independent backup tracks (bare-metal tarballs, Ansible repo bundles, service-native), restore procedures and snapshot manifest in `backup/README.md`
 
@@ -109,7 +109,7 @@ A single `ansible-playbook site.yml` brings the lab from a fresh Debian 12 insta
    └──────────────────────────┘
 ```
 
-The control node runs **on** `.120` (`ansible_connection: local`) — there is no separate management host. Every play either runs locally on `.120` or SSHes to one of the 5 other managed Linux/router hosts. The Windows workstation (`.13`) and hypervisor (`.15`) are not Ansible-managed (runbooks instead).
+The control node runs **on** `.120` (`ansible_connection: local`) — there is no separate management host. Every play either runs locally on `.120` or SSHes to one of the 5 other managed Linux/router hosts. The Windows workstation (`.13`) and the Ubuntu hypervisor (`.15`) are not Ansible-managed (runbooks instead).
 
 ---
 
@@ -168,7 +168,7 @@ ansible-playbook playbooks/site.yml
 - **Managed Linux hosts:** Debian 12 (5 of 6) — fresh install, root SSH key auth
 - **Router:** OpenWrt 24.10+ (no Python — uses `raw` + `scp`)
 - **T-Pot hosts:** install T-Pot first, then add the control node's pubkey to `/root/.ssh/authorized_keys` on port 64295
-- **Hardware:** Anything that can run 4 Linux VMs comfortably. The reference lab uses a single Windows 11 hypervisor (i7-9700K / 64 GB / VirtualBox)
+- **Hardware:** Anything that can run 4 Linux VMs comfortably. The reference lab uses a single Ubuntu 24.04 hypervisor (i7-9700K / 64 GB / VirtualBox)
 
 </details>
 
@@ -203,7 +203,7 @@ Two paths depending on what failed:
 
 > The former `tpot-sensor-125` was retired in commit `de885f4` — HIVE is a combined collector+sensor and already covers the keep-list honeypots; the `.140` canary provides the second LAN-source signal at lower cost.
 
-Windows hosts (`.13` workstation, `.15` hypervisor) are documented in runbooks, not managed by Ansible.
+The `.13` Windows workstation and `.15` Ubuntu hypervisor are documented in runbooks, not managed by Ansible.
 
 ---
 
