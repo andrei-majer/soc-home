@@ -357,11 +357,12 @@ soc-home/
 │   │       └── state-collect.yml
 │   └── docs/
 │       └── runbooks/
-│           ├── windows-13.md     # workstation rebuild
-│           ├── hypervisor-15.md   # .15 Ubuntu hypervisor rebuild
-│           ├── tpot-rebuild.md   # T-Pot HIVE rebuild
-│           ├── misp-rebuild.md   # MISP from-scratch rebuild
-│           └── canary-rebuild.md # Internal canary rebuild
+│           ├── windows-13.md           # .13 Windows workstation rebuild
+│           ├── hypervisor-15.md        # .15 Ubuntu hypervisor rebuild
+│           ├── tpot-rebuild.md         # T-Pot HIVE rebuild
+│           ├── misp-rebuild.md         # MISP from-scratch rebuild
+│           ├── canary-140-rebuild.md   # internal canary (.140) rebuild
+│           └── restore-xndrei.go.ro.md # OpenWrt router (.1) restore
 ├── bootstrap/                    # Packer + Vagrant + deploy.ps1 for rebuilding .13
 │                                 #   workstation from base ISO (Phase 1B)
 ├── scripts/
