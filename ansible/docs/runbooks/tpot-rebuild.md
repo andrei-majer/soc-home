@@ -105,7 +105,7 @@ systemctl start tpot
 ```
 
 ### Sensor network not up on cold boot
-Use VRDE console from the hypervisor (see `windows-15.md`) to log in and bring the interface up manually, then investigate the NIC pin link file.
+Use VRDE console from the hypervisor (see `hypervisor-15.md`) to log in and bring the interface up manually, then investigate the NIC pin link file.
 
 ## Sensor Credentials
 

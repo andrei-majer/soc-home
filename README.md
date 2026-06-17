@@ -183,7 +183,7 @@ Two paths depending on what failed:
 | `.133` lost (ELK + Wazuh + MISP) | Follow `ansible/docs/runbooks/misp-rebuild.md` for MISP, then `ansible-playbook playbooks/site.yml --limit elk-133`. ES indices and MISP event data are **not** in this repo — restore from your own backup target |
 | T-Pot host lost | Follow `ansible/docs/runbooks/tpot-rebuild.md` (T-Pot installer is one-shot — Ansible role is backup-only) |
 | Canary `.140` lost | Follow `ansible/docs/runbooks/canary-rebuild.md` — fresh Debian 13 minimal + apt purge `dhcpcd-base` + install `rsyslog` and `systemd-timesyncd`, then `ansible-playbook playbooks/site.yml --limit fileserver-140` |
-| Hypervisor or workstation lost | Follow `ansible/docs/runbooks/windows-15.md` or `windows-13.md` (or run the `bootstrap/` Packer + Vagrant + `deploy.ps1` pipeline for `.13`) |
+| Hypervisor or workstation lost | Follow `ansible/docs/runbooks/hypervisor-15.md` (Ubuntu) or `windows-13.md` (or run the `bootstrap/` Packer + Vagrant + `deploy.ps1` pipeline for `.13`) |
 | `.120` *and* control node lost together | Use the pre-Ansible scripts in `scripts/` to restore `.120` to a runnable state, then converge with Ansible |
 
 </details>
@@ -358,7 +358,7 @@ soc-home/
 │   └── docs/
 │       └── runbooks/
 │           ├── windows-13.md     # workstation rebuild
-│           ├── windows-15.md     # hypervisor rebuild
+│           ├── hypervisor-15.md   # .15 Ubuntu hypervisor rebuild
 │           ├── tpot-rebuild.md   # T-Pot HIVE rebuild
 │           ├── misp-rebuild.md   # MISP from-scratch rebuild
 │           └── canary-rebuild.md # Internal canary rebuild
