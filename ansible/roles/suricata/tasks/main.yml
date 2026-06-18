@@ -669,6 +669,16 @@
       redef LogAscii::json_timestamps = JSON::TS_ISO8601;
   notify: Deploy Zeek
 
+# The JSON block above already gives JSON + ISO8601 output. A manual
+# `@load policy/tuning/json-logs` (added during a json-streaming-logs trial) is
+# redundant drift — keep it out so local.zeek matches Ansible intent.
+- name: Drop redundant json-logs tuning load from local.zeek
+  ansible.builtin.lineinfile:
+    path: "{{ zeek_prefix }}/share/zeek/site/local.zeek"
+    regexp: '^@load policy/tuning/json-logs\s*$'
+    state: absent
+  notify: Deploy Zeek
+
 - name: Set Zeek log retention/cleanup in zeekctl.cfg
   ansible.builtin.lineinfile:
     path: "{{ zeek_prefix }}/etc/zeekctl.cfg"

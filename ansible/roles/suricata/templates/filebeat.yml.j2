@@ -12,7 +12,9 @@ filebeat.inputs:
   enabled: true
   paths:
     - {{ zeek_log_dir }}/current/*.log
-  exclude_files: ['stdout\.log$', 'stderr\.log$', 'loaded_scripts\.log$', 'telemetry\.log$', 'packet_filter\.log$']
+  # json_streaming_*: the corelight/json-streaming-logs zkg package duplicates
+  # conn/dns/ssl/etc; excluded so it can never double-ship to zeek-* (we don't use it).
+  exclude_files: ['stdout\.log$', 'stderr\.log$', 'loaded_scripts\.log$', 'telemetry\.log$', 'packet_filter\.log$', 'json_streaming_.*\.log$']
   json.keys_under_root: true
   json.add_error_key: true
   tags: ["zeek"]
