@@ -184,7 +184,7 @@
       # Managed by Ansible (roles/suricata/tasks/main.yml)
       # Update MaxMind GeoLite2 databases weekly (Wednesdays 06:30, after soc-wake 06:00)
       # MaxMind releases updates on Tuesdays
-      30 6 * * 3 root /usr/bin/geoipupdate && systemctl restart arkimecapture suricata evebox
+      30 6 * * 3 root /usr/bin/geoipupdate && systemctl restart suricata evebox
 
 # ---------- WAN IP updater ----------
 
@@ -306,7 +306,11 @@
     state: started
     enabled: true
 
-# ---------- Arkime ----------
+# ---------- Arkime (on-demand) ----------
+# Arkime runs ON DEMAND, not continuously: 24/7 full-packet capture filled /opt
+# and the value is concentrated in active investigations. The `arkime-capture`
+# helper starts/stops capture + viewer for a window. snapLen=65536 (config.ini)
+# handles the virtio SPAN NIC's fixed hardware GRO. See [[arkime]] / soc-lab docs.
 
 - name: Deploy Arkime config.ini
   ansible.builtin.template:
@@ -316,6 +320,23 @@
     group: root
     mode: "0640"
     backup: true
+
+- name: Deploy arkime-capture on-demand helper
+  ansible.builtin.copy:
+    src: arkime-capture
+    dest: /usr/local/bin/arkime-capture
+    owner: root
+    group: root
+    mode: "0755"
+
+# enabled:false only — no state, so a converge never stops a capture you started.
+- name: Ensure Arkime services do not start at boot (on-demand)
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+  loop:
+    - arkimecapture
+    - arkimeviewer
 
 # ---------- Velociraptor ----------
 

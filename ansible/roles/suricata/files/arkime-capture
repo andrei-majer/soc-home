@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# arkime-capture - on-demand Arkime full-packet capture on the .120 SPAN sensor.
+#
+# Arkime is NOT run continuously here: continuous capture filled /opt. Use this
+# to capture a window during an investigation, then stop.
+#
+# The SPAN NIC (virtio) coalesces RX frames via hardware GRO (rx-gro-hw is
+# [fixed] — cannot be disabled), so capture handles the >MTU frames via
+# snapLen=65536 in config.ini rather than any NIC offload change. Suricata/Zeek
+# are untouched.
+#
+#   arkime-capture start [MINUTES]   # start capture + viewer (auto-stop after MINUTES)
+#   arkime-capture stop
+#   arkime-capture status
+#
+# UI: http://192.168.1.120:8005
+
+set -euo pipefail
+
+SERVICES="arkimecapture arkimeviewer"
+VIEWER_URL="http://192.168.1.120:8005"
+
+case "${1:-status}" in
+  start)
+    systemctl start ${SERVICES}
+    echo "Arkime capture + viewer started — UI ${VIEWER_URL}"
+    if [ -n "${2:-}" ]; then
+      systemctl stop arkime-autostop.timer 2>/dev/null || true
+      systemctl reset-failed arkime-autostop.service arkime-autostop.timer 2>/dev/null || true
+      if systemd-run --quiet --unit=arkime-autostop --on-active="${2}min" \
+           systemctl stop ${SERVICES}; then
+        echo "auto-stop scheduled in ${2} min"
+      else
+        echo "WARN: auto-stop not scheduled — run 'arkime-capture stop' manually"
+      fi
+    fi
+    ;;
+  stop)
+    systemctl stop arkime-autostop.timer 2>/dev/null || true
+    systemctl stop ${SERVICES} 2>/dev/null || true
+    echo "Arkime capture + viewer stopped"
+    ;;
+  status)
+    echo "capture: $(systemctl is-active arkimecapture)  viewer: $(systemctl is-active arkimeviewer)"
+    echo "raw pcap: $(du -sh /opt/arkime/raw 2>/dev/null | cut -f1)  disk: $(df -h / | awk 'NR==2{print $5}')"
+    ;;
+  *)
+    echo "usage: arkime-capture {start [minutes]|stop|status}" >&2
+    exit 1
+    ;;
+esac

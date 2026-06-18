@@ -22,9 +22,17 @@ interface={{ suricata_capture_interface }}
 # PCAP storage
 pcapDir=/opt/arkime/raw
 
-# Max pcap file size (GB); disk has ~20G free
+# Max pcap file size (GB)
 maxFileSizeG=4
-freeSpaceG=3
+# Reaper keeps this % of the disk free — safety bound for on-demand capture
+# windows so a left-running capture can't fill / (was 3G ≈ 92% on a 39G disk).
+freeSpaceG=25%
+
+# snapLen must exceed the largest frame. The virtio SPAN NIC's hardware GRO
+# (rx-gro-hw is [fixed], can't be disabled) coalesces RX frames well past the
+# 1500 MTU, so the 16384 default crash-loops capture ("requires full packet
+# captures"). 65536 covers any GRO super-frame.
+snapLen=65536
 
 # Max time between pcap rotations (minutes)
 maxFileTimeM=60
