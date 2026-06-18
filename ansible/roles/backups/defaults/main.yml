@@ -17,3 +17,4 @@ backup_enable_wazuh: false
 backup_enable_kibana: false
 backup_enable_velociraptor: false
 backup_enable_grafana: false
+backup_enable_evebox: false

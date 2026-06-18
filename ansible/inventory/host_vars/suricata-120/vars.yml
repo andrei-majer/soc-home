@@ -4,3 +4,4 @@
 
 backup_enable_velociraptor: true
 backup_enable_grafana: true
+backup_enable_evebox: true   # EveBox is not Ansible-managed — this is the DR path for evebox.yaml
