@@ -4,3 +4,4 @@ files/originals/
 *.pyc
 __pycache__/
 .vault_pass
+*.bak.*
