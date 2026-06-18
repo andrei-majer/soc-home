@@ -1,0 +1,22 @@
+[Unit]
+Description=Zeek JSON -> Suricata EVE bridge for EveBox
+Documentation=https://github.com/andrei-majer/soc-home
+After=network.target
+
+[Service]
+Type=simple
+User=evebox
+Group=evebox
+ExecStart=/usr/bin/python3 /usr/local/bin/zeek-to-eve.py
+Restart=on-failure
+RestartSec=5
+
+# hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/log/zeek-eve
+
+[Install]
+WantedBy=multi-user.target

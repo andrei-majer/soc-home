@@ -751,3 +751,52 @@
         </localfile>
       </ossec_config>
   notify: Restart wazuh-agent
+
+# ---------- Zeek -> EveBox bridge ----------
+# Translates Zeek conn/ssl/http JSON to Suricata EVE so EveBox renders Zeek
+# flow/TLS/HTTP metadata next to alerts. Writes a STANDALONE /var/log/zeek-eve/
+# eve.json that EveBox reads as a 2nd input — never Suricata's eve.json (the .120
+# Wazuh agent reads that directly; Zeek's wide records would overflow its JSON
+# decoder). Runs as the evebox user (already in the zeek group → reads the logs).
+# NOTE: the matching EveBox input-path lives in hand-maintained evebox.yaml —
+# EveBox itself is not Ansible-managed. See memory soc-lab/zeek-evebox-bridge.md.
+- name: Create zeek-to-eve output directory
+  ansible.builtin.file:
+    path: /var/log/zeek-eve
+    state: directory
+    owner: evebox
+    group: evebox
+    mode: "0750"
+
+- name: Deploy zeek-to-eve translator script
+  ansible.builtin.copy:
+    src: zeek-to-eve.py
+    dest: /usr/local/bin/zeek-to-eve.py
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart zeek-to-eve
+
+- name: Deploy zeek-to-eve systemd unit
+  ansible.builtin.copy:
+    src: zeek-to-eve.service
+    dest: /etc/systemd/system/zeek-to-eve.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart zeek-to-eve
+
+- name: Deploy zeek-to-eve logrotate config
+  ansible.builtin.copy:
+    src: zeek-eve.logrotate
+    dest: /etc/logrotate.d/zeek-eve
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable and start zeek-to-eve
+  ansible.builtin.systemd:
+    name: zeek-to-eve
+    enabled: true
+    state: started
+    daemon_reload: true
