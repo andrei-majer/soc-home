@@ -58,9 +58,6 @@ wan_ip_script: /usr/local/bin/update-wan-ip.sh
 # Suricata enforcer
 suricata_enforcer_script: /usr/local/bin/suricata-enforcer.py
 
-# Sinkhole
-sinkhole_script: /usr/local/bin/sinkhole.py
-
 # Network interface
 promisc_interface_config: /etc/network/interfaces.d/enp0s8-promisc
 

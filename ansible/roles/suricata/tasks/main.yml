@@ -489,34 +489,9 @@
     state: started
     enabled: true
 
-# ---------- Sinkhole ----------
-
-- name: Deploy sinkhole script
-  ansible.builtin.copy:
-    src: sinkhole.py
-    dest: "{{ sinkhole_script }}"
-    owner: root
-    group: root
-    mode: "0755"
-  notify:
-    - Restart sinkhole
-
-- name: Deploy sinkhole systemd unit
-  ansible.builtin.copy:
-    src: sinkhole.service
-    dest: /etc/systemd/system/sinkhole.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify:
-    - Daemon reload
-    - Restart sinkhole
-
-- name: Ensure sinkhole is enabled and running
-  ansible.builtin.systemd:
-    name: sinkhole
-    state: started
-    enabled: true
+# Sinkhole moved to .140 (canary role) in the .120->.140 migration; the canary
+# role removes any legacy sinkhole.service from .120. (Was deployed here until
+# 2026-06-18 — the stale deploy fought the canary teardown every converge.)
 
 # ---------- Loki + Promtail ----------
 
