@@ -46,6 +46,16 @@
   notify:
     - Reload suricata rules
 
+- name: Deploy Suricata local rules
+  ansible.builtin.copy:
+    src: local.rules
+    dest: /var/lib/suricata/rules/local.rules
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload suricata rules
+
 - name: Deploy threshold.config
   ansible.builtin.copy:
     src: threshold.config

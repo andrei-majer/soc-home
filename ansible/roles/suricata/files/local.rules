@@ -1,0 +1,66 @@
+alert icmp $IOT_NET any -> any any (msg:"IoT Device Ping Detected"; sid:1000001; rev:1;)
+# 10.0.0.1 is the router's br-iot gateway, not an IoT device — its ICMP
+# port-unreachable replies to LAN-initiated NetBIOS/Tailscale chatter were
+# false-positiving this stateless rule. Exclude the gateway (2026-06-19).
+alert ip [$IOT_NET,!10.0.0.1] any -> $LAN_NET any (msg:"IoT Device attempting to access LAN"; sid:1000002; rev:2;)
+alert tcp $IOT_NET any -> any 23 (msg:"IoT Device using Unencrypted Telnet"; flow:to_server; sid:1000003; rev:1;)
+
+pass ip fe80::/10 any -> any any (msg:"Ignore IPv6 Link-Local noise"; sid:1000005; rev:1;)
+pass dns 192.168.1.13 any -> any any (dns.query; content:"xndrei.duckdns.org"; nocase; msg:"Ignore my DuckDNS updates"; sid:1000006; rev:1;)
+
+###############################################################################
+# IP Reputation (iprep) detection rules
+#
+# Categories from /etc/suricata/iprep/categories.txt:
+#   1 = malware  — URLhaus (88), abuse.ch SSL BL (90), ET-Compromised (85), ET-Block (80)
+#   2 = spam
+#   3 = scanner  — CINS Bad Guys (75)
+#   4 = phishing
+#   5 = botnet   — Feodo Tracker (100)
+#
+# Score thresholds used:
+#   >90  → Feodo / abuse.ch SSL BL  (very high confidence)
+#   >84  → URLhaus / ET-Compromised (high confidence)
+#   >74  → ET-Block                 (medium confidence)
+#   >50  → catch-all for any scored host
+###############################################################################
+
+# ── Botnet C2 (category 5) ────────────────────────────────────────────────────
+
+# Host talking outbound to a Feodo-tracked C2 (score 100 → matches >90)
+alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Botnet C2 [high confidence]"; iprep:dst,botnet,>,90; classtype:command-and-control; priority:1; sid:9000001; rev:1;)
+
+# Outbound to any botnet-scored host
+alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Botnet C2 [medium confidence]"; iprep:dst,botnet,>,50; classtype:command-and-control; priority:2; sid:9000002; rev:1;)
+
+# Inbound initiated by a known botnet C2 (unusual but high-severity)
+alert ip $EXTERNAL_NET any -> $HOME_NET any (msg:"IPREP Inbound from Botnet C2"; iprep:src,botnet,>,50; classtype:command-and-control; priority:1; sid:9000003; rev:1;)
+
+# ── Malware C2 / Distribution (category 1) ────────────────────────────────────
+
+# High confidence: abuse.ch SSL BL (90) or URLhaus (88)
+alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Malware Host [high confidence]"; iprep:dst,malware,>,84; classtype:trojan-activity; priority:1; sid:9000004; rev:1;)
+
+# Medium confidence: ET Compromised IPs (85 → caught above) or ET Block (80)
+alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Malware Host [medium confidence]"; iprep:dst,malware,>,74; classtype:trojan-activity; priority:2; sid:9000005; rev:1;)
+
+# Low confidence: any malware-scored host (ET Block floor 80 → still >50)
+alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Malware Host [low confidence]"; iprep:dst,malware,>,50; classtype:bad-unknown; priority:3; sid:9000006; rev:1;)
+
+# Inbound traffic from a known malware host
+alert ip $EXTERNAL_NET any -> $HOME_NET any (msg:"IPREP Inbound from Malware Host"; iprep:src,malware,>,74; classtype:trojan-activity; priority:2; sid:9000007; rev:1;)
+
+# ── Scanner / Brute Force (category 3) ────────────────────────────────────────
+
+# Inbound from a CINS-listed scanner (score 75 → matches >50)
+# Note: threshold.config limits this to 1 alert/src/60s to prevent storm
+alert ip $EXTERNAL_NET any -> $HOME_NET any (msg:"IPREP Inbound from Known Scanner/Brute Force"; iprep:src,scanner,>,50; classtype:network-scan; priority:3; sid:9000008; rev:1;)
+
+# ── Phishing (category 4) ─────────────────────────────────────────────────────
+
+alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Phishing Site"; iprep:dst,phishing,>,50; classtype:social-engineering; priority:2; sid:9000009; rev:1;)
+
+# ── Spam / Email Abuse (category 2) ──────────────────────────────────────────
+
+alert ip $EXTERNAL_NET any -> $HOME_NET any (msg:"IPREP Inbound from Spam/Blacklisted Host"; iprep:src,spam,>,50; classtype:misc-activity; priority:3; sid:9000010; rev:1;)
+alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Spam/Blacklisted Host"; iprep:dst,spam,>,50; classtype:misc-activity; priority:3; sid:9000011; rev:1;)
