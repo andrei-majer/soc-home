@@ -2,6 +2,7 @@
 # Managed by Ansible
 # misp-pull-rules.sh — Pull Suricata rules from MISP IOCs and reload Suricata
 # Runs every 6 hours via /etc/cron.d/misp-suricata
+set -uo pipefail  # not -e: the explicit curl/reload rc checks below handle failures
 
 MISP_URL="{{ misp_url }}"
 MISP_KEY="{{ misp_api_key }}"

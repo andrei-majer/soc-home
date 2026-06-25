@@ -1,4 +1,0 @@
----
-- hosts: elk-133,opencti-135
-  roles:
-    - common

@@ -28,7 +28,7 @@ MISP 2.5.32 installation + database restore procedure. MISP shares the .133 host
 |---|---|
 | URL | http://192.168.1.133 |
 | Admin user | `admin@admin.test` |
-| Admin password | `REDACTED_MISP_PW` |
+| Admin password | _rotated; stored in vault as `vault_misp_admin_password`_ |
 
 ## Install From Scratch
 
@@ -53,13 +53,15 @@ MISP 2.5.32 installation + database restore procedure. MISP shares the .133 host
 
 ## API Keys (from vault)
 
-| User | Key |
+| Purpose | Vault variable |
 |---|---|
-| admin | `REDACTED_MISP_KEY` |
-| andrei | `REDACTED_MISP_KEY` |
-| opencti connector | `REDACTED_MISP_KEY` |
+| Control-node pull/push (admin user) | `vault_misp_api_key` |
+| OpenCTI connector (admin user) | `vault_misp_api_key_opencti` |
 
-The OpenCTI connector key is inserted directly into the `auth_keys` table (requires `advanced_authkeys` enabled in Administration → Server Settings).
+Keys are never stored in this repo — only their vault variable names. With
+`advanced_authkeys` enabled (Administration → Server Settings), a user can hold
+multiple keys; create/rotate one via the API or `cake User change_authkey` and
+record the value in the matching vault variable.
 
 **Regenerate a key:**
 ```bash
@@ -124,7 +126,7 @@ Always stop workers before restoring — in-flight Redis jobs will reference sta
 curl http://192.168.1.133
 
 # API works
-curl -H "Authorization: REDACTED_MISP_KEY" \
+curl -H "Authorization: <MISP_API_KEY>" \
      http://192.168.1.133/events/index.json | head
 
 # Worker errors

@@ -70,6 +70,23 @@ The `/mnt/vms` fstab entry is in `scripts/hypervisor-15/installed-configs/fstab-
 
 Config snapshots for all of the above live in `scripts/hypervisor-15/installed-configs/`.
 
+## NTP
+
+Time sync is handled by **`systemd-timesyncd`** (Ubuntu default), pointed at the LAN NTP server — the router `192.168.1.1` — via a drop-in at `/etc/systemd/timesyncd.conf.d/10-lan-ntp.conf`:
+
+```ini
+[Time]
+NTP=192.168.1.1
+```
+
+The old Windows-era `w32tm` Ansible play was removed (`.15` is no longer managed by `site.yml`), so this is configured by hand on the host and is not converged. Apply / check with:
+
+```bash
+sudo systemctl restart systemd-timesyncd
+timedatectl show-timesync --all   # ServerName should be 192.168.1.1, expect synced
+timedatectl status                # "System clock synchronized: yes"
+```
+
 ## Nightly sleep / wake
 
 systemd timers replace the old Windows Task Scheduler jobs: ACPI-shutdown the 4 SOC VMs at **23:00** local and cold-boot them at **06:00** (host timezone `Europe/Bucharest`). OpenCTI is excluded (savestate mode). Units, scripts, install steps, and the cold-boot gotchas (`KillMode=process`, `vboxdrv` boot race) are all in **`scripts/hypervisor-15/`**.

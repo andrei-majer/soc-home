@@ -217,7 +217,7 @@ unbound-control status                  # control socket working
 curl -sk https://xndrei.go.ro | head -5
 
 # WOL relay
-curl -sk "https://xndrei.go.ro/wol?token=REDACTED_WOL_TOKEN&mac=..." | head -5
+curl -sk "https://xndrei.go.ro/wol?token=<WOL_TOKEN>&mac=..." | head -5
 
 # Tailscale
 tailscale status

@@ -371,6 +371,7 @@
       velociraptor --config /etc/velociraptor/server.config.yaml
       user add --role administrator admin {{ vault_velociraptor_admin_password }}
   changed_when: false
+  no_log: true
   tags: velociraptor
 
 - name: Velociraptor | ensure iptables and netfilter-persistent installed
@@ -494,14 +495,15 @@
 # ---------- Suricata enforcer ----------
 
 - name: Deploy suricata-enforcer script
-  ansible.builtin.copy:
-    src: suricata-enforcer.py
+  ansible.builtin.template:
+    src: suricata-enforcer.py.j2
     dest: "{{ suricata_enforcer_script }}"
     owner: root
     group: root
     mode: "0755"
   notify:
     - Restart suricata-enforcer
+  tags: suricata_enforcer
 
 - name: Deploy suricata-enforcer systemd unit
   ansible.builtin.copy:
@@ -513,12 +515,14 @@
   notify:
     - Daemon reload
     - Restart suricata-enforcer
+  tags: suricata_enforcer
 
 - name: Ensure suricata-enforcer is enabled and running
   ansible.builtin.systemd:
     name: suricata-enforcer
     state: started
     enabled: true
+  tags: suricata_enforcer
 
 # Sinkhole moved to .140 (canary role) in the .120->.140 migration; the canary
 # role removes any legacy sinkhole.service from .120. (Was deployed here until

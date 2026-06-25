@@ -15,14 +15,16 @@ Design differences vs fail2ban:
   - Logs to syslog (facility daemon) as well as stdout/journal
 """
 
+import ipaddress
 import json
 import logging
 import logging.handlers
+import re
 import subprocess
 import sys
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -126,6 +128,14 @@ def ban_duration_for(ip: str) -> int:
     return BAN_TIERS[tier]
 
 
+def _sanitize(s: str) -> str:
+    # The reason string (which includes the alert signature) is embedded in a
+    # single-quoted shell command sent to the router. Strip quotes and shell
+    # metacharacters so a crafted signature name cannot break out of the quote
+    # and execute on the router. IPs are validated via ipaddress before use.
+    return re.sub(r"[^A-Za-z0-9 ._:/-]", "", s)
+
+
 def ssh_router(cmd: str) -> bool:
     """Run cmd on the router via SSH. Returns True on success."""
     result = subprocess.run(
@@ -144,14 +154,15 @@ def ssh_router(cmd: str) -> bool:
 
 
 def ban_ip(ip: str, reason: str) -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if ip in banned_until and banned_until[ip] > now:
         return  # still active
     duration = ban_duration_for(ip)
     log.warning("BANNING %s for %ds (tier %d) — %s",
                 ip, duration, ban_count[ip] + 1, reason)
-    cmd = (f"nft add element {NFT_TABLE} {NFT_SET} {{ {ip} }} 2>/dev/null; "
-           f"logger -t suricata-enforcer 'ban {ip}: {reason}'")
+    safe_reason = _sanitize(reason)
+    cmd = ("nft add element " + NFT_TABLE + " " + NFT_SET + " { " + ip + " } 2>/dev/null; "
+           "logger -t suricata-enforcer 'ban " + ip + ": " + safe_reason + "'")
     if ssh_router(cmd):
         banned_until[ip] = now + timedelta(seconds=duration)
         ban_count[ip] += 1
@@ -162,15 +173,15 @@ def ban_ip(ip: str, reason: str) -> None:
 
 def unban_ip(ip: str) -> None:
     log.info("Unbanning %s", ip)
-    cmd = (f"nft delete element {NFT_TABLE} {NFT_SET} {{ {ip} }} 2>/dev/null; "
-           f"logger -t suricata-enforcer 'unban {ip}'")
+    cmd = ("nft delete element " + NFT_TABLE + " " + NFT_SET + " { " + ip + " } 2>/dev/null; "
+           "logger -t suricata-enforcer 'unban " + ip + "'")
     if not ssh_router(cmd):
         log.error("Failed to unban %s — leaving in expired state", ip)
     del banned_until[ip]
 
 
 def unban_expired() -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expired = [ip for ip, until in list(banned_until.items()) if until <= now]
     for ip in expired:
         unban_ip(ip)
@@ -205,6 +216,11 @@ def process_line(line: str) -> None:
     src = evt.get("src_ip", "")
     if not src or is_internal(src):
         return
+    try:
+        ipaddress.ip_address(src)
+    except ValueError:
+        log.warning("Skipping alert with malformed src_ip: %r", src)
+        return
 
     alert = evt.get("alert", {})
     sig   = alert.get("signature", "?")
@@ -216,7 +232,7 @@ def process_line(line: str) -> None:
     if not qualifies(alert):
         return
 
-    now    = datetime.utcnow()
+    now    = datetime.now(timezone.utc)
     cutoff = now - timedelta(seconds=WINDOW_SECS)
     times  = [t for t in alert_times[src] if t > cutoff]
     times.append(now)

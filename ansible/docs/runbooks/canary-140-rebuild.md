@@ -8,28 +8,43 @@ Ansible inventory name is `fileserver-140`. SMB netbiosname is `FS1`. Three
 different names — pay attention to which one each step needs.
 
 ## Prereqs
-- `.15` hypervisor up (use WoL from `.13` if .15 stayed off after AC loss)
+- `.15` hypervisor up (use WoL from `.13` if .15 stayed off after AC loss). `.15` is now Ubuntu 24.04 — see `hypervisor-15.md` for access/VBoxManage/storage details.
 - `.133` Wazuh manager reachable
 - soc-ansible repo on `.120` clean
-- Debian 13.x minimal ISO at `C:\Users\Games\Downloads\debian-13.x-amd64-netinst.iso`
+- Debian 13.x minimal ISO on `.15` at `/mnt/vms/iso/debian-13.x-amd64-netinst.iso` (fetch with `wget` from the host, or `scp` it over)
 
 ## Cold rebuild (no OVA available)
 
 ### 1. Create the VM on `.15`
-SSH as `Games@.15` and run:
-```powershell
-$VBOX='C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
-& $VBOX createvm --name OpenCanary --ostype Debian_64 --register
-& $VBOX modifyvm OpenCanary --cpus 1 --memory 768 --vram 16 --audio-driver none --usb on --usbohci on --vrde on --vrdeport 3391 --boot1 dvd --boot2 disk --boot3 none --boot4 none --nic1 bridged --nictype1 virtio --macaddress1 auto
-& $VBOX modifyvm OpenCanary --bridgeadapter1 'Intel(R) Ethernet Connection (7) I219-V'
-& $VBOX createmedium disk --filename 'C:\Users\Games\VirtualBox VMs\OpenCanary\OpenCanary.vdi' --size 4096 --variant Standard
-& $VBOX storagectl OpenCanary --name SATA --add sata --portcount 2
-& $VBOX storageattach OpenCanary --storagectl SATA --port 0 --device 0 --type hdd --medium 'C:\Users\Games\VirtualBox VMs\OpenCanary\OpenCanary.vdi' --nonrotational on --discard on
-& $VBOX storageattach OpenCanary --storagectl SATA --port 1 --device 0 --type dvddrive --medium 'C:\Users\Games\Downloads\debian-13.4.0-amd64-netinst.iso'
-& $VBOX startvm OpenCanary --type headless
+SSH to the (now Ubuntu) hypervisor as `andrei` — key-only — and run bare
+`VBoxManage` (on `PATH` at `/usr/bin/VBoxManage`; VMs are registered under
+`andrei`, so it must run as `andrei`). From `.13`:
+```bash
+ssh -i ~/.ssh/openwrt andrei@192.168.1.15
+```
+Then on `.15` (paths use the `/mnt/vms` disk; bridged adapter is `eno1`):
+```bash
+VM="OpenCanary"
+VMDIR="/mnt/vms/Virtual Machines/$VM"
+ISO="/mnt/vms/iso/debian-13.4.0-amd64-netinst.iso"
+
+VBoxManage createvm --name "$VM" --ostype Debian_64 --register
+VBoxManage modifyvm "$VM" --cpus 1 --memory 768 --vram 16 --audio-driver none --usb on --usbohci on --vrde on --vrdeport 3391 --boot1 dvd --boot2 disk --boot3 none --boot4 none --nic1 bridged --nictype1 virtio --macaddress1 auto
+VBoxManage modifyvm "$VM" --bridgeadapter1 eno1
+VBoxManage createmedium disk --filename "$VMDIR/$VM.vdi" --size 4096 --variant Standard
+VBoxManage storagectl "$VM" --name SATA --add sata --portcount 2
+VBoxManage storageattach "$VM" --storagectl SATA --port 0 --device 0 --type hdd --medium "$VMDIR/$VM.vdi" --nonrotational on --discard on
+VBoxManage storageattach "$VM" --storagectl SATA --port 1 --device 0 --type dvddrive --medium "$ISO"
+VBoxManage startvm "$VM" --type headless
 ```
 
-VRDE listens on `.15:3391`. From `.13`: `mstsc /v:192.168.1.15:3391`.
+VRDE listens on `.15:3391`. Connect a remote desktop viewer to that port from
+`.13` (no `mstsc` on the Linux host) — e.g. an RDP client pointed at
+`192.168.1.15:3391`, or tunnel it back to `.13` and view locally:
+```bash
+ssh -i ~/.ssh/openwrt -L 3391:127.0.0.1:3391 andrei@192.168.1.15
+# then point an RDP viewer on .13 at 127.0.0.1:3391
+```
 
 ### 2. Debian install (VRDE console, ~10 min)
 - Hostname: **`fs1`**, no domain
@@ -115,21 +130,27 @@ smbclient //192.168.1.140/HR -N -c 'ls' # 2nd hit within 1h fires ntfy rule 1003
 `C:\Users\xndre\OneDrive\Claude\backup\vms\OpenCanary-YYYYMMDD.ova` (not
 currently created — first OVA capture is a TODO for the user). When available:
 
+Push the OVA to `.15` and import it there (Ubuntu host, `andrei` user, bare
+`VBoxManage`). From `.13` (PowerShell):
 ```powershell
 $ova = Get-ChildItem C:\Users\xndre\OneDrive\Claude\backup\vms\OpenCanary-*.ova | Sort-Object Name -Descending | Select-Object -First 1
-scp -i $env:USERPROFILE\.ssh\openwrt $ova.FullName "Games@192.168.1.15:C:/Users/Games/Desktop/"
-ssh -i $env:USERPROFILE\.ssh\openwrt Games@192.168.1.15 "powershell -Command \"& 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe' import 'C:\Users\Games\Desktop\$($ova.Name)' --vsys 0 --vmname OpenCanary\""
-ssh -i $env:USERPROFILE\.ssh\openwrt Games@192.168.1.15 "powershell -Command \"& 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe' startvm OpenCanary --type headless\""
+scp -i $env:USERPROFILE\.ssh\openwrt $ova.FullName "andrei@192.168.1.15:/mnt/vms/import/"
+ssh -i $env:USERPROFILE\.ssh\openwrt andrei@192.168.1.15 "VBoxManage import '/mnt/vms/import/$($ova.Name)' --vsys 0 --vmname OpenCanary"
+ssh -i $env:USERPROFILE\.ssh\openwrt andrei@192.168.1.15 "VBoxManage startvm OpenCanary --type headless"
 ```
 
 Then run step 6 of the cold rebuild.
 
 ## Sleep policy reminder
 
-`C:\scripts\soc-sleep-savestate.ps1` does NOT include `OpenCanary` in its
-`$vms` array — keeps it 24/7. `C:\scripts\soc-start-savestate.ps1` DOES
-include it so the VM cold-boots if `.15` is restarted. If a future power-script
-refactor touches these, preserve both behaviours.
+On the now-Ubuntu `.15`, nightly sleep/wake is handled by systemd timers, not
+the old Windows PowerShell scripts (see `hypervisor-15.md` → *Nightly sleep /
+wake*). `OpenCanary` is one of the 4 SOC VMs the `soc-sleep.service` /
+`soc-wake.service` units manage, so it is ACPI-shut at 23:00 and cold-booted at
+06:00 along with Suricata, ELK, and T-Pot Hive. It is also cold-booted if `.15`
+itself is restarted. The VM list lives in the sleep/wake units under
+`scripts/hypervisor-15/`; if a future change touches it, keep `OpenCanary` in
+both the sleep and wake sets.
 
 ## Recovery time
 - Fast path (OVA): ~5 min

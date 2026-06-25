@@ -5,6 +5,17 @@
 set -euo pipefail
 
 install -d -m 0700 -o vagrant -g vagrant /home/vagrant/.ssh
+# SUPPLY-CHAIN NOTE: this fetches the Vagrant insecure public key from GitHub at
+# Packer build time. Two caveats:
+#   1. NETWORK DEPENDENCY - the build fails if raw.githubusercontent.com is
+#      unreachable (offline/DR build host, GitHub outage). curl -f makes that a
+#      hard, visible failure rather than writing an empty authorized_keys.
+#   2. TRUST - we pull from hashicorp/vagrant@main (a moving ref), so the key is
+#      whatever that branch serves at build time. This is the *insecure* key
+#      (publicly known, by design) used only for the initial `vagrant ssh`; the
+#      real deploy key (secrets/id_ed25519) is injected per-VM at first boot. The
+#      risk is low, but to remove the network dependency entirely, vendor
+#      keys/vagrant.pub into the repo and `install` it from a local copy instead.
 curl -fsSL https://raw.githubusercontent.com/hashicorp/vagrant/main/keys/vagrant.pub \
   -o /home/vagrant/.ssh/authorized_keys
 chmod 0600 /home/vagrant/.ssh/authorized_keys

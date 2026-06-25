@@ -5,3 +5,7 @@ files/originals/
 __pycache__/
 .vault_pass
 *.bak.*
+# Velociraptor server config holds CA/server/GUI private keys — never commit it.
+# Generate it on .120 at deploy time (template + vault) per
+# docs/runbooks/velociraptor-ca-rotation.md.
+roles/suricata/files/server.config.yaml

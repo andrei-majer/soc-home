@@ -51,6 +51,17 @@
   notify:
     - Restart wazuh-manager
 
+# Semantic gate: load the full ruleset in analysisd test mode before any
+# restart. Wazuh rule files are multi-<group> fragments (NOT single-root XML,
+# so xmllint is unsuitable); analysisd -t is the Wazuh-aware validator and
+# catches malformed XML, duplicate IDs, and bad schema. A failure here aborts
+# the play, so the running manager is never restarted onto a broken ruleset.
+- name: Validate Wazuh ruleset loads cleanly (analysisd test)
+  ansible.builtin.command: /var/ossec/bin/wazuh-analysisd -t
+  register: wazuh_ruleset_test
+  changed_when: false
+  failed_when: wazuh_ruleset_test.rc != 0
+
 - name: Deploy Wazuh API config (api.yaml)
   ansible.builtin.template:
     src: api.yaml.j2

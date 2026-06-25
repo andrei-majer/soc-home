@@ -12,6 +12,16 @@ export {
     redef enum Notice::Type += { Large_Outbound };
     ## Outbound orig-payload bytes over this raises the notice. Tune as needed.
     const outbound_threshold = 1073741824 &redef;  # 1 GiB
+    ## Destinations that look external but are trusted overlays / private space
+    ## (Tailscale CGNAT, RFC1918, IPv6 ULA/link-local) — never treated as exfil.
+    const exfil_exclude_nets: set[subnet] = {
+        10.0.0.0/8,
+        172.16.0.0/12,
+        192.168.0.0/16,
+        100.64.0.0/10,    # Tailscale / CGNAT
+        [fc00::]/7,       # IPv6 unique-local
+        [fe80::]/10,      # IPv6 link-local
+    } &redef;
 }
 
 event connection_state_remove(c: connection)
@@ -22,6 +32,8 @@ event connection_state_remove(c: connection)
         return;                          # origin must be internal
     if ( Site::is_local_addr(c$id$resp_h) )
         return;                          # internal->internal is not exfil
+    if ( c$id$resp_h in LargeTransfer::exfil_exclude_nets )
+        return;                          # trusted overlay / private dest, not exfil
     if ( c$orig$size < LargeTransfer::outbound_threshold )
         return;
     NOTICE([$note=LargeTransfer::Large_Outbound,

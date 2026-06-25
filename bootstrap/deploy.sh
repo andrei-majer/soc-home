@@ -115,12 +115,24 @@ phase_vms() {
   step "phase vms"
   export SOC_MODE="${MODE}" SOC_HOSTS="${HOSTS}" SOC_PROFILE="${PROFILE}"
   cd "${BOOTSTRAP_ROOT}/vagrant"
+  # `vagrant up` will likely return non-zero because its built-in SSH probe
+  # times out (Vagrant 2.4.9 doesn't accept communicator=:none; VBox NAT
+  # loopback is unreliable; the Vagrant insecure key isn't wired for root).
+  # The VM boots regardless - that's all we need. soc-first-boot.service inside
+  # the VM applies hostname/IP/mode/ssh-key from DMI strings; Ansible reaches
+  # each VM via its bridged IP next phase. Deliberately NO `vagrant provision`
+  # (mirrors deploy.ps1 Invoke-PhaseVms): provisioning over the NAT-SSH path is
+  # exactly what we're avoiding. Just settle-wait for first-boot to finish.
   if [[ -n "${HOSTS}" ]]; then
-    vagrant up --no-provision ${HOSTS//,/ }
+    vagrant up --no-provision ${HOSTS//,/ } || \
+      step "  vagrant up exit=$? (expected SSH-timeout - VMs still boot, proceeding)"
   else
-    vagrant up --no-provision
+    vagrant up --no-provision || \
+      step "  vagrant up exit=$? (expected SSH-timeout - VMs still boot, proceeding)"
   fi
-  vagrant provision
+  step "  VMs created. Waiting 60s for first-boot service to apply networking..."
+  sleep 60
+  step "  VMs should now be reachable on per-VM bridged IPs"
 }
 
 phase_converge() {

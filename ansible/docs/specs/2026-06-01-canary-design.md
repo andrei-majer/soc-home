@@ -336,8 +336,8 @@ Display thresholds use the same WARN-in-summary / FAIL-in-assert pattern. Templa
 
 ### `.140` full rebuild
 
-1. VBoxManage create on `.15` (Debian 12 minimal ISO already in REDACTED user dir from existing VM builds)
-2. One-time manual install: hostname `fileserver01`, static IP `.140`, openwrt pubkey to `/root/.ssh/authorized_keys`, register VBox owner as `Games`
+1. VBoxManage create on `.15` (Debian 12 minimal ISO already staged on `.15` from existing VM builds; `.15` now runs Ubuntu 24.04 — see runbooks/hypervisor-15.md)
+2. One-time manual install: hostname `fileserver01`, static IP `.140`, openwrt pubkey to `/root/.ssh/authorized_keys`, create/run the VM as the `.15` admin user (`andrei`)
 3. Manual Wazuh agent install + enroll to `.133` (matches existing convention — agent install out-of-band)
 4. `ansible-playbook playbooks/site.yml --limit canary` → role reproduces everything (OpenCanary venv, sinkhole files, share decoys, systemd units, localfile blocks)
 5. Verify via `playbooks/ops/health-check.yml`

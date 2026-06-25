@@ -8,7 +8,7 @@ LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file_
 # events) or a Cowrie session (many JSON events) from spamming ntfy + hitting
 # the public 429 rate limit. Wazuh's frequency-based correlation rules can't
 # fire on the FIRST hit (frequency must be >=2), so we dedupe here instead.
-DEDUP_STATE_FILE = '/tmp/ntfy_dedup_state.json'  # /var/ossec/integrations/ is root:wazuh 750, wazuh user can't write
+DEDUP_STATE_FILE = '/var/ossec/var/run/ntfy_dedup_state.json'  # wazuh owns /var/ossec/var; avoids the predictable, world-writable /tmp path a local user could pre-create to suppress alerts
 DEDUP_WINDOW_SEC = 3600
 
 # Rules that bypass dedup — every event is unique intel (e.g. credential captures

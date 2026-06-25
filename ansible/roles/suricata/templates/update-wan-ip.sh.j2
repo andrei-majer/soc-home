@@ -26,12 +26,13 @@ logger -t "$LOG_TAG" "WAN IP changed: ${CACHED_IP:-none} → ${CURRENT_IP}"
 
 # Update HOME_NET in suricata.yaml
 # Replace any existing IP at end of HOME_NET list (after last comma up to closing bracket)
-if grep -q "$CACHED_IP" "$YAML" 2>/dev/null; then
+if [ -n "$CACHED_IP" ] && grep -qF -- "$CACHED_IP" "$YAML" 2>/dev/null; then
     sed -i "s/${CACHED_IP}/${CURRENT_IP}/g" "$YAML"
     logger -t "$LOG_TAG" "Replaced ${CACHED_IP} with ${CURRENT_IP} in suricata.yaml"
 else
-    # No old IP to replace — warn and skip yaml update (manual fix needed)
-    logger -t "$LOG_TAG" "WARNING: old IP ${CACHED_IP} not found in suricata.yaml — update manually"
+    # No valid old IP to replace (first run, or drift) — warn and skip the sed
+    # edit. An empty CACHED_IP would otherwise make sed "s//.../" invalid.
+    logger -t "$LOG_TAG" "WARNING: old IP ${CACHED_IP:-<none>} not found in suricata.yaml — update manually"
 fi
 
 # Save new IP to cache

@@ -77,6 +77,18 @@ ssh -i ~/.ssh/openwrt root@192.168.1.120 \
     'rm -f /tmp/soc-ansible.bundle /tmp/soc-ansible-untracked.tar.gz'
 ```
 
+> **Restore prerequisite — control-node SSH private key (NOT captured above).**
+> Step 4 of the restore reinstalls `/root/.ssh/id_ed25519` — the private key
+> that authorizes `root` on every other host, and without which a rebuilt `.120`
+> cannot reach anything to converge. The refresh command above does **not** copy
+> it (and it must never land in a public repo). Treat it exactly like the vault
+> password: stash it separately in two secure places (offline + password
+> manager). Either add it to the refresh by scp-ing
+> `root@192.168.1.120:/root/.ssh/id_ed25519` to `./id_ed25519-${TS}` (then
+> `chmod 600`, store offline only), or keep a known-good copy stashed out of
+> band. If it is ever lost, recovery means generating a new keypair and
+> re-authorizing the new pubkey on every host's `authorized_keys` by hand.
+
 **Restore to a fresh `.120`:**
 
 ```bash
@@ -139,6 +151,7 @@ Use this list before any risky operation (OS upgrade, schema migration, hardware
 - [ ] `.133` bare-metal tarball is fresh (`scripts/backup-elk-e.sh`)
 - [ ] SOC Ansible bundle is fresh (refresh command above)
 - [ ] Vault password is in **two** locations (OneDrive + offline / password manager)
+- [ ] Control-node SSH private key (`/root/.ssh/id_ed25519` on `.120`) is stashed separately in **two** secure locations (it is a restore prerequisite the backup set does not capture)
 - [ ] `playbooks/ops/backup.yml` has been run (service-native backups)
 - [ ] `ansible-playbook playbooks/site.yml --check` reports `0 changed` (no uncaptured drift)
 

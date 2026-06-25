@@ -12,21 +12,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.severity">^1$</field>
     <description>Suricata: Critical alert (sev1) - $(alert.signature)</description>
-    <group>ids,suricata,high_severity,  <rule id="100030" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.src_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - src_ip $(data.src_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-  <rule id="100031" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.dest_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - dest_ip $(data.dest_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-</group>
+    <group>ids,suricata,high_severity,</group>
   </rule>
 
   <!-- Malware / C2 / Trojan category alerts → level 10 -->
@@ -34,21 +20,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.category">Malware|Trojan|Botnet|Command and Control|A Network Trojan</field>
     <description>Suricata: Malware/C2 alert - $(alert.signature)</description>
-    <group>ids,suricata,malware,  <rule id="100030" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.src_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - src_ip $(data.src_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-  <rule id="100031" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.dest_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - dest_ip $(data.dest_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-</group>
+    <group>ids,suricata,malware,</group>
   </rule>
 
   <!-- iprep: known bad IP communicating with internal host → level 8 -->
@@ -56,21 +28,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.signature">IPREP</field>
     <description>Suricata: Known bad IP alert - $(alert.signature) src=$(src_ip)</description>
-    <group>ids,suricata,iprep,threat_intel,  <rule id="100030" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.src_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - src_ip $(data.src_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-  <rule id="100031" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.dest_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - dest_ip $(data.dest_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-</group>
+    <group>ids,suricata,iprep,threat_intel,</group>
   </rule>
 
   <!-- Exploit attempt categories → level 10 -->
@@ -78,21 +36,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.category">Attempted Administrator Privilege Gain|Attempted User Privilege Gain|Successful Administrator Privilege Gain|Web Application Attack|Exploit Kit Activity</field>
     <description>Suricata: Exploit attempt - $(alert.signature)</description>
-    <group>ids,suricata,exploit,  <rule id="100030" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.src_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - src_ip $(data.src_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-  <rule id="100031" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.dest_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - dest_ip $(data.dest_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-</group>
+    <group>ids,suricata,exploit,</group>
   </rule>
 
   <!-- Brute force / scan burst: 10+ alerts from same src in 60s → level 10 -->
@@ -100,21 +44,7 @@
     <if_matched_sid>86601</if_matched_sid>
     <same_field>src_ip</same_field>
     <description>Suricata: Burst of alerts from $(src_ip) - possible active attack</description>
-    <group>ids,suricata,attack_burst,  <rule id="100030" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.src_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - src_ip $(data.src_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-  <rule id="100031" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.dest_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - dest_ip $(data.dest_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-</group>
+    <group>ids,suricata,attack_burst,</group>
   </rule>
 
   <!-- MISP IOC match → level 8 (known threat actor / active IOC) -->
@@ -122,21 +52,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.signature">^MISP</field>
     <description>Suricata: MISP IOC match - $(alert.signature)</description>
-    <group>ids,suricata,misp,threat_intel,  <rule id="100030" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.src_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - src_ip $(data.src_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-  <rule id="100031" level="10">
-    <if_group>ids,suricata</if_group>
-    <list field="data.dest_ip" lookup="match_key">etc/lists/opencti-ioc</list>
-    <description>Suricata: OpenCTI IOC match - dest_ip $(data.dest_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
-  </rule>
-
-</group>
+    <group>ids,suricata,misp,threat_intel,</group>
   </rule>
 
   <rule id="100030" level="10">

@@ -20,26 +20,29 @@ MARKER=/var/lib/soc-first-boot.done
 log() { echo "[soc-first-boot] $*" | tee -a /var/log/soc-first-boot.log; }
 fail() { log "FAIL: $*"; exit 1; }
 
-# Pull config from SMBIOS DmiSystemSerial (set per-VM by Vagrantfile via
-# setextradata). VBox 7.2 reliably exposes this field; DmiOEMVendorExN didn't
-# exist in 7.2.6 testing. Single 64-char field, format:
-#   "soc-hostname=NAME soc-ip=N.N.N.N soc-mode=dr|isolated"
-SERIAL=$(dmidecode -s system-serial-number 2>/dev/null || true)
-[ -n "${SERIAL}" ] || fail "dmidecode system-serial-number returned nothing"
+# Pull config from SMBIOS Type 11 OEM strings (set per-VM by Vagrantfile via
+# setextradata DmiOEMVendorEx0/Ex1). These have no 64-char limit, so the deploy
+# SSH key fits (base64-encoded). dmidecode -t 11 emits one "String N: ..." line
+# per OEM string. Formats:
+#   Ex0: "soc-hostname=NAME soc-ip=N.N.N.N soc-mode=dr|isolated"
+#   Ex1: "soc-pubkey_b64=BASE64..."
+OEM=$(dmidecode -t 11 2>/dev/null || true)
+[ -n "${OEM}" ] || fail "dmidecode -t 11 (OEM strings) returned nothing"
 
+# extract: pull "<key>=<value>" from the OEM strings. Value runs to end of line
+# so base64 (which never contains whitespace) survives intact.
 extract() {
-  echo "${SERIAL}" | grep -oE "$1=[^[:space:]]+" | head -1 | cut -d= -f2-
+  echo "${OEM}" | grep -oE "$1=[^[:space:]]+" | head -1 | cut -d= -f2-
 }
 
 HOSTNAME=$(extract 'soc-hostname')
 IP=$(extract 'soc-ip')
 MODE=$(extract 'soc-mode')
-PUBKEY=""   # TODO: deploy key transport - SSH key doesn't fit in DmiSystemSerial
-            #       (64-char limit). Options for Phase 2:
-            #         (a) bake into image at Packer build time (ties .box to a key)
-            #         (b) cloud-init NoCloud ISO (canonical, needs cloud-init pkg)
-            #         (c) deploy.ps1 serves the key via HTTP on default NAT gw,
-            #             first-boot does `curl http://10.0.2.2:PORT/pubkey`
+PUBKEY_B64=$(extract 'soc-pubkey_b64')
+PUBKEY=""
+if [ -n "${PUBKEY_B64}" ]; then
+  PUBKEY=$(echo "${PUBKEY_B64}" | base64 -d 2>/dev/null || true)
+fi
 
 # Fail-safe: if no DMI config is present (smoke test, recovery boot, etc.),
 # log and exit success. Don't break boot just because the per-VM config wasn't

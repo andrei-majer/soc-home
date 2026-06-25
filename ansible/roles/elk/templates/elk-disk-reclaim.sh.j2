@@ -3,7 +3,9 @@
 # elk-cleanup.py deletes ES indices via the ES API, so it cannot free space
 # during a disk-full outage (ES is down precisely then). This runs first and
 # reclaims space that does not depend on ES being up (2026-05-30 outage).
-set -u
+# No -e: every reclaim step is best-effort (guarded with `|| true`); one failing
+# must not stop the others from freeing space.
+set -uo pipefail
 # 1. Cap the systemd journal (belt-and-suspenders with journald SystemMaxUse)
 journalctl --vacuum-size={{ elk_reclaim_journal_size }} >/dev/null 2>&1 || true
 # 2. Compress Wazuh archives older than today (built-in rotation stalls under

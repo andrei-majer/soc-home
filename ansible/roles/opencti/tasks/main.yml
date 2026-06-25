@@ -68,21 +68,22 @@
     - Reload systemd daemon
     - Restart opencti
 
-- name: Deploy OpenCTI backup script
-  ansible.builtin.template:
-    src: backup.sh.j2
-    dest: "{{ opencti_backup_script }}"
-    owner: root
-    group: root
-    mode: '0755'
+# OpenCTI backups are handled by the `backups` role: secret-free, local
+# /usr/local/sbin/opencti-backup.sh + a monthly cron. The former in-role
+# backup.sh.j2 hardcoded a plaintext SFTP password and still targeted the
+# pre-migration Windows .15 host, so it was removed and consolidated here.
+# The absent-tasks below purge the legacy script/cron from any host that
+# still carries them from an earlier converge.
 
-- name: Deploy OpenCTI backup cron
-  ansible.builtin.copy:
-    src: opencti-backup.cron
-    dest: /etc/cron.d/opencti-backup
-    owner: root
-    group: root
-    mode: '0644'
+- name: Remove legacy OpenCTI backup script (had hardcoded SFTP credentials)
+  ansible.builtin.file:
+    path: /opt/opencti/backup.sh
+    state: absent
+
+- name: Remove legacy OpenCTI backup cron
+  ansible.builtin.file:
+    path: /etc/cron.d/opencti-backup
+    state: absent
 
 - name: Ensure opencti service is enabled and running
   ansible.builtin.systemd:

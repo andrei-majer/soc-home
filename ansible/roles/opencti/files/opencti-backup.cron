@@ -1,1 +1,0 @@
-30 8 * * * root /opt/opencti/backup.sh >> /var/log/opencti-backup.log 2>&1

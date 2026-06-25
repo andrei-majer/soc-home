@@ -22,7 +22,14 @@ PORTS = [
 
 file_log = logging.getLogger("sinkhole.file")
 file_log.setLevel(logging.INFO)
-fh = logging.FileHandler(LOG_FILE)
+try:
+    fh = logging.FileHandler(LOG_FILE)
+except OSError as e:
+    # Unwritable log path must not crash the daemon at startup — fall back to
+    # stderr so hits are still recorded somewhere (and journald captures them).
+    print(f"WARN: cannot open {LOG_FILE} ({e}); logging hits to stderr",
+          file=sys.stderr)
+    fh = logging.StreamHandler(sys.stderr)
 fh.setFormatter(logging.Formatter("%(message)s"))
 file_log.addHandler(fh)
 

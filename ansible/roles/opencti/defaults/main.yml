@@ -20,5 +20,4 @@ opencti_malwarebazaar_key: "{{ vault_malwarebazaar_api_key }}"
 opencti_misp_url: "http://{{ misp_host }}"
 opencti_misp_api_key: "{{ vault_misp_api_key_opencti }}"
 
-opencti_backup_script: /opt/opencti/backup.sh
-opencti_backup_retention_days: 7
+# OpenCTI backups are handled by the `backups` role (roles/backups).

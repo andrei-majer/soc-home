@@ -39,12 +39,15 @@ tpot-hive-130:
   disk: 100
   monitoring_nic: false
 
-tpot-sensor-125:
-  ip: 192.168.1.125
-  ram: 8192
-  cpu: 2
-  disk: 60
-  monitoring_nic: false
+# tpot-sensor-125 RETIRED from the live inventory - the T-Pot sensor VM is no
+# longer part of the lab. Left commented (not deleted) so the historical spec is
+# recoverable if the sensor is ever reinstated. Do NOT provision it.
+# tpot-sensor-125:
+#   ip: 192.168.1.125
+#   ram: 8192
+#   cpu: 2
+#   disk: 60
+#   monitoring_nic: false
 
 fileserver-140:
   ip: 192.168.1.140

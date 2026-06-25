@@ -1,5 +1,0 @@
----
-- name: Test ELK role
-  hosts: elk-133
-  roles:
-    - elk

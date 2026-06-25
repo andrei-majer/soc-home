@@ -87,13 +87,22 @@ failing:**
   it once on first boot. Script reads SMBIOS Type 11 OEM strings (via
   `dmidecode -t 11`) to configure hostname, eth1 static IP, and root's
   authorized_keys.
-- Vagrantfile sets `config.vm.communicator = :none` (skips Vagrant SSH
-  entirely) and injects per-VM hostname / IP / mode / deploy SSH key as
-  SMBIOS OEM strings via `setextradata DmiOEMVendorEx0/1`.
-- `deploy.ps1` `vms` phase no longer calls `vagrant provision`.
+- The Vagrantfile injects per-VM hostname / IP / mode / deploy SSH key as
+  SMBIOS OEM strings via `setextradata DmiOEMVendorEx0/1` and uses **no shell
+  provisioner** — all guest config is applied by `soc-first-boot.service`, not
+  by Vagrant. (Note: it does **not** set `config.vm.communicator = :none` —
+  Vagrant 2.4.9 rejects that with "communicator 'none' could not be found", so
+  the default `:ssh` communicator is left in place.)
+- Because the SSH communicator stays on, `vagrant up` still probes SSH on the
+  NAT-forwarded port and hits the timeout below — that is expected and
+  tolerated: `deploy.ps1`'s `vms` phase swallows the vagrant-up SSH timeout, the
+  VM still boots, `soc-first-boot.service` configures eth1 from the DMI strings,
+  and Ansible reaches it over the bridged IP. `deploy.ps1` `vms` phase does not
+  call `vagrant provision`.
 
-This bypasses Vagrant's SSH-over-NAT step — but **Packer's build step still
-uses NAT-forwarded SSH**, so the build itself remains intermittent on .13.
+The guest is therefore configured entirely off the SMBIOS strings rather than
+over Vagrant's SSH-over-NAT step — but **Packer's build step still uses
+NAT-forwarded SSH**, so the build itself remains intermittent on .13.
 
 **Workarounds for the build:**
 - Run Packer on a host without Tailscale (test on .15 if .15 doesn't have it,
@@ -108,6 +117,7 @@ succeeds, the new DMI-OEM-strings approach should let the full pipeline work
 
 ## See also
 
-- Design spec: `../docs/superpowers/specs/2026-06-02-soc-lab-bootstrap-design.md`
-- Phase 1A plan (backups, complete): `../docs/superpowers/plans/2026-06-02-soc-bootstrap-phase1a-backups.md`
-- Phase 1B plan (this): `../docs/superpowers/plans/2026-06-02-soc-bootstrap-phase1b-dr-bootstrap.md`
+- `docs/prerequisites.md` — host OS, required software, hardware
+- `docs/secrets-checklist.md` — what to populate under `secrets/` before deploy
+- `../backup/README.md` — the backup/restore tracks the `restore` phase draws from
+- `vagrant/Vagrantfile` — the SMBIOS-OEM-strings injection described above

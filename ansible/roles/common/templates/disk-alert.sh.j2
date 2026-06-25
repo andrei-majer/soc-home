@@ -2,6 +2,9 @@
 # Disk usage alert + self-remediation — managed by Ansible
 # Was previously log-only (no alert reached anyone); now pushes ntfy and
 # reclaims space at a critical threshold before the disk locks up (2026-05-30).
+# No -e: remediation steps (curl/journalctl/find) are best-effort and guarded
+# with `|| true`; a failed reclaim must not abort the post-check + alert.
+set -uo pipefail
 THRESHOLD={{ disk_alert_threshold }}
 CRITICAL={{ disk_alert_critical }}
 LOGFILE={{ disk_alert_log }}
