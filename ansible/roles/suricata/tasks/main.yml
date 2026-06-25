@@ -685,6 +685,24 @@
     state: absent
   notify: Deploy Zeek
 
+- name: Deploy Zeek large-transfer exfil-detection script
+  ansible.builtin.copy:
+    src: large-transfer.zeek
+    dest: "{{ zeek_prefix }}/share/zeek/site/large-transfer.zeek"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Deploy Zeek
+
+- name: Set Site::local_nets and load large-transfer detection in local.zeek
+  ansible.builtin.blockinfile:
+    path: "{{ zeek_prefix }}/share/zeek/site/local.zeek"
+    marker: "# {mark} ANSIBLE MANAGED — exfil detection"
+    block: |
+      redef Site::local_nets += { 192.168.1.0/24, 10.0.0.0/24 };
+      @load ./large-transfer.zeek
+  notify: Deploy Zeek
+
 - name: Set Zeek log retention/cleanup in zeekctl.cfg
   ansible.builtin.lineinfile:
     path: "{{ zeek_prefix }}/etc/zeekctl.cfg"

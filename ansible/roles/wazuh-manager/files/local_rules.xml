@@ -143,14 +143,14 @@
     <if_group>ids,suricata</if_group>
     <list field="data.src_ip" lookup="match_key">etc/lists/opencti-ioc</list>
     <description>Suricata: OpenCTI IOC match - src_ip $(data.src_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
+    <group>ids,suricata,opencti,threat_intel,soc-contain,</group>
   </rule>
 
   <rule id="100031" level="10">
     <if_group>ids,suricata</if_group>
     <list field="data.dest_ip" lookup="match_key">etc/lists/opencti-ioc</list>
     <description>Suricata: OpenCTI IOC match - dest_ip $(data.dest_ip)</description>
-    <group>ids,suricata,opencti,threat_intel,</group>
+    <group>ids,suricata,opencti,threat_intel,soc-contain,</group>
   </rule>
 
 
@@ -159,7 +159,7 @@
     <if_sid>61603</if_sid>
     <list field="data.win.eventdata.destinationIp" lookup="match_key">etc/lists/opencti-ioc</list>
     <description>Sysmon: outbound connection to OpenCTI IOC $(data.win.eventdata.destinationIp)</description>
-    <group>sysmon,opencti,threat_intel,</group>
+    <group>sysmon,opencti,threat_intel,soc-contain,</group>
   </rule>
 
   <!-- Sysmon EID 22: DNS query for OpenCTI IOC domain -->
@@ -167,7 +167,7 @@
     <if_sid>61650</if_sid>
     <list field="data.win.eventdata.queryName" lookup="match_key">etc/lists/opencti-ioc</list>
     <description>Sysmon: DNS query for OpenCTI IOC domain $(data.win.eventdata.queryName)</description>
-    <group>sysmon,opencti,threat_intel,</group>
+    <group>sysmon,opencti,threat_intel,soc-contain,</group>
   </rule>
 
 </group>
@@ -199,6 +199,14 @@
     <group>zeek_notice,attack,</group>
   </rule>
 
+  <!-- soc-contain: large outbound transfer -> exfil_volume (T1) -->
+  <rule id="100202" level="10">
+    <if_sid>100200</if_sid>
+    <field name="note" type="pcre2">LargeTransfer::Large_Outbound</field>
+    <description>Zeek: large outbound transfer (possible exfil) $(src) -> $(dst)</description>
+    <group>zeek_notice,exfil_volume,soc-contain,</group>
+  </rule>
+
   <!-- dns.log NXDOMAIN: Zeek-specific top-level qtype_name + rcode_name.
        Level 0 = silent base for correlation only (no per-query alert). -->
   <rule id="100210" level="0">
@@ -214,7 +222,7 @@
     <if_matched_sid>100210</if_matched_sid>
     <same_field>id.orig_h</same_field>
     <description>Zeek: NXDOMAIN burst from same host (possible DGA / DNS exfil)</description>
-    <group>zeek_dns,attack,</group>
+    <group>zeek_dns,attack,dns_tunnel,soc-contain,</group>
   </rule>
 
 </group>
@@ -251,7 +259,7 @@
     <field name="src_host" type="pcre2">^192\.168\.1\.</field>
     <field name="dst_port" type="pcre2">^(21|23|80|443)$</field>
     <description>Canary banner-port hit from LAN: $(src_host) -> :$(dst_port)</description>
-    <group>canary_banner,</group>
+    <group>canary_banner,soc-contain,</group>
   </rule>
 
   <!-- LAN source + critical port (SMB/MySQL/RDP/VNC) -->
@@ -260,7 +268,7 @@
     <field name="src_host" type="pcre2">^192\.168\.1\.</field>
     <field name="dst_port" type="pcre2">^(445|3306|3389|5900)$</field>
     <description>Canary critical-port hit from LAN: $(src_host) -> :$(dst_port)</description>
-    <group>canary_critical,</group>
+    <group>canary_critical,soc-contain,</group>
   </rule>
 
   <!-- Credential capture: OpenCanary logs logdata.USERNAME on failed FTP/Telnet/MySQL login.
@@ -269,7 +277,7 @@
     <if_sid>100300</if_sid>
     <field name="logdata.USERNAME" type="pcre2">.+</field>
     <description>Canary credential attempt captured on .140 (user=$(logdata.USERNAME))</description>
-    <group>canary_creds,</group>
+    <group>canary_creds,soc-contain,</group>
   </rule>
 
   <!-- Sinkhole base: event=sinkhole_hit; uses client_ip not src_host -->
@@ -284,7 +292,7 @@
     <if_sid>100306</if_sid>
     <field name="client_ip" type="pcre2">^192\.168\.1\.</field>
     <description>Sinkhole C2-port hit from LAN: $(client_ip) -> :$(dst_port)</description>
-    <group>canary_critical,</group>
+    <group>canary_critical,soc-contain,</group>
   </rule>
 
 </group>

@@ -1,0 +1,78 @@
+---
+- name: ensure runtime dirs exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ soc_contain_user }}"
+    group: "{{ soc_contain_group }}"
+    mode: "{{ soc_contain_mode }}"
+  loop:
+    - "{{ soc_contain_etc }}"
+    - "{{ soc_contain_state }}"
+    - "{{ soc_contain_log }}"
+
+- name: deploy policy.yml from source repo
+  ansible.builtin.copy:
+    src: "{{ soc_contain_src }}/config/policy.yml"
+    dest: "{{ soc_contain_etc }}/policy.yml"
+    remote_src: true
+    owner: "{{ soc_contain_user }}"
+    group: "{{ soc_contain_group }}"
+    mode: '0640'
+
+- name: render config.yml
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: "{{ soc_contain_etc }}/config.yml"
+    owner: "{{ soc_contain_user }}"
+    group: "{{ soc_contain_group }}"
+    mode: '0600'
+  notify: restart soc-contain-receiver
+
+- name: symlink /usr/local/bin/soc-contain -> venv
+  ansible.builtin.file:
+    src: "{{ soc_contain_src }}/.venv/bin/soc-contain"
+    dest: /usr/local/bin/soc-contain
+    state: link
+    force: true
+
+- name: install reaper service unit
+  ansible.builtin.template:
+    src: soc-contain-reaper.service.j2
+    dest: /etc/systemd/system/soc-contain-reaper.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: install reaper timer unit
+  ansible.builtin.template:
+    src: soc-contain-reaper.timer.j2
+    dest: /etc/systemd/system/soc-contain-reaper.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: enable + start reaper timer
+  ansible.builtin.systemd:
+    name: soc-contain-reaper.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: install receiver service unit
+  ansible.builtin.template:
+    src: soc-contain-receiver.service.j2
+    dest: /etc/systemd/system/soc-contain-receiver.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: enable + start receiver service
+  ansible.builtin.systemd:
+    name: soc-contain-receiver.service
+    enabled: true
+    state: started
+    daemon_reload: true

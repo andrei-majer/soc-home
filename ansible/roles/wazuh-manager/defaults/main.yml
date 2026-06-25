@@ -27,3 +27,7 @@ wazuh_taxii_collection: "262d8556-dae4-4d30-8b2b-3160162ca395"
 wazuh_taxii_url: "{{ wazuh_opencti_url }}/taxii2/root/collections/{{ wazuh_taxii_collection }}/objects/"
 wazuh_taxii_token: "{{ vault_opencti_taxii_token }}"
 wazuh_taxii_output: /var/ossec/etc/lists/opencti-ioc
+
+# ---------- Plan 4: soc-contain AR trigger ----------
+wazuh_soc_contain_url: "http://192.168.1.120:8765"
+wazuh_soc_contain_token_path: /var/ossec/etc/soc-contain-token

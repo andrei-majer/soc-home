@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+"""notify-contain — Wazuh active-response. Reads the AR envelope on stdin, extracts
+rule_id/src_ip/category/dest_ip/domain, POSTs to the soc-contain receiver on .120.
+Never blocks execd: exits 0 on every path. Stdlib only. Mirrors custom-ntfy source-extraction.
+"""
+import json
+import sys
+import urllib.request
+import urllib.error
+from datetime import datetime
+
+LOG_FILE = '/var/ossec/logs/active-responses.log'
+RECEIVER_URL = "{{ wazuh_soc_contain_url }}/v1/dispatch"
+TOKEN_FILE = "{{ wazuh_soc_contain_token_path }}"
+
+
+def log(msg):
+    try:
+        with open(LOG_FILE, 'a') as f:
+            f.write(datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ') + ' notify-contain: ' + msg + '\n')
+    except Exception:
+        pass
+
+
+def extract_source(alert):
+    d = alert.get('data', {}) or {}
+    return (d.get('src_host') or d.get('client_ip') or d.get('src_ip')
+            or (d.get('peer') or {}).get('ip')
+            or (d.get('attack_connection') or {}).get('remote_ip')
+            or (d.get('win', {}).get('eventdata', {}) or {}).get('sourceIp')
+            or (alert.get('agent', {}) or {}).get('ip')
+            or '')
+
+
+def extract_dest(alert):
+    d = alert.get('data', {}) or {}
+    return (d.get('dest_ip') or d.get('dstip')
+            or (d.get('win', {}).get('eventdata', {}) or {}).get('destinationIp')
+            or '')
+
+
+def extract_domain(alert):
+    d = alert.get('data', {}) or {}
+    return (d.get('query')
+            or (d.get('dns') or {}).get('query')
+            or (d.get('win', {}).get('eventdata', {}) or {}).get('queryName')
+            or '')
+
+
+def derive_category(rule):
+    groups = rule.get('groups', []) or []
+    tokens = groups if isinstance(groups, list) else str(groups).split(',')
+    for cat in ('canary', 'exfil_volume', 'dns_tunnel'):
+        if cat in tokens:
+            return cat
+    return None
+
+
+def main():
+    try:
+        raw = sys.stdin.read()
+        envelope = json.loads(raw) if raw.strip() else {}
+    except Exception as e:
+        log('ERROR parse stdin: ' + str(e))
+        return 0
+
+    command = envelope.get('command', 'add')
+    if command and command != 'add':
+        return 0
+
+    alert = (envelope.get('parameters') or {}).get('alert') or {}
+    rule = alert.get('rule', {}) or {}
+    rule_id_raw = rule.get('id')
+    if rule_id_raw is None:
+        log('no rule id; abort')
+        return 0
+    try:
+        rule_id = int(rule_id_raw)
+    except (TypeError, ValueError):
+        log('rule id not int: ' + str(rule_id_raw))
+        return 0
+
+    src_ip = extract_source(alert)
+    if not src_ip:
+        log('no src for rule=' + str(rule_id) + '; abort')
+        return 0
+
+    payload = {'rule_id': rule_id, 'src_ip': src_ip, 'raw': alert}
+    category = derive_category(rule)
+    if category:
+        payload['category'] = category
+    dest_ip = extract_dest(alert)
+    if dest_ip:
+        payload['dest_ip'] = dest_ip
+    domain = extract_domain(alert)
+    if domain:
+        payload['domain'] = domain
+
+    try:
+        with open(TOKEN_FILE) as f:
+            token = f.read().strip()
+    except Exception as e:
+        log('ERROR reading token: ' + str(e))
+        return 0
+    if not token:
+        log('empty token; abort')
+        return 0
+
+    try:
+        req = urllib.request.Request(
+            RECEIVER_URL,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            body = r.read().decode('utf-8', 'replace')[:300]
+            log('OK rule=' + str(rule_id) + ' src=' + src_ip + ' status=' + str(r.status) + ' resp=' + body)
+    except urllib.error.HTTPError as e:
+        log('HTTPError rule=' + str(rule_id) + ' code=' + str(e.code))
+    except Exception as e:
+        log('ERROR POST: ' + str(e))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

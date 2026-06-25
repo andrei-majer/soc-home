@@ -74,6 +74,27 @@
   notify:
     - Restart wazuh-manager
 
+# ---------- soc-contain AR ----------
+
+- name: Render soc-contain auth token for AR
+  ansible.builtin.copy:
+    content: "{{ vault_soc_contain_recv_token }}"
+    dest: "{{ wazuh_soc_contain_token_path }}"
+    owner: root
+    group: wazuh
+    mode: '0640'
+  no_log: true
+  notify: Restart wazuh-manager
+
+- name: Deploy notify-contain AR script
+  ansible.builtin.template:
+    src: notify-contain.j2
+    dest: /var/ossec/active-response/bin/notify-contain
+    owner: root
+    group: wazuh
+    mode: '0750'
+  notify: Restart wazuh-manager
+
 # ---------- OpenCTI TAXII pull ----------
 
 - name: Deploy opencti-taxii.py pull script

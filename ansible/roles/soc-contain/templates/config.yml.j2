@@ -1,0 +1,41 @@
+# Managed by Ansible role soc-contain
+policy_path: {{ soc_contain_etc }}/policy.yml
+state_db: {{ soc_contain_state }}/state.db
+audit_log: {{ soc_contain_log }}/audit.log
+kill_switch: {{ soc_contain_etc }}/DISABLED
+dry_run: {{ soc_contain_dry_run | bool | lower }}
+
+router:
+  host: {{ soc_contain_router_host }}
+  user: {{ soc_contain_router_user }}
+  ssh_key: {{ soc_contain_router_ssh_key }}
+  ipset_name: {{ soc_contain_router_ipset }}
+
+velociraptor:
+  api_config: {{ soc_contain_vr_api_config }}
+  artifacts:
+{% for a in soc_contain_vr_artifacts %}
+    - {{ a }}
+{% endfor %}
+
+tailscale:
+  api_key: "{{ vault_tailscale_api_key }}"
+  tailnet: "{{ vault_tailscale_tailnet }}"
+  quarantine_tag: {{ soc_contain_tailscale_quarantine_tag }}
+
+ntfy:
+  topic_url: "{{ soc_contain_ntfy_base_url }}/{{ soc_contain_ntfy_topic }}"
+  priority_t0_armed: {{ soc_contain_ntfy_priority_t0_armed }}
+  priority_t0_dryrun: {{ soc_contain_ntfy_priority_t0_dryrun }}
+  priority_t1: {{ soc_contain_ntfy_priority_t1 }}
+  priority_t2: {{ soc_contain_ntfy_priority_t2 }}
+  priority_dedup: {{ soc_contain_ntfy_priority_dedup }}
+  priority_kill_switch: {{ soc_contain_ntfy_priority_kill_switch }}
+  priority_reaper_ok: {{ soc_contain_ntfy_priority_reaper_ok }}
+  priority_reaper_failed: {{ soc_contain_ntfy_priority_reaper_failed }}
+  timeout_seconds: {{ soc_contain_ntfy_timeout_seconds }}
+
+receiver:
+  auth_token: "{{ vault_soc_contain_recv_token }}"
+  listen_host: "{{ soc_contain_listen_host }}"
+  listen_port: {{ soc_contain_listen_port }}

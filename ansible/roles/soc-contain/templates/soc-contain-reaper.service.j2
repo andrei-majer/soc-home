@@ -1,0 +1,9 @@
+[Unit]
+Description=soc-contain TTL reaper sweep
+After=network.target
+
+[Service]
+Type=oneshot
+User={{ soc_contain_user }}
+Group={{ soc_contain_group }}
+ExecStart=/usr/local/bin/soc-contain --config {{ soc_contain_etc }}/config.yml reap

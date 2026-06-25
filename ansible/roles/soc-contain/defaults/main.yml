@@ -1,0 +1,39 @@
+---
+soc_contain_src: /opt/soc-contain
+soc_contain_etc: /etc/soc-contain
+soc_contain_state: /var/lib/soc-contain
+soc_contain_log: /var/log/soc-contain
+soc_contain_user: root
+soc_contain_group: root
+soc_contain_mode: '0750'
+soc_contain_dry_run: true
+soc_contain_reaper_interval: 5min
+
+# Plan 3 additions
+soc_contain_router_host: 192.168.1.1
+soc_contain_router_user: root
+soc_contain_router_ssh_key: /root/.ssh/id_ed25519
+soc_contain_router_ipset: contain_host
+
+soc_contain_vr_api_config: /etc/velociraptor/automation_api.yaml
+soc_contain_vr_artifacts:
+  - Windows.Network.Netstat
+  - Windows.System.Pslist
+
+soc_contain_tailscale_quarantine_tag: tag:quarantine
+
+# Plan 4 — receiver + ntfy
+soc_contain_listen_host: 192.168.1.120
+soc_contain_listen_port: 8765
+
+soc_contain_ntfy_base_url: "http://192.168.1.120:8090"
+soc_contain_ntfy_topic: "soc-contain-{{ vault_soc_contain_ntfy_topic_suffix }}"
+soc_contain_ntfy_priority_t0_armed: 5
+soc_contain_ntfy_priority_t0_dryrun: 4
+soc_contain_ntfy_priority_t1: 4
+soc_contain_ntfy_priority_t2: 3
+soc_contain_ntfy_priority_dedup: 2
+soc_contain_ntfy_priority_kill_switch: 5
+soc_contain_ntfy_priority_reaper_ok: 2
+soc_contain_ntfy_priority_reaper_failed: 5
+soc_contain_ntfy_timeout_seconds: 5

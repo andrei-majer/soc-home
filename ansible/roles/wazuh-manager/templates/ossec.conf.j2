@@ -228,6 +228,11 @@
     <timeout_allowed>yes</timeout_allowed>
   </command>
 
+  <command>
+    <name>notify-contain</name>
+    <executable>notify-contain</executable>
+  </command>
+
   <!--
   <active-response>
     active-response options here
@@ -315,6 +320,13 @@
     <location>local</location>
     <rules_id>100030,100031,100040,100041</rules_id>
     <timeout>3600</timeout>
+  </active-response>
+
+  <!-- soc-contain: notify the containment receiver on .120 for rules tagged soc-contain -->
+  <active-response>
+    <command>notify-contain</command>
+    <location>server</location>
+    <rules_group>soc-contain</rules_group>
   </active-response>
 
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=soc-contain reaper schedule
+
+[Timer]
+OnBootSec={{ soc_contain_reaper_interval }}
+OnUnitActiveSec={{ soc_contain_reaper_interval }}
+Persistent=true
+Unit=soc-contain-reaper.service
+
+[Install]
+WantedBy=timers.target

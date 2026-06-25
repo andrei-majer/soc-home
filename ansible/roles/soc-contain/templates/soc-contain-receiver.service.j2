@@ -1,0 +1,25 @@
+[Unit]
+Description=soc-contain HTTP receiver
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ soc_contain_user }}
+Group={{ soc_contain_group }}
+ExecStart=/usr/local/bin/soc-contain --config {{ soc_contain_etc }}/config.yml serve
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_UNIX
+ReadWritePaths={{ soc_contain_state }} {{ soc_contain_etc }} {{ soc_contain_log }}
+
+[Install]
+WantedBy=multi-user.target

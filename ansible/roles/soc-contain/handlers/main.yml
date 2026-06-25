@@ -1,0 +1,10 @@
+---
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: restart soc-contain-receiver
+  ansible.builtin.systemd:
+    name: soc-contain-receiver.service
+    state: restarted
+    daemon_reload: true

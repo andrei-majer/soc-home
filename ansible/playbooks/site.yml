@@ -17,6 +17,7 @@
   roles:
     - suricata
     - backups
+    - soc-contain
 
 # Play 3: ELK/SIEM host (.133)
 - name: ELK host
