@@ -271,6 +271,7 @@ flowchart TD
         A2["adguard_sinkhole\n(dnsmasq)"]
         A3["vr_collect\n(Velociraptor)"]
         A4["tailscale_cut\n(Tailscale API)"]
+        A5["vr_quarantine\n(Velociraptor host IPsec\nL2 lockdown · managed host)"]
     end
 
     AUD["SQLite audit · state.db"]
@@ -295,7 +296,7 @@ flowchart TD
     style REAP fill:#0d1a1a,stroke:#3fb950,color:#c9d1d9
     style NTFY fill:#1a1a0d,stroke:#d29922,color:#c9d1d9
   </div>
-  <p class="legend"><b>Tiers:</b> <b>T0</b> auto-contain (canary, confirmed-C2) · <b>T1</b> one-click <code>soc-contain approve &lt;id&gt;</code> · <b>T2</b> log-only. Detection → off-host actuation, reversible (reaper releases channel bans at TTL; host-isolation released manually). Guardrail <code>assert_not_infra</code> refuses to actuate against lab infrastructure. Instant brake: <code>touch /etc/soc-contain/DISABLED</code>. Armed via <code>soc_contain_dry_run: false</code> + Ansible converge (2026-06-26).</p>
+  <p class="legend"><b>Tiers:</b> <b>T0</b> auto-contain (canary, confirmed-C2) · <b>T1</b> one-click <code>soc-contain approve &lt;id&gt;</code> · <b>T2</b> log-only. Detection → off-host actuation, reversible (reaper releases channel bans at TTL; host-isolation released manually). Guardrail <code>assert_not_infra</code> refuses to actuate against lab infrastructure. Instant brake: <code>touch /etc/soc-contain/DISABLED</code>. Armed via <code>soc_contain_dry_run: false</code> + Ansible converge (2026-06-26). Managed-host isolate composes <code>router_isolate</code> (gateway) + <code>vr_quarantine</code> (host-level Velociraptor IPsec L2 lockdown — stops same-subnet lateral movement the gateway drop can't reach on the flat /24); the latter is the newest actuator, staged for its first armed round-trip.</p>
 </div>
 
 <!-- 5. Perimeter Block & Visibility -->
