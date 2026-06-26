@@ -10,6 +10,8 @@
 
 🗺️ **[Architecture diagram →](soc-diagram.html)** — topology, detection pipeline, threat-intel flow & automated containment *(open locally, or via [htmlpreview.github.io](https://htmlpreview.github.io/?https://github.com/andrei-majer/soc-home/blob/main/soc-diagram.html))*
 
+🔐 **[soc-contain arming guide →](soc-contain-arming.html)** — taking the containment fabric + Velociraptor L2 quarantine live: the observed round-trip, policy & guardrails, kill-switch, IPsec break-glass *(open locally, or via [htmlpreview.github.io](https://htmlpreview.github.io/?https://github.com/andrei-majer/soc-home/blob/main/soc-contain-arming.html))*
+
 [![Ansible](https://img.shields.io/badge/Ansible-2.15%2B-EE0000.svg?logo=ansible)](https://www.ansible.com/)
 [![Debian 12](https://img.shields.io/badge/Debian-12-A81D33.svg?logo=debian)](https://www.debian.org/)
 [![Suricata 7](https://img.shields.io/badge/Suricata-7.0-2C5BB4.svg)](https://suricata.io/)

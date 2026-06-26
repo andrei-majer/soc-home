@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>soc-contain — Arming Guide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 32px;
+    max-width: 1080px;
+    margin: 0 auto;
+    line-height: 1.55;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: #58a6ff;
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+  }
+  .subtitle { text-align: center; color: #8b949e; font-size: 0.9rem; margin-bottom: 10px; }
+  .stamp { text-align: center; color: #6e7681; font-size: 0.75rem; margin-bottom: 14px; }
+  .badges { text-align: center; margin-bottom: 40px; }
+  .badge {
+    display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em;
+    border-radius: 6px; padding: 2px 10px; margin: 3px; text-transform: uppercase;
+  }
+  .b-live   { color: #3fb950; border: 1px solid #3fb950; }
+  .b-staged { color: #d29922; border: 1px solid #d29922; }
+  .b-off    { color: #f85149; border: 1px solid #f85149; }
+  .b-info   { color: #58a6ff; border: 1px solid #58a6ff; }
+  .section { margin-bottom: 44px; }
+  h2 {
+    font-size: 1rem; font-weight: 600; color: #e6edf3;
+    border-left: 3px solid #58a6ff; padding-left: 12px; margin-bottom: 18px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  h3 { font-size: 0.92rem; color: #e6edf3; margin: 18px 0 8px; }
+  p { margin-bottom: 12px; font-size: 0.9rem; }
+  ul, ol { margin: 0 0 12px 22px; font-size: 0.9rem; }
+  li { margin-bottom: 6px; }
+  code {
+    font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 0.82rem;
+    background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 1px 5px; color: #d2a8ff;
+  }
+  pre {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; margin-bottom: 14px;
+  }
+  pre code { background: none; border: none; padding: 0; color: #c9d1d9; font-size: 0.82rem; line-height: 1.5; }
+  .cmt { color: #6e7681; }
+  .out { color: #8b949e; }
+  .ok-t { color: #3fb950; } .warn-t { color: #d29922; } .danger-t { color: #f85149; } .blue-t { color: #58a6ff; }
+  .callout {
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; font-size: 0.88rem;
+    border: 1px solid #30363d; border-left-width: 4px; background: #11151c;
+  }
+  .callout b { color: #e6edf3; }
+  .c-danger { border-left-color: #f85149; }
+  .c-warn   { border-left-color: #d29922; }
+  .c-ok     { border-left-color: #3fb950; }
+  .c-info   { border-left-color: #58a6ff; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 8px; }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } body { padding: 18px; } }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 18px; }
+  .card h3 { margin-top: 0; }
+  .card .lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8b949e; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 0.84rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #21262d; vertical-align: top; }
+  th { color: #8b949e; font-weight: 600; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.05em; }
+  td code { font-size: 0.78rem; }
+  .step { position: relative; padding: 0 0 22px 48px; margin-left: 6px; border-left: 2px solid #21262d; }
+  .step:last-child { border-left: 2px solid transparent; }
+  .step .num {
+    position: absolute; left: -16px; top: -2px; width: 30px; height: 30px; border-radius: 50%;
+    background: #0d1117; border: 2px solid #58a6ff; color: #58a6ff; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; font-size: 0.85rem;
+  }
+  .step h3 { margin-top: 2px; }
+  .tier-t0 { color: #f85149; font-weight: 600; } .tier-t1 { color: #d29922; font-weight: 600; }
+  a { color: #58a6ff; text-decoration: none; } a:hover { text-decoration: underline; }
+  .foot { color: #6e7681; font-size: 0.75rem; text-align: center; margin-top: 30px; border-top: 1px solid #21262d; padding-top: 18px; }
+  hr { border: none; border-top: 1px solid #21262d; margin: 22px 0; }
+</style>
+</head>
+<body>
+
+<h1>soc-contain — Arming Guide</h1>
+<p class="subtitle">Taking the SOAR-lite containment fabric (and the new <code>vr_quarantine</code> L2 lockdown) live — safely, observed, reversibly</p>
+<p class="stamp">Operator reference · .120 · updated 2026-06-26 · local-only (not in public soc-home)</p>
+<div class="badges">
+  <span class="badge b-live">base fabric: ARMED &amp; LIVE</span>
+  <span class="badge b-staged">vr_quarantine: BUILT · STAGED</span>
+  <span class="badge b-off">kill-switch: OFF</span>
+  <span class="badge b-info">HEAD 54e1972 · 186 tests</span>
+</div>
+
+<!-- 1 -->
+<div class="section">
+  <h2>1 · Current state</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="lbl">Base fabric (Plans 1–6)</div>
+      <h3 class="ok-t">ARMED &amp; LIVE</h3>
+      <p style="font-size:0.84rem"><code>dry_run: false</code> · kill-switch removed · receiver <code>active</code>. Real detections auto-contain right now via the existing actuators (<code>router_isolate/ban</code>, <code>adguard_sinkhole</code>, <code>vr_collect</code>, <code>tailscale_cut</code>).</p>
+    </div>
+    <div class="card">
+      <div class="lbl">vr_quarantine (Plan 7)</div>
+      <h3 class="warn-t">BUILT · STAGED (not yet live)</h3>
+      <p style="font-size:0.84rem">Code merged + tested (186 green), but the <b>running receiver still holds the old code</b> — it was never restarted. So a managed-host canary today still fires only <code>router_isolate</code>, not the new host-level lockdown.</p>
+    </div>
+  </div>
+  <div class="callout c-info">
+    <b>Why two states?</b> The whole fabric was armed back in Plan 6. <code>vr_quarantine</code> is a <i>new actuator</i> added in Plan 7 and deliberately not yet loaded into the live process — its first action would cut your own <code>.13</code> workstation off the flat LAN, so going live is a manual, observed step (this guide). Nothing about the base fabric changed.
+  </div>
+</div>
+
+<!-- 2 -->
+<div class="section">
+  <h2>2 · What vr_quarantine does</h2>
+  <p>On a managed-host <code>isolate</code> decision, the dispatcher now composes <b>two</b> actuators:</p>
+  <ul>
+    <li><code>router_isolate</code> — adds the host to the <code>contain_host</code> nft set on the R7800 (north–south / gateway drop).</li>
+    <li><code>vr_quarantine</code> — schedules Velociraptor's <code>Windows.Remediation.Quarantine</code> (a <b>Windows local IPsec policy</b> named <code>VelociraptorQuarantine</code>) on the host's <b>pinned</b> VR client. This is the <span class="blue-t">L2 lockdown</span> the gateway drop can't do on a flat /24 — it stops same-subnet lateral movement.</li>
+  </ul>
+  <div class="callout c-ok">
+    <b>Fail-safe by design.</b> vr_quarantine <b>confirms enforcement</b> (polls <code>flows()</code> to <code>FINISHED</code>) before recording containment. If it can't confirm, the result is <code>pending</code> → a loud <span class="warn-t">L2 UNCONFIRMED</span> ntfy and <b>no containment row is written</b> (never a false "contained"). DNS is permitted only to <code>192.168.1.1</code>; the artifact also auto-keeps the VR-server path and self-removes if it would cut itself off.
+  </div>
+</div>
+
+<!-- 3 -->
+<div class="section">
+  <h2>3 · Arm it — the observed round-trip</h2>
+  <div class="callout c-danger">
+    <b class="danger-t">⚠ This makes the SOC able to cut <code>.13</code> (your workstation) off the LAN.</b> Do the first fire <b>observed</b>, from a session that survives the cutoff (the <code>.120</code> console or Tailscale, not a LAN SSH from <code>.13</code>), with the break-glass (§7) ready. The <code>release-host</code> command and the kill-switch are your undo.
+  </div>
+
+  <div class="step">
+    <div class="num">1</div>
+    <h3>Preview with a dry-run (no action)</h3>
+    <p>The CLI loads current code, so this already exercises the new <code>vr_quarantine</code> routing without touching <code>.13</code>:</p>
+    <pre><code>soc-contain --dry-run dispatch --rule-id 100307 --src-ip 192.168.1.13 --category canary
+<span class="out"># expect: decision=True … actions=['vr_collect', 'vr_quarantine', 'router_isolate']</span></code></pre>
+  </div>
+
+  <div class="step">
+    <div class="num">2</div>
+    <h3>Fire it for real — watch <code>.13</code></h3>
+    <p>From the <code>.120</code> console (config is already <code>dry_run: false</code>):</p>
+    <pre><code>soc-contain dispatch --rule-id 100307 --src-ip 192.168.1.13 --category canary
+soc-contain status
+<span class="out"># status should show host=192.168.1.13 with BOTH vr_quarantine and router_isolate</span></code></pre>
+    <p>On <code>.13</code> you should lose LAN reachability to everything <b>except</b> DNS→<code>.1</code>, DHCP, and the VR server. Tailscale still reaches it. Confirm the IPsec policy is present:</p>
+    <pre><code><span class="cmt"># on .13, elevated:</span>
+netsh ipsec static show policy all   <span class="out"># → VelociraptorQuarantine, assigned</span></code></pre>
+  </div>
+
+  <div class="step">
+    <div class="num">3</div>
+    <h3>Release — confirm it reverses cleanly</h3>
+    <pre><code>soc-contain release-host 192.168.1.13
+soc-contain status                   <span class="out"># → no active containments</span></code></pre>
+    <p>On <code>.13</code>, LAN connectivity returns and <code>netsh ipsec static show policy all</code> no longer lists an assigned <code>VelociraptorQuarantine</code>. <b>This apply→remove round-trip is the proof the lockdown is reversible.</b></p>
+  </div>
+
+  <div class="step">
+    <div class="num">4</div>
+    <h3>Verify break-glass (server-independent removal)</h3>
+    <p>Confirm you can lift the policy <i>without</i> the soc-contain/VR channel — see §7. Then <b>update the runbook</b> with the exact <code>netsh ipsec static</code> commands you confirmed (methods C/D are marked unverified until you do this).</p>
+  </div>
+
+  <div class="step">
+    <div class="num">5</div>
+    <h3>Make the live alert path use the new code</h3>
+    <p>Steps 1–3 used the CLI. The long-running receiver (what real Wazuh alerts hit) still holds old code until restarted:</p>
+    <pre><code>systemctl restart soc-contain-receiver
+systemctl is-active soc-contain-receiver   <span class="out"># → active</span></code></pre>
+    <p>Also confirm the Wazuh-AR caller's HTTP timeout exceeds <code>QUARANTINE_CONFIRM_TIMEOUT</code> (30 s) so a confirm-poll doesn't look like a failure to the manager.</p>
+  </div>
+
+  <div class="step">
+    <div class="num">6</div>
+    <h3>Live</h3>
+    <p>The next real managed-host canary (or confirmed-C2 trip on <code>.13</code>) now applies the L2 lockdown automatically. Keep the kill-switch within reach (§6).</p>
+  </div>
+</div>
+
+<!-- 4 -->
+<div class="section">
+  <h2>4 · What fires once armed (policy.yml)</h2>
+  <table>
+    <tr><th>Tier</th><th>Trigger</th><th>Actuators</th></tr>
+    <tr><td><span class="tier-t0">T0 · auto</span></td><td><code>category: canary</code> (anyone touches the <code>.140</code> decoys)</td><td><code>vr_collect</code> + <b>isolate</b> → managed: <code>vr_quarantine</code> + <code>router_isolate</code></td></tr>
+    <tr><td><span class="tier-t0">T0 · auto</span></td><td>rule <code>100030 / 100031 / 100040</code> (confirmed-C2 IOC)</td><td><code>router_ban_dest</code> + <code>vr_collect</code></td></tr>
+    <tr><td><span class="tier-t0">T0 · auto</span></td><td>rule <code>100041</code> (DNS IOC, Sysmon EID 22)</td><td><code>adguard_sinkhole</code> + <code>vr_collect</code></td></tr>
+    <tr><td><span class="tier-t1">T1 · approve</span></td><td><code>category: exfil_volume</code> (Zeek LargeTransfer, rule 100202)</td><td><code>router_ban_dest</code> — one-click <code>soc-contain approve &lt;id&gt;</code></td></tr>
+    <tr><td><span class="tier-t1">T1 · approve</span></td><td><code>category: dns_tunnel</code></td><td><code>adguard_sinkhole</code> — one-click</td></tr>
+  </table>
+  <p class="out" style="font-size:0.8rem">Only <b>managed</b> hosts (currently just <code>.13</code>) get <code>vr_quarantine</code> — it's a no-op for unmanaged/remote targets. Remote (Tailscale) isolate uses <code>tailscale_cut</code>.</p>
+</div>
+
+<!-- 5 -->
+<div class="section">
+  <h2>5 · Guardrails (enforced in code, not just config)</h2>
+  <table>
+    <tr><th>Guardrail</th><th>Behaviour</th></tr>
+    <tr><td>Infra hard-protect</td><td>The 8 SOC IPs (<code>.1 .15 .120 .133 .135 .130 .125 .140</code>) are refused as an action target <i>and</i> as a ban destination → audited <code>refused_infra</code>. It cannot isolate the router, hypervisor, or SOC hosts.</td></tr>
+    <tr><td class="warn-t">.13 caveat</td><td><code>.13</code> is <b>managed</b>, NOT infra — a T0 canary/IOC trip <b>can</b> isolate + quarantine your workstation. Release is manual. Tailscale still reaches it; the kill-switch lives on <code>.120</code>.</td></tr>
+    <tr><td>Dedup</td><td><code>dedup_window: 3600 s</code> suppresses repeat (rule, target).</td></tr>
+    <tr><td>Release model</td><td>Channel/DNS/router bans auto-release at the 1 h TTL via the reaper. <b>Host-isolation</b> (<code>router_isolate</code>, <code>tailscale_cut</code>, <code>vr_quarantine</code>) is <b>manual-release only</b> (TTL = null — the reaper never auto-lifts it).</td></tr>
+    <tr><td>Confirm-or-pending</td><td>vr_quarantine writes a containment row only when <code>flows()</code> reaches <code>FINISHED</code>. Unconfirmed → <code>pending</code> + loud ntfy + <b>no row</b>.</td></tr>
+    <tr><td>Kill-switch in loop</td><td>The dispatch action loop re-checks the kill-switch before <i>each</i> actuator — a mid-incident brake halts the remaining actions.</td></tr>
+  </table>
+</div>
+
+<!-- 6 -->
+<div class="section">
+  <h2>6 · Emergency stop &amp; disarm</h2>
+  <table>
+    <tr><th>Goal</th><th>Command</th></tr>
+    <tr><td>Instant brake (halt ALL new actions — auto + approve)</td><td><code>touch /etc/soc-contain/DISABLED</code> &nbsp;or&nbsp; <code>soc-contain disable</code></td></tr>
+    <tr><td>Resume</td><td><code>rm /etc/soc-contain/DISABLED</code> &nbsp;or&nbsp; <code>soc-contain enable</code></td></tr>
+    <tr><td>Release one host (all its rows)</td><td><code>soc-contain release-host &lt;src_ip&gt;</code></td></tr>
+    <tr><td>Release one containment by id</td><td><code>soc-contain release --id &lt;n&gt;</code></td></tr>
+    <tr><td>Full disarm (back to log-only)</td><td>set <code>soc_contain_dry_run: true</code> in soc-ansible host_vars → <code>ansible-playbook playbooks/site.yml --limit suricata-120</code></td></tr>
+  </table>
+  <div class="callout c-warn">
+    The kill-switch stops <b>new</b> containment; it does <b>not</b> undo bans already in place. It persists across reboot (file on disk), so it's safe as a "don't act until I say so" hold.
+  </div>
+</div>
+
+<!-- 7 -->
+<div class="section">
+  <h2>7 · Break-glass — lift the IPsec lockdown without the server</h2>
+  <p>If the operator is locked out or the VR channel is down. Full detail: <code>docs/runbooks/soc-contain-quarantine-breakglass.md</code>. In order of preference:</p>
+  <table>
+    <tr><th>#</th><th>Method</th><th>How</th></tr>
+    <tr><td>A</td><td>Normal (VR up)</td><td><code>soc-contain release-host 192.168.1.13</code> on <code>.120</code></td></tr>
+    <tr><td>B</td><td>VR server</td><td>Re-run <code>Windows.Remediation.Quarantine</code> on the client with <code>RemovePolicy</code> (GUI, or CLI — confirm the <code>--client_id</code> flag)</td></tr>
+    <tr><td>C</td><td>Local VR binary on <code>.13</code></td><td><code>velociraptor.exe artifacts collect Windows.Remediation.Quarantine --args RemovePolicy=Y</code> (elevated)</td></tr>
+    <tr><td>D</td><td class="danger-t">Raw, no VR</td><td>elevated on <code>.13</code> — see below</td></tr>
+  </table>
+  <pre><code><span class="cmt"># Method D — raw IPsec removal (NOT Windows Firewall). Confirm exact syntax during arming.</span>
+netsh ipsec static show policy all
+netsh ipsec static set policy name="VelociraptorQuarantine" assign=no   <span class="cmt"># lifts the block</span>
+netsh ipsec static delete policy name="VelociraptorQuarantine"          <span class="cmt"># cleanup</span>
+<span class="cmt"># confirm restored:</span>
+Test-NetConnection 192.168.1.1 ; Resolve-DnsName example.com</code></pre>
+  <div class="callout c-warn">
+    The Method-D <code>netsh ipsec static</code> commands are <b>not yet executed on .13</b> — confirm and update the runbook during the arming round-trip (§3, step 4).
+  </div>
+</div>
+
+<!-- 8 -->
+<div class="section">
+  <h2>8 · Reference</h2>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Service repo (live, local-only)</td><td><code>/opt/soc-contain</code> · HEAD <code>54e1972</code> · 186 tests</td></tr>
+    <tr><td>Public mirror (sanitized)</td><td><a href="https://github.com/andrei-majer/soc-contain">github.com/andrei-majer/soc-contain</a></td></tr>
+    <tr><td>Receiver</td><td><code>192.168.1.120:8765</code> · systemd <code>soc-contain-receiver</code> (LAN-only, Bearer-auth)</td></tr>
+    <tr><td>Config / policy</td><td><code>/etc/soc-contain/config.yml</code> (vault-rendered) · <code>/etc/soc-contain/policy.yml</code></td></tr>
+    <tr><td>Kill-switch</td><td><code>/etc/soc-contain/DISABLED</code></td></tr>
+    <tr><td>Audit / state</td><td><code>/var/log/soc-contain/audit.log</code> · <code>/var/lib/soc-contain/state.db</code> · <code>soc-contain review</code></td></tr>
+    <tr><td>Managed VR client</td><td><code>.13</code> → <code>C.0000000000000000</code> (Windows)</td></tr>
+    <tr><td>ntfy</td><td><code>192.168.1.120:8090</code>, topic <code>soc-contain-*</code></td></tr>
+    <tr><td>Deploy / arm config</td><td>soc-ansible <code>inventory/host_vars/suricata-120/vars.yml</code> → <code>soc_contain_dry_run</code></td></tr>
+  </table>
+</div>
+
+<p class="foot">soc-contain arming guide · operator-internal · keep alongside the break-glass runbook · © 2026 Andrei Majer</p>
+
+</body>
+</html>
