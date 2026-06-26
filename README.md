@@ -41,7 +41,7 @@ A single `ansible-playbook site.yml` brings the lab from a fresh Debian 12 insta
 - **🧠 Threat Intelligence** — MISP 2.5 with 8 OSINT feeds and bidirectional Suricata sync, OpenCTI 6.9 above with 5 active connectors (MISP, MITRE ATT&CK, URLhaus, ThreatFox, CISA KEV), TAXII server pushing live IOCs into Wazuh CDB rules every 30 min
 - **🍯 External Honeypots** — T-Pot HIVE (.130) running 11 keep-list honeypot services across ~39 containers as a combined collector+sensor, backup-only (T-Pot self-manages, Ansible never pushes); ewsposter community sharing. The former separate Sensor on `.125` was retired — HIVE covers the honeypot role and the `.140` canary provides the second LAN-source signal at much lower cost
 - **🪤 Internal Canary** — `fileserver-140` (`fs1`): OpenCanary banners across 8 protocols, real Samba serving fake `HR`/`Backups`/`IT` shares with plausible filenames, sinkhole.py on 14 C2/exotic ports; custom Wazuh rules 1003xx with per-(rule, source) hourly dedup
-- **🤖 SOAR-Lite Containment** — `soc-contain` on `.120`: a dry-run-default containment receiver listening on `192.168.1.120:8765`, fed by Wazuh active-response, that dispatches to actuators (ntfy push by default, real blocks only when armed)
+- **🤖 SOAR-Lite Containment** — `soc-contain` on `.120`: a stdlib-Python containment receiver (`192.168.1.120:8765`) fed by Wazuh active-response. **Tiered** (T0 auto-contain / T1 human-approval), **guardrailed** (never acts on the SOC infra hosts), **reversible** (channel/DNS/router bans auto-release at TTL via a reaper; host-isolation stays manual), with a **dry-run → armed lifecycle** and an instant file-based kill-switch. Actuators: router ban-set, DNS sinkhole, Velociraptor collection, Tailscale quarantine, ntfy
 - **🛜 OpenWrt Edge Router** — `.1` managed via `raw` + `scp` (no Python on target); **AdGuard Home** blocks ~47k ad/tracker/malware domains (as of last check), **Unbound** provides full DNSSEC recursion (no third-party DNS forwarding), DoT/DoQ/DoH endpoints exposed, DNS bypass firewalled at WAN; **BanIP** holds ~47k active entries (as of last check) from **Hagezi**, Spamhaus DROP, DShield, threat, threatview — independent reputation feeds, with SIEM-detected offenders added in via fail2ban
 - **🔔 Self-Hosted Alerting** — ntfy on `.120` (native systemd) receives every Wazuh integration alert with per-(rule, source) hourly dedup at the integration script
 - **🐕 Out-of-VM Watchdog** — `soc-watchdog` on the router pings the hypervisor + IDS host every 5 min and pushes ntfy on outage — the only monitoring path that survives full hypervisor loss
@@ -195,7 +195,7 @@ Two paths depending on what failed:
 
 | Host | IP | OS | Roles applied | Connection |
 |---|---|---|---|---|
-| **suricata-120** | 192.168.1.120 | Debian 12 | `common`, `suricata` (incl. Zeek, Snort 3, Filebeat, Grafana, Loki, Promtail, EveBox, Arkime, Velociraptor, fail2ban, ntfy), `backups`, `soc-contain` (dry-run-default SOAR-lite containment receiver on `192.168.1.120:8765`) | `local` (control node) |
+| **suricata-120** | 192.168.1.120 | Debian 12 | `common`, `suricata` (incl. Zeek, Snort 3, Filebeat, Grafana, Loki, Promtail, EveBox, Arkime, Velociraptor, fail2ban, ntfy), `backups`, `soc-contain` (tiered, reversible SOAR-lite containment receiver on `192.168.1.120:8765`) | `local` (control node) |
 | **elk-133** | 192.168.1.133 | Debian 12 | `common`, `elk`, `wazuh-manager`, `misp` | SSH (key) |
 | **opencti-135** | 192.168.1.135 | Debian 13 | `common`, `opencti` (on-demand savestate) | SSH (key) |
 | **fileserver-140** | 192.168.1.140 | Debian 13 | `common`, `canary` (OpenCanary + Samba + sinkhole.py) | SSH (key) |
@@ -280,7 +280,7 @@ Pre-Ansible tooling for full-host disaster recovery of `.120` and `.133`. Kept a
 | `backup-suricata-s.sh` | `.120` | Collects Suricata, Snort 3, fail2ban, Grafana, Loki/Promtail, EveBox, Velociraptor, Arkime, Filebeat, Wazuh agent configs + binaries |
 | `restore-suricata-s.sh` | Fresh `.120` | Installs packages, extracts configs, enables services, runs `suricata-update`, optional Snort 3 binary restore or source build |
 | `backup-elk-e.sh` | `.133` | Collects ES, Kibana (incl. saved objects), Logstash, Wazuh Manager + Dashboard, MISP, Apache, MariaDB structure |
-| `read-hwinfo.ps1` | `.15` (Windows) | Reads HWiNFO64 shared memory to dump per-rail power consumption |
+| `read-hwinfo.ps1` | legacy (Windows-era `.15`) | Reads HWiNFO64 shared memory for per-rail power draw — from when `.15` ran Windows, before the 2026 Ubuntu migration; kept for reference |
 
 > ⚠️ **Credentials in `scripts/` and its README are placeholders** (`CHANGEME`, `REDACTED`). Set your own values before running. See `scripts/README.md` for full backup/restore walkthroughs.
 
@@ -344,7 +344,7 @@ soc-home/
 │   │   ├── misp/                 # Apache vhost, PHP, logrotate (config-only)
 │   │   ├── opencti/              # Docker Compose stack, .env, backup, on-demand savestate
 │   │   ├── canary/               # OpenCanary + Samba decoys + sinkhole.py + rsyslog routing
-│   │   ├── soc-contain/          # SOAR-lite containment receiver (dry-run-default) on
+│   │   ├── soc-contain/          # SOAR-lite containment receiver (tiered, reversible) on
 │   │   │                         #   192.168.1.120:8765, fed by Wazuh active-response
 │   │   ├── backups/              # service-native backup wrappers (.120/.133/.135)
 │   │   ├── tpot/                 # Backup/pull-only via fetch
@@ -485,6 +485,6 @@ See [`LICENSE`](LICENSE).
 
 © 2026 Andrei Majer
 
-[![GitHub](https://img.shields.io/badge/GitHub-andrei--majer-181717?logo=github)](https://github.com/andrei-majer/soc-home) [![LinkedIn](https://img.shields.io/badge/LinkedIn-Andrei%20Majer-0A66C2?logo=linkedin)](https://www.linkedin.com/in/andreimajer/)
+[![GitHub](https://img.shields.io/badge/GitHub-andrei--majer-181717?logo=github)](https://github.com/andrei-majer/soc-home) [![LinkedIn](https://img.shields.io/badge/LinkedIn-Andrei%20Majer-0A66C2?logo=linkedin)](https://www.linkedin.com/in/andrei-majer/)
 
 </div>
