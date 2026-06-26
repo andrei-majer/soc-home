@@ -91,7 +91,9 @@
     - common
     - canary
 
-# Play 9: Canary cutover on .120 (decommission legacy sinkhole)
+# Play 9: Canary cutover on .120 (decommission legacy sinkhole) — COMPLETE 2026-06.
+# Tagged `never` so it is SKIPPED on normal converges; run on demand only for a
+# re-cutover / DR with:  ansible-playbook playbooks/site.yml --tags canary_cutover
 - name: Canary cutover on .120
   hosts: suricata-120
   become: true
@@ -99,3 +101,4 @@
     - canary
   tags:
     - canary_cutover
+    - never

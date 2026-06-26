@@ -49,7 +49,7 @@ arkime_config: /opt/arkime/etc/config.ini
 arkime_elasticsearch_host: "http://{{ elk_host }}:9200"
 
 # Velociraptor
-velociraptor_config: /opt/velociraptor/server.config.yaml
+velociraptor_config: /etc/velociraptor/server.config.yaml
 velociraptor_bin: /opt/velociraptor/velociraptor
 
 # WAN IP updater

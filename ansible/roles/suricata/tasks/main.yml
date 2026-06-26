@@ -354,6 +354,7 @@
   ansible.builtin.copy:
     src: server.config.yaml
     dest: "{{ velociraptor_config }}"
+    force: false  # DR-seed only: VR config is rotated out-of-band on the host; never clobber live
     owner: root
     group: root
     mode: "0600"

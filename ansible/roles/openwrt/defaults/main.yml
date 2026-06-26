@@ -38,3 +38,7 @@ openwrt_optional_files:
     dest: dropbear_rsa_host_key
   - src: /usr/local/bin/soc-watchdog.sh
     dest: soc-watchdog.sh
+  - src: /etc/config/firewall
+    dest: config-firewall
+  - src: /etc/config/dhcp
+    dest: config-dhcp

@@ -5,3 +5,6 @@
 backup_enable_velociraptor: true
 backup_enable_grafana: true
 backup_enable_evebox: true   # EveBox is not Ansible-managed — this is the DR path for evebox.yaml
+
+# soc-contain ARMED 2026-06-26 (Plan 6) - set true to disarm; runbook /opt/soc-contain/README.md
+soc_contain_dry_run: false

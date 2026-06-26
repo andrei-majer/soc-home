@@ -121,21 +121,30 @@ velociraptor --api_config /etc/velociraptor/automation_api.yaml \
 # Every host should reappear with a recent last_seen_at.
 ```
 
-## 5. Make the new config IaC-safe (so keys are never committed again)
+## 5. Re-capture the new config into the vault-encrypted IaC source
 
-The fix that prevents recurrence — choose one:
+As of 2026-06-26 the role tracks the server config as a VAULT-ENCRYPTED file committed to
+the repo: `roles/suricata/files/server.config.yaml` (AES256, decrypts with `~/.vault_pass`).
+The deploy task **Deploy Velociraptor server config** copies it to
+`/etc/velociraptor/server.config.yaml` — the path VR actually runs (`ps` shows
+`--config /etc/...`) — with **`force: false`**: it seeds a fresh/DR host but NEVER clobbers
+a live config. `ansible.builtin.copy` auto-decrypts the vault source on deploy; the live
+file stays plaintext `0600`.
 
-- **Preferred:** keep `server.config.yaml` OUT of git. The `suricata` role should
-  template the non-secret fields and pull the CA/Frontend/GUI private keys +
-  certs from vault (e.g. `vault_velociraptor_ca_private_key`,
-  `vault_velociraptor_frontend_private_key`, `vault_velociraptor_gui_gw_private_key`
-  and matching certs), rendering `/etc/velociraptor/server.config.yaml` at deploy
-  time. Add the rendered path / any plaintext copy to `.gitignore`.
-- **Minimum:** treat `server.config.yaml` as an out-of-band artifact (already in
-  the `bootstrap/secrets-checklist` / OneDrive backup) and ensure it is
-  `.gitignore`d and never re-added to the repo. The deploy task then `copy`s from
-  an un-tracked local file present only on `.120`.
+Because steps 1-4 edit `/etc` out-of-band, you MUST refresh the encrypted IaC copy after
+every rotation, or the repo silently drifts from live:
 
-After rotation, confirm `git log --all -- ansible/roles/suricata/files/server.config.yaml`
-shows nothing reachable (history was purged) and `git ls-files | grep server.config`
-returns nothing.
+```bash
+cd /opt/soc-ansible
+cp /etc/velociraptor/server.config.yaml roles/suricata/files/server.config.yaml
+ansible-vault encrypt roles/suricata/files/server.config.yaml
+ansible-vault view roles/suricata/files/server.config.yaml \
+  | diff - /etc/velociraptor/server.config.yaml && echo "OK: repo == live"
+```
+
+Then publish (operator step — vault material, same handling as `vault.yml`): sync
+`/opt/soc-ansible` to the `.13` clone, `git add roles/suricata/files/server.config.yaml`,
+commit, push. The AES256 blob is safe in the public repo.
+
+**If you skip this:** the repo keeps the OLD keys; a DR rebuild of `.120` would deploy a
+config whose CA no longer matches the enrolled agents, breaking the whole fleet.
