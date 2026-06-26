@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SOC Lab — Network & Intelligence Architecture</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.3/dist/mermaid.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 32px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #58a6ff;
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+  .subtitle {
+    text-align: center;
+    color: #8b949e;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+  }
+  .stamp {
+    text-align: center;
+    color: #6e7681;
+    font-size: 0.75rem;
+    margin-bottom: 40px;
+  }
+  .armed {
+    display: inline-block;
+    color: #f85149;
+    border: 1px solid #f85149;
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .section {
+    margin-bottom: 48px;
+  }
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e6edf3;
+    border-left: 3px solid #58a6ff;
+    padding-left: 12px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .mermaid {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 28px 20px;
+    overflow-x: auto;
+  }
+  .legend {
+    color: #8b949e;
+    font-size: 0.78rem;
+    margin-top: 10px;
+    padding-left: 4px;
+  }
+  .legend b { color: #c9d1d9; font-weight: 600; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>SOC Lab — Network & Intelligence Architecture</h1>
+<p class="subtitle">Home network threat detection, SIEM, honeypots, threat-intelligence & automated containment</p>
+<p class="stamp">Updated 2026-06-26 &nbsp;·&nbsp; containment fabric <span class="armed">soc-contain ARMED / LIVE</span></p>
+
+<!-- 1. Network Topology -->
+<div class="section">
+  <h2>1 — Network Topology</h2>
+  <div class="mermaid">
+flowchart TD
+    WAN["🌐 Internet — PPPoE (Digi RO)\ndynamic public IP"]
+
+    subgraph Router["🔒 Router — 192.168.1.1  (OpenWrt 24.10.5 · R7800)"]
+        R1["BanIP · 47k threat entries"]
+        R2["AdGuardHome → Unbound DNSSEC"]
+        R3["nftables fw4 · HW offload · IoT isolation"]
+        R4["Tailscale exit node · 100.105.36.55"]
+        R5["WOL → wake .15"]
+    end
+
+    SW["🔀 UniFi 2.5G switch · .187\nport-mirror → SPAN"]
+
+    subgraph LAN["LAN — 192.168.1.0/24  (trusted)"]
+        WS[".13 Workstation · 147K (Win11)\nWazuh agent · Sysmon · UniFi ctrl · WOL/Ansible jump"]
+        subgraph HV[".15 Hypervisor — Ubuntu 24.04  (i7-9700K · 64GB · RTX 2080 Ti · VBox 7.2.8)\n.120/.133/.130 sleep 23:00 → cold-boot 06:00 (systemd) · .140 24/7 · .135 on-demand"]
+            IDS[".120 Suricata IDS\nSuricata · Snort · Zeek · Arkime\nGrafana · Loki · EveBox\nVelociraptor · soc-contain · ntfy"]
+            SIEM[".133 ELK / SIEM\nES · Kibana · Logstash\nWazuh Manager · MISP"]
+            HP1[".130 T-Pot HIVE\n24 honeypot containers"]
+            CAN[".140 Canary  (24/7)\nOpenCanary + sinkhole"]
+            CTI[".135 OpenCTI\nthreat-intel — on-demand savestate"]
+        end
+    end
+
+    subgraph IoT["IoT VLAN — 10.0.0.0/24  (isolated)"]
+        D1["HS100 plugs ×2 · Tapo SmartPlug"]
+        D2["iPhone · 13xD laptop"]
+        D3["Chromecast TV"]
+    end
+
+    WAN -->|PPPoE| Router
+    Router --> SW
+    SW -->|trusted| LAN
+    SW -.->|SPAN mirror| IDS
+    Router -->|VLAN 5 — no LAN access| IoT
+    Router -.->|WOL| HV
+
+    style Router fill:#1a2332,stroke:#58a6ff,color:#c9d1d9
+    style SW fill:#161b22,stroke:#8b949e,color:#c9d1d9
+    style LAN fill:#161b22,stroke:#30363d,color:#c9d1d9
+    style HV fill:#1a2332,stroke:#3fb950,color:#c9d1d9
+    style IoT fill:#1a2332,stroke:#f0883e,color:#c9d1d9
+    style IDS fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
+    style SIEM fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
+    style HP1 fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
+    style CAN fill:#0d2137,stroke:#bc8cff,color:#c9d1d9
+    style CTI fill:#161b22,stroke:#6e7681,color:#8b949e,stroke-dasharray: 5 4
+    style WS fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
+    style WAN fill:#21262d,stroke:#8b949e,color:#c9d1d9
+  </div>
+  <p class="legend"><b>Changed since last revision:</b> .15 migrated Windows 11 → Ubuntu 24.04 (VBox 7.2.8, RTX 2080 Ti); .140 internal canary added (24/7); Zeek + soc-contain + ntfy now on .120; .135 OpenCTI now on-demand savestate (dashed); .125 T-Pot Sensor retired; nightly cold-boot 23:00 / 06:00 via systemd.</p>
+</div>
+
+<!-- 2. Detection Pipeline -->
+<div class="section">
+  <h2>2 — Detection Pipeline</h2>
+  <div class="mermaid">
+flowchart LR
+    SPAN["SPAN mirror\nUniFi .187 → .15 enp4s0\n→ Suricata VM enp0s8 (promisc)"]
+
+    subgraph IDS_HOST[".120 — IDS Host"]
+        SUR["Suricata 7.0.10\nEVE JSON"]
+        SNO["Snort 3.3.7\nalert_json"]
+        ZEK["Zeek 8.0.6\nconn/dns/ssl/http/notice"]
+        ARK["Arkime 5.8.3\non-demand PCAP"]
+        FB1["Filebeat"]
+        PT["Promtail"]
+        Z2E["zeek-to-eve bridge"]
+        F2B["fail2ban"]
+    end
+
+    subgraph FAST["Fast Path — Operational"]
+        LOKI["Loki 3.6.6"]
+        GRF["Grafana :3000"]
+        EVB["EveBox :8080"]
+    end
+
+    subgraph DEEP[".133 — Historical / SIEM"]
+        LS["Logstash\nGeoIP · ASN · CVE · iprep"]
+        ES["Elasticsearch 8.19.12\nsuricata-* · zeek-*"]
+        KIB["Kibana :5601"]
+        WM["Wazuh Manager 4.14.5"]
+        WD["Wazuh Dashboard :443"]
+    end
+
+    ROUTER["OpenWrt BanIP\nnft set — perimeter block"]
+    SOCC["soc-contain\n(see §4)"]
+
+    SPAN --> SUR & SNO & ZEK & ARK
+    SUR -->|eve.json| PT
+    SNO -->|alert_json| PT
+    PT --> LOKI --> GRF
+    SUR --> EVB
+    ZEK --> Z2E --> EVB
+    SUR -->|eve.json| FB1
+    ZEK -->|*.log| FB1
+    ARK -->|sessions| ES
+    FB1 -->|Beats :5044| LS --> ES --> KIB
+    ZEK -->|notice + dns| WM
+    WM --> ES
+    WM --> WD
+    SUR --> F2B -->|SSH add IP| ROUTER
+    WM -->|tagged rule| SOCC
+
+    style IDS_HOST fill:#0d1a2e,stroke:#58a6ff,color:#c9d1d9
+    style FAST fill:#0d1a1a,stroke:#3fb950,color:#c9d1d9
+    style DEEP fill:#1a1a0d,stroke:#d29922,color:#c9d1d9
+    style ROUTER fill:#2d1a0d,stroke:#f0883e,color:#c9d1d9
+    style SOCC fill:#2d0d1a,stroke:#f85149,color:#c9d1d9
+    style ZEK fill:#0d2137,stroke:#3fb950,color:#c9d1d9
+  </div>
+  <p class="legend"><b>New:</b> Zeek 8.0.6 feeds all three sinks — ELK (Filebeat → <code>zeek-*</code>), EveBox (zeek-to-eve bridge), and Wazuh (notice/dns → rules 1002xx). Arkime capture is on-demand. Two response paths: legacy fail2ban → BanIP, and Wazuh tagged-rule → soc-contain.</p>
+</div>
+
+<!-- 3. Threat Intelligence Pipeline -->
+<div class="section">
+  <h2>3 — Threat Intelligence Pipeline</h2>
+  <div class="mermaid">
+flowchart TD
+    subgraph FEEDS["External Threat Feeds (OpenCTI connectors)"]
+        TF["ThreatFox\nevery 60 min"]
+        UH["URLhaus\nevery 60 min"]
+        CK["CISA KEV\ndaily"]
+        MA["MITRE ATT&CK\nevery 7 days"]
+        MBz["MalwareBazaar\n(disabled)"]
+    end
+
+    subgraph CTI[".135 — OpenCTI 6.9.28  (on-demand)"]
+        OC["IOC correlation\nTTP mapping · actor attribution"]
+    end
+
+    subgraph MISP_BOX[".133 — MISP 2.5.32"]
+        MISP_DB["IOC database\n8 native feeds · sightings"]
+    end
+
+    subgraph DETECT["Detection Layer"]
+        SUR2["Suricata\nmisp.rules"]
+        WZ["Wazuh\nopencti-ioc CDB\nrules 100030/100031"]
+    end
+
+    subgraph ENDPOINTS["Wazuh Endpoints"]
+        EP1[".133 elk"]
+        EP2[".13 workstation"]
+        EP3[".120 suricata"]
+    end
+
+    TF & UH & CK & MA --> OC
+    OC <-->|MISP connector\nevery 30 min| MISP_DB
+    MISP_DB -->|misp-pull-rules.sh\nevery 6h| SUR2
+    OC -->|TAXII wazuh-ioc\nevery 30 min| WZ
+    SUR2 -->|misp-push-sightings\nevery 1h| MISP_DB
+    WZ --> EP1 & EP2 & EP3
+
+    style FEEDS fill:#0d1a0d,stroke:#3fb950,color:#c9d1d9
+    style CTI fill:#161b22,stroke:#6e7681,color:#8b949e,stroke-dasharray: 5 4
+    style MISP_BOX fill:#1a1a0d,stroke:#d29922,color:#c9d1d9
+    style DETECT fill:#2d1a0d,stroke:#f0883e,color:#c9d1d9
+    style ENDPOINTS fill:#1a0d1a,stroke:#bc8cff,color:#c9d1d9
+    style MBz fill:#161b22,stroke:#6e7681,color:#6e7681,stroke-dasharray: 3 3
+  </div>
+  <p class="legend"><b>Note:</b> OpenCTI (.135) is on-demand — the MISP↔Suricata loop keeps running while it sleeps because MISP's 8 native feeds are independent. Connector cadences widened 2026-06 (MISP 30 min; ThreatFox/URLhaus 60 min). MalwareBazaar connector is currently disabled.</p>
+</div>
+
+<!-- 4. Automated Containment -->
+<div class="section">
+  <h2>4 — Automated Containment  ·  soc-contain (ARMED / LIVE)</h2>
+  <div class="mermaid">
+flowchart TD
+    subgraph TRIG["Triggers — Wazuh rules tagged soc-contain"]
+        T_CAN["Canary hit .140\n→ T0 auto"]
+        T_IOC["Confirmed-C2 IOC\n→ T0 auto"]
+        T_EXF["Zeek LargeTransfer\nrule 100202 → T1"]
+    end
+
+    AR["notify-contain AR\n(.133 Wazuh manager)"]
+    RCV["Receiver  .120:8765\nBearer-auth  POST /v1/dispatch"]
+    POL["resolve target → policy.yml"]
+    GUARD["🛡 guardrail\nassert_not_infra"]
+    TIER{"tier?"}
+
+    subgraph ACT["Actuators — off-host, reversible"]
+        A1["router_isolate / router_ban\nnft contain_host on R7800"]
+        A2["adguard_sinkhole\n(dnsmasq)"]
+        A3["vr_collect\n(Velociraptor)"]
+        A4["tailscale_cut\n(Tailscale API)"]
+    end
+
+    AUD["SQLite audit · state.db"]
+    NTFY["ntfy .120:8090\nsoc-contain topic"]
+    REAP["reaper — TTL auto-release\n(host-isolation = manual)"]
+    KILL["🛑 kill-switch\n/etc/soc-contain/DISABLED"]
+
+    TRIG --> AR --> RCV --> POL --> GUARD --> TIER
+    TIER -->|T0 auto| ACT
+    TIER -.->|T1 · soc-contain approve| ACT
+    TIER -->|T2 log-only| AUD
+    ACT --> AUD
+    ACT --> NTFY
+    ACT -.->|at TTL| REAP -.->|release| ACT
+    KILL -.->|halts all paths| RCV
+
+    style TRIG fill:#1a0d1a,stroke:#bc8cff,color:#c9d1d9
+    style ACT fill:#2d0d0d,stroke:#f85149,color:#c9d1d9
+    style GUARD fill:#1a2332,stroke:#3fb950,color:#c9d1d9
+    style KILL fill:#2d0d0d,stroke:#f85149,color:#f85149
+    style RCV fill:#0d1a2e,stroke:#58a6ff,color:#c9d1d9
+    style REAP fill:#0d1a1a,stroke:#3fb950,color:#c9d1d9
+    style NTFY fill:#1a1a0d,stroke:#d29922,color:#c9d1d9
+  </div>
+  <p class="legend"><b>Tiers:</b> <b>T0</b> auto-contain (canary, confirmed-C2) · <b>T1</b> one-click <code>soc-contain approve &lt;id&gt;</code> · <b>T2</b> log-only. Detection → off-host actuation, reversible (reaper releases channel bans at TTL; host-isolation released manually). Guardrail <code>assert_not_infra</code> refuses to actuate against lab infrastructure. Instant brake: <code>touch /etc/soc-contain/DISABLED</code>. Armed via <code>soc_contain_dry_run: false</code> + Ansible converge (2026-06-26).</p>
+</div>
+
+<!-- 5. Perimeter Block & Visibility -->
+<div class="section">
+  <h2>5 — Perimeter Block & Visibility Scope</h2>
+  <div class="grid">
+
+    <div>
+      <div class="mermaid">
+flowchart TD
+    ALT["Suricata\nhigh-confidence alert"]
+    F2B2["fail2ban\nrule match"]
+    SSH2["SSH to router\n192.168.1.1"]
+    BIP["BanIP nft set\nadd malicious IP"]
+    BLOCK["Blocked for\nall LAN hosts\n+ IoT VLAN"]
+
+    ALT --> F2B2 --> SSH2 --> BIP --> BLOCK
+
+    style ALT fill:#2d1a0d,stroke:#f0883e,color:#c9d1d9
+    style BLOCK fill:#2d0d0d,stroke:#f85149,color:#c9d1d9
+      </div>
+      <p class="legend">Legacy reflex path — coexists with soc-contain's <code>router_ban</code>.</p>
+    </div>
+
+    <div>
+      <div class="mermaid">
+flowchart TD
+    subgraph VIS["Traffic Visibility via SPAN"]
+        V1["✅ LAN ↔ LAN"]
+        V2["✅ LAN ↔ WAN"]
+        V3["✅ IoT ↔ Internet"]
+        V4["✅ Tailscale 100.64/10"]
+        V5["❌ Unsolicited WAN probes\n(BPF filtered)"]
+        V6["⚠️ Encrypted payloads\n(metadata only)"]
+    end
+
+    style VIS fill:#161b22,stroke:#30363d,color:#c9d1d9
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#161b22',
+      primaryColor: '#1f6feb',
+      primaryTextColor: '#c9d1d9',
+      primaryBorderColor: '#388bfd',
+      lineColor: '#8b949e',
+      secondaryColor: '#21262d',
+      tertiaryColor: '#161b22',
+      nodeBorder: '#30363d',
+      clusterBkg: '#161b22',
+      titleColor: '#58a6ff',
+      edgeLabelBackground: '#161b22',
+      fontFamily: 'Segoe UI, system-ui, sans-serif',
+    },
+    flowchart: { curve: 'basis', padding: 20 }
+  });
+</script>
+
+</body>
+</html>
