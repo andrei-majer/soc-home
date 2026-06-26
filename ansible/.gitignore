@@ -5,7 +5,6 @@ files/originals/
 __pycache__/
 .vault_pass
 *.bak.*
-# Velociraptor server config holds CA/server/GUI private keys — never commit it.
-# Generate it on .120 at deploy time (template + vault) per
-# docs/runbooks/velociraptor-ca-rotation.md.
-roles/suricata/files/server.config.yaml
+# Velociraptor server config (roles/suricata/files/server.config.yaml) holds CA/server/GUI
+# private keys. It is committed VAULT-ENCRYPTED (AES256) and the deploy task auto-decrypts
+# on copy. After rotation (docs/runbooks/velociraptor-ca-rotation.md) re-capture + re-encrypt.
