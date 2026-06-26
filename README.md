@@ -280,7 +280,6 @@ Pre-Ansible tooling for full-host disaster recovery of `.120` and `.133`. Kept a
 | `backup-suricata-s.sh` | `.120` | Collects Suricata, Snort 3, fail2ban, Grafana, Loki/Promtail, EveBox, Velociraptor, Arkime, Filebeat, Wazuh agent configs + binaries |
 | `restore-suricata-s.sh` | Fresh `.120` | Installs packages, extracts configs, enables services, runs `suricata-update`, optional Snort 3 binary restore or source build |
 | `backup-elk-e.sh` | `.133` | Collects ES, Kibana (incl. saved objects), Logstash, Wazuh Manager + Dashboard, MISP, Apache, MariaDB structure |
-| `read-hwinfo.ps1` | legacy (Windows-era `.15`) | Reads HWiNFO64 shared memory for per-rail power draw — from when `.15` ran Windows, before the 2026 Ubuntu migration; kept for reference |
 
 > ⚠️ **Credentials in `scripts/` and its README are placeholders** (`CHANGEME`, `REDACTED`). Set your own values before running. See `scripts/README.md` for full backup/restore walkthroughs.
 
@@ -375,8 +374,7 @@ soc-home/
 │   ├── README.md
 │   ├── backup-suricata-s.sh
 │   ├── restore-suricata-s.sh
-│   ├── backup-elk-e.sh
-│   └── read-hwinfo.ps1
+│   └── backup-elk-e.sh
 └── backup/
     └── README.md                 # Backup strategy, snapshot manifest, restore procedures
                                   # (no tarballs committed — see secret-handling rules)
