@@ -50,12 +50,17 @@
         // Routers/VPS cannot initiate to workstations — denied by default.
     ],
 
+    // SSH note (2026-06-26): every device in this tailnet is tagged (see tagOwners) and
+    // `action: check` does not support tagged sources, so this block matches no CURRENT
+    // device. Real root access to these hosts is via per-host key-only sshd over the
+    // port-22 grant, not this rule. `root` removed here as defense-in-depth so no FUTURE
+    // untagged member device can Tailscale-SSH as root; re-add a scoped rule if needed.
     "ssh": [
         {
             "action":      "check",
             "src":         ["autogroup:member"],
             "dst":         ["tag:router", "tag:vps", "tag:workstation"],
-            "users":       ["root", "autogroup:nonroot"],
+            "users":       ["autogroup:nonroot"],
             "checkPeriod": "12h"
         }
     ],
