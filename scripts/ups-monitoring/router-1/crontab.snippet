@@ -1,0 +1,3 @@
+# Append to /etc/crontabs/root, then: /etc/init.d/cron enable && /etc/init.d/cron restart
+# (1-minute granularity is the BusyBox cron minimum.)
+* * * * * /usr/bin/ups-loki-push.sh

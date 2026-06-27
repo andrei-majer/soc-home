@@ -1,0 +1,31 @@
+# OpenWrt UCI config — install as /etc/config/nut_server, then:
+#   /etc/init.d/nut-server enable && /etc/init.d/nut-server restart
+# It generates /var/etc/nut/{ups,upsd}.conf and starts upsd + the driver.
+#
+# protocol=Q1 is injected via the init script's generic pass-through: the fixed
+# option list has no 'protocol', so we use `list other 'protocol'` plus a section
+# named 'other_protocol' whose `value` becomes "protocol = Q1" in ups.conf.
+# Driver + upsd run as root to avoid USB-permission / state-socket-owner issues.
+
+config driver_global 'driver_global'
+	option user 'root'
+
+config driver 'ted'
+	option driver 'nutdrv_qx'
+	option port 'auto'
+	option vendorid '0665'
+	option productid '5161'
+	list other 'protocol'
+
+config nut_other 'other_protocol'
+	option value 'Q1'
+
+config listen_address
+	option address '127.0.0.1'
+	option port '3493'
+
+config upsd 'upsd'
+	option maxage '15'
+	option statepath '/var/run/nut'
+	option maxconn '1024'
+	option runas 'root'

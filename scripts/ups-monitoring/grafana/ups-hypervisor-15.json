@@ -1,0 +1,137 @@
+{
+  "uid": "ups-hyper-15",
+  "title": "UPS — Hypervisor .15",
+  "tags": ["ups", "power", "soc"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_LOKI",
+        "type": "datasource",
+        "query": "loki",
+        "current": { "text": "Loki", "value": "${DS_LOKI}" },
+        "hide": 2,
+        "refresh": 1,
+        "regex": ""
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Power Source",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ups\", host=\"15\"} | logfmt ol | unwrap ol [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "ON MAINS", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "ON BATTERY", "color": "red", "index": 1 } } }
+          ],
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        }, "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Load",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ups\", host=\"15\"} | logfmt load | unwrap load [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 85 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Battery Voltage",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ups\", host=\"15\"} | logfmt battery_voltage | unwrap battery_voltage [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "volt", "decimals": 1 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Temperature",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ups\", host=\"15\"} | logfmt temperature | unwrap temperature [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "celsius", "decimals": 1 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Input / Output Voltage",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "input",
+          "expr": "avg_over_time({job=\"ups\", host=\"15\"} | logfmt input_voltage | unwrap input_voltage [$__interval])", "queryType": "range" },
+        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "output",
+          "expr": "avg_over_time({job=\"ups\", host=\"15\"} | logfmt output_voltage | unwrap output_voltage [$__interval])", "queryType": "range" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "volt", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Load %",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "load",
+          "expr": "avg_over_time({job=\"ups\", host=\"15\"} | logfmt load | unwrap load [$__interval])", "queryType": "range" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Battery Voltage",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "battery",
+          "expr": "avg_over_time({job=\"ups\", host=\"15\"} | logfmt battery_voltage | unwrap battery_voltage [$__interval])", "queryType": "range" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "volt", "decimals": 1, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "state-timeline",
+      "title": "UPS Status (on-line / on-battery / low-battery)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "on mains",
+          "expr": "max_over_time({job=\"ups\", host=\"15\"} | logfmt ol | unwrap ol [$__interval])", "queryType": "range" },
+        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "on battery",
+          "expr": "max_over_time({job=\"ups\", host=\"15\"} | logfmt ob | unwrap ob [$__interval])", "queryType": "range" },
+        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "low battery",
+          "expr": "max_over_time({job=\"ups\", host=\"15\"} | logfmt lb | unwrap lb [$__interval])", "queryType": "range" }
+      ],
+      "options": { "mergeValues": true },
+      "fieldConfig": { "defaults": { "mappings": [
+        { "type": "value", "options": { "0": { "text": "no", "color": "transparent", "index": 0 } } },
+        { "type": "value", "options": { "1": { "text": "yes", "color": "blue", "index": 1 } } }
+      ] }, "overrides": [] }
+    }
+  ]
+}

@@ -380,7 +380,9 @@ soc-home/
 │   ├── README.md
 │   ├── backup-suricata-s.sh
 │   ├── restore-suricata-s.sh
-│   └── backup-elk-e.sh
+│   ├── backup-elk-e.sh
+│   └── ups-monitoring/         # NUT UPS monitoring + Grafana dashboards;
+│                               #   hypervisor suspends-to-RAM on power loss
 └── backup/
     └── README.md                 # Backup strategy, snapshot manifest, restore procedures
                                   # (no tarballs committed — see secret-handling rules)

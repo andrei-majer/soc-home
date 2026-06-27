@@ -1,0 +1,8 @@
+[Unit]
+Description=UPS power-loss resilience (suspend/poll/shutdown)
+Wants=nut-monitor.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ups-resilience.sh
+TimeoutStartSec=0
