@@ -1,17 +1,19 @@
 # UPS monitoring & power-loss resilience (NUT + Loki + Grafana)
 
-Two small line-interactive UPSes (Cypress `0665:5161`, Megatec/**Q1** protocol) protect the
-lab, each monitored by **NUT** (`nutdrv_qx`). Readings are shipped to **Loki** and graphed in
-**Grafana**. The hypervisor additionally rides out outages by **suspending to RAM** instead of
-shutting down; the router is monitor-only.
+Three small line-interactive UPSes (Cypress `0665:5161`, Megatec/**Q1** protocol) protect the
+lab. The two on Linux hosts are monitored by **NUT** (`nutdrv_qx`); the Windows workstation
+talks to its UPS over **WinUSB + pyusb** (the Windows HID stack can't issue the raw USB
+transfers the Cypress firmware needs — see `workstation-13/`). Readings are shipped to **Loki**
+and graphed in **Grafana**. The hypervisor additionally rides out outages by **suspending to
+RAM** instead of shutting down; the router and workstation are monitor-only.
 
 ```
- UPS (USB 0665:5161) ── NUT (nutdrv_qx, protocol=Q1) ──> upsc
-        │                                                  │
-   hypervisor-15                                       per-host collector
-   resilience loop                                     (logfmt push) ──> Loki (.120:3100)
-   (suspend / poll / shutdown)                                              │
-   router-1: monitor-only                                              Grafana dashboards
+ UPS (USB 0665:5161) ──> Megatec/Q1 over USB ──────────────> one logfmt line/sample
+        │                                                            │
+   hypervisor-15  NUT nutdrv_qx + resilience loop (suspend)          │
+   router-1       NUT nutdrv_qx (monitor-only)            ──> per-host collector ──> Loki
+   workstation-13 WinUSB + pyusb (monitor-only)                 (.120:3100)    │
+                                                                          Grafana dashboards
 ```
 
 ## Why `protocol = Q1`
@@ -49,10 +51,31 @@ generic `list other` pass-through. A 1-minute cron job pushes readings to Loki.
 > The router flipping to **`OB` (on battery) is the earliest whole-house mains-loss signal** —
 > it loses power before anything behind it does.
 
-## grafana/ — dashboards
-Provisioned Grafana dashboards (drop into `/etc/grafana/provisioning/dashboards/`). No
-Prometheus in the lab, so metrics travel as Loki log lines; panels use
-`| logfmt FIELD | unwrap FIELD`.
+## workstation-13/ — Windows workstation (WinUSB + pyusb)
+The third UPS hangs off the Windows workstation. Same Cypress `0665:5161` chip, but on Windows
+it enumerates as a *vendor-defined HID* and Windows can't read it as a battery. NUT's
+`nutdrv_qx` drives these by issuing **raw 8-byte USB control (`Set_Report`) + interrupt-IN
+reads** — exactly what the Windows **HID** stack refuses to do (it forces full 65-byte reports,
+so the firmware never answers). The fix is to bind *just this device* to **WinUSB** (one-time,
+via Zadig, reversible in Device Manager) and talk to it with **libusb/pyusb**, replicating the
+`nutdrv_qx` *cypress* subdriver framing. A small Python collector then parses `Q1` and pushes
+the same logfmt line as the Linux hosts.
+
+* `ups-loki-push.py` — pyusb collector (cypress framing + Megatec `Q1` parse → Loki, `host="13"`).
+  `python ups-loki-push.py --print` to test; no args = push one sample.
+* `install-task.ps1` — deploys the collector to `%ProgramData%\soc-ups\` and registers a
+  scheduled task (every minute). The SYSTEM/at-boot variant needs elevation; a per-user
+  at-logon variant runs without it.
+
+**One-time bind:** Zadig → *Options ▸ List All Devices* → pick USB ID **`0665 5161`**
+("RICHCOMM UPS USB Mon V2.0") → target **WinUSB** → *Replace Driver*. Deps: `pip install
+pyusb libusb-package`.
+
+## Grafana dashboards
+The three UPS dashboards are **Ansible-managed** alongside the other SOC dashboards in
+`ansible/roles/suricata/files/` (`ups-15.json`, `ups-router-1.json`, `ups-workstation-13.json`),
+deployed to `/etc/grafana/provisioning/dashboards/` by the `suricata` role. No Prometheus in the
+lab, so metrics travel as Loki log lines; panels use `| logfmt FIELD | unwrap FIELD`.
 
 > **LogQL note:** extract *only* the field you unwrap (`| logfmt load | unwrap load`). A bare
 > `| logfmt | unwrap load` promotes every reading (voltages, frequency…) to a label, so each
