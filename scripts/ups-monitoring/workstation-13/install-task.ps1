@@ -14,11 +14,14 @@ Write-Host "Deployed $dst"
 
 $taskName = 'SOC-UPS-13-Loki'
 $action   = New-ScheduledTaskAction -Execute $py -Argument "`"$dst`""
-# Start at boot, then repeat every minute indefinitely.
-$trigger  = New-ScheduledTaskTrigger -AtStartup
-$trigger.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
-                        -RepetitionInterval (New-TimeSpan -Minutes 1) `
-                        -RepetitionDuration ([TimeSpan]::MaxValue)).Repetition
+# Two triggers: AtStartup runs it right after boot; a Once-trigger with a concrete start
+# time carries the every-minute repetition (an AtStartup trigger's repetition wouldn't begin
+# until the next boot). Task Scheduler rejects TimeSpan.MaxValue, so use a long finite span.
+$tBoot = New-ScheduledTaskTrigger -AtStartup
+$tRep  = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(30) `
+            -RepetitionInterval (New-TimeSpan -Minutes 1) `
+            -RepetitionDuration (New-TimeSpan -Days 3650)
+$trigger = @($tBoot, $tRep)
 $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
                 -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 2) `
