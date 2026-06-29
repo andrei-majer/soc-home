@@ -38,7 +38,19 @@ openwrt_optional_files:
     dest: dropbear_rsa_host_key
   - src: /usr/local/bin/soc-watchdog.sh
     dest: soc-watchdog.sh
+  - src: /usr/bin/ups-loki-push.sh
+    dest: ups-loki-push.sh
   - src: /etc/config/firewall
     dest: config-firewall
   - src: /etc/config/dhcp
     dest: config-dhcp
+  - src: /etc/nginx/conf.d/teslamate.conf
+    dest: nginx-teslamate.conf
+  - src: /usr/local/bin/teslamate-ban.sh
+    dest: teslamate-ban.sh
+  - src: /usr/local/bin/nginx-logcap.sh
+    dest: nginx-logcap.sh
+  - src: /etc/config/uhttpd
+    dest: config-uhttpd
+  - src: /etc/nginx/teslamate.htpasswd
+    dest: teslamate.htpasswd
