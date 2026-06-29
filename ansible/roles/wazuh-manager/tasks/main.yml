@@ -73,9 +73,19 @@
   notify:
     - Restart wazuh-manager
 
-# ---------- ntfy integration ----------
+# ---------- telegram integration (active; ntfy kept for rollback) ----------
 
-- name: Deploy custom-ntfy integration script
+- name: Deploy custom-telegram integration script
+  ansible.builtin.copy:
+    src: custom-telegram
+    dest: "{{ wazuh_telegram_script }}"
+    owner: root
+    group: wazuh
+    mode: "0750"
+  notify:
+    - Restart wazuh-manager
+
+- name: Deploy custom-ntfy integration script (retired; left on disk for rollback)
   ansible.builtin.copy:
     src: custom-ntfy
     dest: "{{ wazuh_ntfy_script }}"

@@ -330,10 +330,12 @@
   </active-response>
 
 
-  <!-- ntfy.sh push notifications for IOC matches -->
+  <!-- Telegram push notifications for IOC matches (migrated from ntfy 2026-06-29).
+       <api_key> carries the chat id, <hook_url> the sendMessage endpoint. -->
   <integration>
-    <name>custom-ntfy</name>
-    <hook_url>{{ wazuh_ntfy_hook_url }}</hook_url>
+    <name>custom-telegram</name>
+    <hook_url>{{ wazuh_telegram_hook_url }}</hook_url>
+    <api_key>{{ wazuh_telegram_chat_id }}</api_key>
     <rule_id>100030,100031,100040,100041,100301,100302,100303,100307,100401,100403,100405,100407</rule_id>
     <alert_format>json</alert_format>
   </integration>

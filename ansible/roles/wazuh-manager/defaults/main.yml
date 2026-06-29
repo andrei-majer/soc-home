@@ -8,6 +8,7 @@ wazuh_ossec_conf: /var/ossec/etc/ossec.conf
 wazuh_local_rules: /var/ossec/etc/rules/local_rules.xml
 wazuh_api_config: /var/ossec/api/configuration/api.yaml
 wazuh_ntfy_script: /var/ossec/integrations/custom-ntfy
+wazuh_telegram_script: /var/ossec/integrations/custom-telegram
 wazuh_taxii_script: /var/ossec/integrations/opencti-taxii.py
 wazuh_taxii_cron: /etc/cron.d/opencti-taxii
 wazuh_dashboard_config: /etc/wazuh-dashboard/opensearch_dashboards.yml
@@ -16,10 +17,16 @@ wazuh_dashboard_config: /etc/wazuh-dashboard/opensearch_dashboards.yml
 wazuh_api_rate_limit: 1000
 wazuh_systemd_timeout: 180
 
-# ---------- ntfy integration ----------
+# ---------- ntfy integration (retired 2026-06-29 — kept for rollback) ----------
 wazuh_ntfy_topic: "{{ vault_ntfy_topic }}"
 wazuh_ntfy_hook_url: "{{ ntfy_base_url }}/{{ wazuh_ntfy_topic }}"
 wazuh_ntfy_rule_ids: "100030,100031,100040,100041"
+
+# ---------- telegram integration (migrated from ntfy 2026-06-29) ----------
+# Wazuh integratord passes <api_key> as argv[2] and <hook_url> as argv[3];
+# custom-telegram uses chat_id + sendMessage URL respectively.
+wazuh_telegram_hook_url: "{{ telegram_api_url }}/sendMessage"
+wazuh_telegram_chat_id: "{{ telegram_chat_id }}"
 
 # ---------- OpenCTI TAXII pull ----------
 wazuh_opencti_url: "http://{{ opencti_host }}:8080"

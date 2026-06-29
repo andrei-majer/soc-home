@@ -1,6 +1,6 @@
 #!/bin/bash
 # Disk usage alert + self-remediation — managed by Ansible
-# Was previously log-only (no alert reached anyone); now pushes ntfy and
+# Was previously log-only (no alert reached anyone); now pushes Telegram and
 # reclaims space at a critical threshold before the disk locks up (2026-05-30).
 # No -e: remediation steps (curl/journalctl/find) are best-effort and guarded
 # with `|| true`; a failed reclaim must not abort the post-check + alert.
@@ -8,15 +8,19 @@ set -uo pipefail
 THRESHOLD={{ disk_alert_threshold }}
 CRITICAL={{ disk_alert_critical }}
 LOGFILE={{ disk_alert_log }}
-NTFY_TOPIC="{{ disk_alert_ntfy_topic }}"
+TG_TOKEN="{{ telegram_bot_token }}"
+TG_CHAT="{{ telegram_chat_id }}"
 JOURNAL_FLOOR={{ disk_alert_journal_floor }}
 HOST=$(hostname)
 
 note() { echo "$(date '+%F %T') $1" >> "$LOGFILE"; logger -t disk-alert -p local0.warn "$1"; }
-ntfy() {
-    [ -z "$NTFY_TOPIC" ] && return 0
-    curl -fsS -m 10 -H "Title: SOC disk: $HOST" -H "Priority: $2" \
-         -d "$1" "{{ ntfy_base_url }}/$NTFY_TOPIC" >/dev/null 2>&1 || true
+# $2 (priority) kept at call sites for readability but unused — Telegram has no priority header.
+notify() {
+    [ -z "$TG_TOKEN" ] && return 0
+    curl -fsS -m 10 \
+         --data-urlencode "chat_id=$TG_CHAT" \
+         --data-urlencode "text=[SOC disk] $HOST: $1" \
+         "https://api.telegram.org/bot$TG_TOKEN/sendMessage" >/dev/null 2>&1 || true
 }
 
 # Highest-used real filesystem
@@ -25,7 +29,7 @@ val=${pct%%%}
 
 if [ "$val" -ge "$CRITICAL" ]; then
     note "CRITICAL: $HOST $mnt at ${pct} (>= ${CRITICAL}%) — remediating"
-    ntfy "CRITICAL: $mnt at ${pct} — auto-reclaiming space" urgent
+    notify "CRITICAL: $mnt at ${pct} — auto-reclaiming space" urgent
     journalctl --vacuum-size="$JOURNAL_FLOOR" >/dev/null 2>&1 || true
     if [ -d /var/ossec/logs/archives ]; then
         find /var/ossec/logs/archives -type f \
@@ -34,9 +38,9 @@ if [ "$val" -ge "$CRITICAL" ]; then
     fi
     read -r pct2 _ < <(df -h --output=pcent,target -x tmpfs -x devtmpfs | tail -n +2 | sort -rn | head -1)
     note "post-remediation: $mnt now ${pct2}"
-    ntfy "After reclaim: $mnt now ${pct2}" high
+    notify "After reclaim: $mnt now ${pct2}" high
 elif [ "$val" -ge "$THRESHOLD" ]; then
     msg="WARNING: $HOST $mnt at ${pct} (threshold ${THRESHOLD}%)"
     note "$msg"
-    ntfy "$msg" high
+    notify "$msg" high
 fi

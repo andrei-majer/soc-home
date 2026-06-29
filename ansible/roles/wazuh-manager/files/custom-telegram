@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+import json, sys, os, time, html, urllib.request
+from datetime import datetime
+
+LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'logs', 'integrations.log')
+
+# Per-(rule, source) dedup state. Stops a single SMB browse (dozens of audit
+# events) or a Cowrie session (many JSON events) from spamming the channel.
+# Wazuh frequency-based correlation can't fire on the FIRST hit (frequency >=2),
+# so we dedupe here instead. (Migrated from custom-ntfy 2026-06-29 — same logic,
+# separate state file so it can run in parallel with ntfy during cutover.)
+DEDUP_STATE_FILE = '/var/ossec/var/run/telegram_dedup_state.json'
+DEDUP_WINDOW_SEC = 3600
+DEDUP_BYPASS_RULES = {'100303'}
+
+
+def log(msg):
+    try:
+        with open(LOG_FILE, 'a') as f:
+            f.write(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + ' custom-telegram: ' + msg + '\n')
+    except Exception:
+        pass
+
+
+def load_state():
+    try:
+        with open(DEDUP_STATE_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_state(state):
+    try:
+        os.makedirs(os.path.dirname(DEDUP_STATE_FILE), exist_ok=True)
+        with open(DEDUP_STATE_FILE, 'w') as f:
+            json.dump(state, f)
+    except Exception as e:
+        log('WARN: could not persist dedup state: ' + str(e))
+
+
+def extract_source(alert):
+    d = alert.get('data', {}) or {}
+    return (d.get('src_host') or d.get('client_ip') or d.get('src_ip')
+            or d.get('dest_ip')
+            or (d.get('peer') or {}).get('ip')
+            or (d.get('attack_connection') or {}).get('remote_ip')
+            or (d.get('win', {}).get('eventdata', {}) or {}).get('destinationIp')
+            or 'unknown')
+
+
+def main(args):
+    if len(args) < 4:
+        log('ERROR: wrong arguments')
+        sys.exit(1)
+    alert_file = args[1]
+    chat_id    = args[2]          # Wazuh <api_key> = Telegram chat id
+    api_url    = args[3]          # Wazuh <hook_url> = https://api.telegram.org/bot<token>/sendMessage
+    try:
+        with open(alert_file) as f:
+            alert = json.load(f)
+    except Exception as e:
+        log('ERROR reading alert file: ' + str(e))
+        sys.exit(1)
+
+    rule      = alert.get('rule', {})
+    rule_id   = str(rule.get('id', '?'))
+    rule_desc = rule.get('description', 'Wazuh alert')
+    level     = rule.get('level', 0)
+    timestamp = alert.get('timestamp', '')[:19].replace('T', ' ')
+
+    src = extract_source(alert)
+
+    # Per-(rule, source) hourly dedup unless rule is in bypass set
+    if rule_id not in DEDUP_BYPASS_RULES:
+        state = load_state()
+        now = time.time()
+        state = {k: v for k, v in state.items() if now - v < DEDUP_WINDOW_SEC}
+        dedup_key = rule_id + ':' + src
+        if dedup_key in state:
+            log('SUPPRESSED rule=' + rule_id + ' src=' + src + ' (dedup window active)')
+            save_state(state)
+            sys.exit(0)
+        state[dedup_key] = now
+        save_state(state)
+
+    ioc = src if src != 'unknown' else ''
+    emoji = '\U0001F534' if level >= 12 else ('\U0001F7E0' if level >= 10 else '\U0001F7E1')  # red / orange / yellow
+    text = (emoji + ' <b>[SOC] Rule ' + html.escape(rule_id) + '</b> · level ' + str(level) + '\n'
+            + html.escape(rule_desc))
+    if ioc:
+        text += '\nIOC: <code>' + html.escape(ioc) + '</code>'
+    text += '\nTime: ' + html.escape(timestamp) + ' UTC'
+
+    payload = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'HTML',
+        'disable_web_page_preview': True,
+        'disable_notification': level < 10,   # low-severity arrives silently
+    }
+    try:
+        req = urllib.request.Request(
+            api_url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            log('OK rule=' + rule_id + ' src=' + src + ' status=' + str(r.status))
+    except Exception as e:
+        log('ERROR sending to telegram: ' + str(e))
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main(sys.argv)
