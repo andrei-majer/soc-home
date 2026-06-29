@@ -1,0 +1,164 @@
+{
+  "uid": "ssd-health-15",
+  "title": "SSD Health — Hypervisor .15",
+  "tags": ["ssd", "disk", "soc"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_LOKI",
+        "type": "datasource",
+        "query": "loki",
+        "current": { "text": "Loki", "value": "${DS_LOKI}" },
+        "hide": 2,
+        "refresh": 1,
+        "regex": ""
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Life Remaining — sda (MX300 525G, root)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 0,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 25 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Life Remaining — sdb (MX500 250G, VMs)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 0,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 25 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Temp — sda",
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "celsius", "decimals": 0,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 55 }, { "color": "red", "value": 65 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Temp — sdb",
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "celsius", "decimals": 0,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 55 }, { "color": "red", "value": 65 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Reallocated — sda",
+      "gridPos": { "h": 4, "w": 3, "x": 18, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt reallocated | unwrap reallocated [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Reallocated — sdb",
+      "gridPos": { "h": 4, "w": 3, "x": 21, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt reallocated | unwrap reallocated [$__interval])", "queryType": "range" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Life Remaining %",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda",
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" },
+        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb",
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Temperature",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda",
+          "expr": "avg_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" },
+        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb",
+          "expr": "avg_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "celsius", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Total Bytes Written (TB)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda",
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt tbw_tb | unwrap tbw_tb [$__interval])", "queryType": "range" },
+        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb",
+          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt tbw_tb | unwrap tbw_tb [$__interval])", "queryType": "range" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 1, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error sectors — must stay 0 (reallocated / pending / uncorrectable)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda reallocated",
+          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt reallocated | unwrap reallocated [$__interval])", "queryType": "range" },
+        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda pending",
+          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt pending | unwrap pending [$__interval])", "queryType": "range" },
+        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda uncorrectable",
+          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" },
+        { "refId": "D", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb reallocated",
+          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt reallocated | unwrap reallocated [$__interval])", "queryType": "range" },
+        { "refId": "E", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb pending",
+          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt pending | unwrap pending [$__interval])", "queryType": "range" },
+        { "refId": "F", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb uncorrectable",
+          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0, "spanNulls": true } },
+        "overrides": [] }
+    }
+  ]
+}

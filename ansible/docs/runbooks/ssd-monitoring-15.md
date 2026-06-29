@@ -65,8 +65,14 @@ sudo smartctl -a /dev/sda    # Percent_Lifetime_Remain (202), Total_LBAs_Written
 sudo SMARTD_DEVICESTRING=/dev/sda SMARTD_MESSAGE="manual test" SMARTD_FAILTYPE=TEST /usr/local/bin/smartd-telegram.sh
 ```
 
-A Grafana dashboard (panels: life-remaining %, temp, TBW, reallocated) can be added alongside the
-UPS dashboards on `.120` — not built yet; the metrics are flowing for it.
+## Grafana dashboard
+
+Provisioned on `.120`: **`SSD Health — Hypervisor .15`** (uid `ssd-health-15`,
+`http://192.168.1.120:3000/d/ssd-health-15/`). 10 panels: per-drive life-remaining %, temp,
+reallocated stats + life/temp/TBW/error-sector trends. Source tracked at
+`roles/suricata/files/ssd-15.json` → deploy to `/etc/grafana/provisioning/dashboards/ssd-15.json`
+(`root:grafana 0640`) then `systemctl restart grafana-server` (Grafana 12 file provider does not
+re-scan live; stores in the `resource` unified-storage table).
 
 ## Notes
 
