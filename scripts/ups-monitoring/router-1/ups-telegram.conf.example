@@ -1,0 +1,4 @@
+# Install at /etc/ups-telegram.conf on the router, chmod 600 (root-only).
+# Sourced by ups-telegram-notify.sh. Reuse the SOC Telegram bot token + chat id.
+BOT_TOKEN=CHANGEME:CHANGEME
+CHAT_ID=CHANGEME

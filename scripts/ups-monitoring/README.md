@@ -51,6 +51,23 @@ generic `list other` pass-through. A 1-minute cron job pushes readings to Loki.
 > The router flipping to **`OB` (on battery) is the earliest whole-house mains-loss signal** —
 > it loses power before anything behind it does.
 
+### Power-outage alerts (Telegram)
+The router is also the right place to **alert on the outage itself**: it rides the outage on its own
+UPS and is the internet gateway (the hypervisor suspends and the SOC VMs go with it, so they can't
+report their own power loss). OpenWrt ships no `upsmon` here, so alerting is a tiny cron-driven
+transition detector rather than a `NOTIFYCMD` hook.
+
+* `ups-telegram-notify.sh` — install at `/usr/local/bin/`, run every minute (see `crontab.snippet`).
+  Reads `upsc ted ups.status`, compares to the last state, and on a change sends **one** Telegram
+  message: 🔴 *POWER LOST* on `OL → OB`, 🟢 *POWER RESTORED* on `OB → OL`. The first run after a
+  reboot just baselines (no alert).
+* **WAN resilience:** a send that fails (e.g. a transient uplink blip, or the ISP's own upstream
+  going dark) is appended to a queue and retried every run, so the *POWER LOST* alert still
+  arrives — with its original timestamp — once connectivity returns. When the router *and* the
+  upstream network gear are on UPS, the alert is delivered in real time.
+* `ups-telegram.conf.example` — copy to `/etc/ups-telegram.conf` (chmod 600) and fill in the bot
+  token + chat id. No token ever lives in the script itself.
+
 ## workstation-13/ — Windows workstation (WinUSB + pyusb)
 The third UPS hangs off the Windows workstation. Same Cypress `0665:5161` chip, but on Windows
 it enumerates as a *vendor-defined HID* and Windows can't read it as a battery. NUT's
@@ -89,3 +106,7 @@ lab, so metrics travel as Loki log lines; panels use `| logfmt FIELD | unwrap FI
 `nut/upsd.users` and `nut/upsmon.conf` contain `CHANGEME` placeholders for the local
 `monuser` password (used only between `upsd` and `upsmon` on `127.0.0.1`). Set a real value in
 both before use.
+
+`router-1/ups-telegram.conf.example` carries `CHANGEME` placeholders for the Telegram bot token
+and chat id — copy to `/etc/ups-telegram.conf` (mode 600) and set real values. The notifier
+script sources them at runtime; no token is ever embedded in the script.
