@@ -49,6 +49,7 @@
             "dst": ["tag:vps"],
             "ip":  ["*"],
         },
+
         // Router <-> router (remove if bnp/xndrei should stay isolated)
         //{
         //    "src": ["tag:router"],
@@ -60,12 +61,17 @@
         // Routers/VPS cannot initiate to workstations — denied by default.
     ],
 
-    // SSH note (2026-06-26): every device in this tailnet is tagged (see tagOwners) and
-    // `action: check` does not support tagged sources, so this block matches no CURRENT
-    // device. Real root access to these hosts is via per-host key-only sshd over the
-    // port-22 grant, not this rule. `root` removed here as defense-in-depth so no FUTURE
-    // untagged member device can Tailscale-SSH as root; re-add a scoped rule if needed.
+    // Workstations -> routers (bnp/xndrei) over Tailscale SSH, as root.
+    // bnp's port 22 on its Tailscale IP is intercepted by Tailscale SSH, so this is the
+    // only path to bnp now that its 192.168.1.0/24 subnet route is un-approved.
+    // Scoped to tag:workstation (not autogroup:member) so no untagged device gets root.
     "ssh": [
+        {
+            "action": "accept",
+            "src":    ["tag:workstation"],
+            "dst":    ["tag:router"],
+            "users":  ["root", "autogroup:nonroot"],
+        },
         {
             "action":      "check",
             "src":         ["autogroup:member"],
