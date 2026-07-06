@@ -1,0 +1,3 @@
+# These files deploy verbatim to a Linux host (.15). Force LF regardless of
+# the checkout platform so shell shebangs and systemd units never get CRLF.
+* text eol=lf
