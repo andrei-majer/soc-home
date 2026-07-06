@@ -50,3 +50,30 @@
   loop:
     - docker-prune.timer
     - disk-alert.timer
+
+# ---------- NIC: e1000e "Detected Hardware Unit Hang" mitigation ----------
+# 2026-07-06: eno1 (Intel I219-V) hung 829x, dropping .15 off the LAN while the
+# OS ran fine (WoL useless — NIC was the dead part). Disabling TSO/GSO/GRO is the
+# documented workaround for this I219/e1000e TX-offload bug.
+- name: Ensure ethtool is installed
+  ansible.builtin.apt:
+    name: ethtool
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install eno1 offload-disable unit
+  ansible.builtin.copy:
+    src: eno1-disable-offload.service
+    dest: /etc/systemd/system/eno1-disable-offload.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start eno1 offload-disable
+  ansible.builtin.systemd:
+    name: eno1-disable-offload.service
+    enabled: true
+    state: started
+    daemon_reload: true
