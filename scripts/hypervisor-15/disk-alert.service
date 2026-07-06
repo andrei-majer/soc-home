@@ -1,0 +1,6 @@
+[Unit]
+Description=Disk usage Telegram alert (/ and /mnt/vms)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/disk-alert.sh

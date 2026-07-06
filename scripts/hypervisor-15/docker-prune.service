@@ -1,0 +1,8 @@
+[Unit]
+Description=Weekly Docker prune (unused images/cache/containers >7d)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/docker-prune.sh

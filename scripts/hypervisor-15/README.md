@@ -90,6 +90,28 @@ journalctl -u soc-wake.service -f
 sudo systemctl stop soc-sleep.timer soc-wake.timer
 ```
 
+## Docker storage guardrails (added 2026-07-06)
+
+`.15` runs TeslaMate in Docker and is used for ad-hoc image testing, which
+repeatedly filled the 98 GB root. Docker's data was relocated onto `/mnt/vms`
+(daemon `data-root` **and** the system containerd `--root`, since this host uses
+the containerd snapshotter — image bulk lives in `/var/lib/containerd`, not
+`/var/lib/docker`). These two units keep it bounded:
+
+| File | Install path on `.15` | Purpose |
+|---|---|---|
+| `docker-prune.sh` | `/usr/local/sbin/` (755) | Prune unused images / build cache / stopped containers **older than 7d**; never volumes |
+| `docker-prune.service` + `.timer` | `/etc/systemd/system/` | Oneshot, weekly `OnCalendar=Sun 07:00 Persistent=true` |
+| `disk-alert.sh` | `/usr/local/sbin/` (755) | Telegram alert when `/` or `/mnt/vms` ≥ 85% (one alert per crossing, `/run` flag files); reuses `/etc/default/smartd-telegram` creds |
+| `disk-alert.service` + `.timer` | `/etc/systemd/system/` | Oneshot, `OnCalendar=hourly Persistent=true` |
+
+```bash
+sudo install -m 755 -o root -g root docker-prune.sh disk-alert.sh /usr/local/sbin/
+sudo install -m 644 -o root -g root docker-prune.{service,timer} disk-alert.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now docker-prune.timer disk-alert.timer
+```
+
 ## See also
 
 - [`hypervisor-15` memory](https://github.com/andrei-majer/soc-home) — full migration history
