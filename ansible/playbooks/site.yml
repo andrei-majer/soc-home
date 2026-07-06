@@ -78,10 +78,17 @@
   roles:
     - openwrt
 
-# Play 7 removed: the .15 hypervisor was migrated Windows 11 -> Ubuntu 24.04
-# (2026-06-08), so the old `w32tm` raw command failed on every full converge.
-# .15 is runbook-only (not Ansible-managed) per README; its NTP is now a
-# systemd-timesyncd drop-in documented in docs/runbooks/hypervisor-15.md.
+# Play 7: Hypervisor .15 host stack (re-added 2026-07-06 — was runbook-only).
+# Brings the .15 HOST config under Ansible so a reinstall no longer silently
+# drops host-side units (as the ups-loki collector was on the 2026-07-02
+# reinstall). First pass = Docker storage guardrails; scope grows over time.
+# See roles/hypervisor. NOTE: the control node .120 is a VM on .15, so this play
+# can only run once .120 is up (fine — host-stack rebuild follows VM restore).
+- name: Hypervisor host stack (.15)
+  hosts: hypervisor
+  become: true
+  roles:
+    - hypervisor
 
 # Play 8: Canary host (.140 fs1) — internal trip-wire
 - name: Canary host

@@ -1,0 +1,52 @@
+---
+# ============================================================================
+# Hypervisor role — .15 host-stack units that are NOT provided by any VM role.
+#
+# The .15 host was historically runbook-only (see docs/runbooks/hypervisor-15.md);
+# this role begins bringing that host stack under Ansible so a reinstall no longer
+# silently loses it (as happened with the ups-loki collector on 2026-07-02).
+#
+# Scope (first pass, 2026-07-06): Docker storage guardrails only.
+#   - docker-prune : weekly prune of unused images/cache/stopped containers >7d
+#   - disk-alert   : hourly Telegram alert when / or /mnt/vms crosses 85%
+# Idempotent — these are already deployed on .15; this just codifies them.
+#
+# Deliberately NOT managed here: the runtime /etc/nut/ARMED toggle (operator-
+# controlled). Future passes: ups-loki, ssd-smart-loki, soc-sleep/wake,
+# lm-sensors, NUT config (needs vault for upsd.users).
+# ============================================================================
+
+- name: Install .15 host guardrail scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/sbin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - docker-prune.sh
+    - disk-alert.sh
+
+- name: Install docker guardrail systemd units
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - docker-prune.service
+    - docker-prune.timer
+    - disk-alert.service
+    - disk-alert.timer
+  notify: Reload systemd
+
+- name: Enable and start docker guardrail timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - docker-prune.timer
+    - disk-alert.timer
