@@ -1,0 +1,14 @@
+[Unit]
+Description=PXE netboot HTTP asset server :8088 (.15, on-demand)
+After=network-online.target
+Wants=network-online.target
+PartOf=pxe-netboot.target
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/backup/netboot
+ExecStart=/usr/bin/python3 -m http.server 8088 --bind 192.168.1.15
+Restart=no
+
+[Install]
+WantedBy=pxe-netboot.target
