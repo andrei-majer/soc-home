@@ -1,0 +1,22 @@
+#!/bin/sh
+# On-demand control for the .15 PXE netboot server. NEVER enabled at boot.
+UNITS="pxe-dnsmasq.service pxe-http.service pxe-nfs-export.service"
+case "${1:-}" in
+  start)
+    systemctl start nfs-server.service
+    for u in $UNITS; do systemctl start "$u"; done
+    echo "PXE netboot STARTED. proxyDHCP+TFTP+HTTP:8088+NFS live on eno1."
+    systemctl --no-pager --no-legend is-active $UNITS
+    ;;
+  stop)
+    for u in $UNITS; do systemctl stop "$u" 2>/dev/null; done
+    systemctl stop nfs-server.service 2>/dev/null
+    echo "PXE netboot STOPPED. .15 back to zero-footprint."
+    ;;
+  status)
+    echo "=== units ==="; systemctl --no-pager --no-legend is-active $UNITS 2>/dev/null
+    echo "=== exports ==="; exportfs -v 2>/dev/null
+    echo "=== listeners ==="; ss -lunp | grep -E ":67|:69|:4011"; ss -ltnp | grep ":8088"
+    ;;
+  *) echo "usage: pxe-clone {start|stop|status}"; exit 1 ;;
+esac
