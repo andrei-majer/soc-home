@@ -1,0 +1,6 @@
+---
+# Kernel cmdline for .15 (GRUB_CMDLINE_LINUX_DEFAULT). The role OWNS this line —
+# add any future params here. pcie_aspm=off is belt-and-suspenders for the Intel
+# I219-V e1000e "Detected Hardware Unit Hang" (2026-07-06 LAN outage); pairs with
+# the eno1-disable-offload.service. Applies on next reboot.
+hypervisor_grub_cmdline_default: "pcie_aspm=off"

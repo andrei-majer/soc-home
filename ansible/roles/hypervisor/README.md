@@ -16,8 +16,10 @@ Runs against the `hypervisor` inventory group with `become: true`.
 | `docker-prune.{sh,service,timer}` | Weekly prune of unused images/cache/stopped containers >7d; never volumes |
 | `disk-alert.{sh,service,timer}` | Hourly Telegram alert when `/` or `/mnt/vms` ≥ 85% (reads token from `/etc/default/smartd-telegram`) |
 | `eno1-disable-offload.service` | Disables `eno1` TSO/GSO/GRO at boot — mitigates the Intel I219-V `e1000e` **"Detected Hardware Unit Hang"** that dropped `.15` off the LAN on 2026-07-06 (829 hangs; OS stayed up, NIC dead). Also ensures `ethtool` is installed. |
+| GRUB cmdline (`pcie_aspm=off`) | `GRUB_CMDLINE_LINUX_DEFAULT` via `hypervisor_grub_cmdline_default` (defaults). Belt-and-suspenders for the same NIC hang (disables PCIe ASPM). `update-grub` handler; **applies on next reboot**. |
 
 Idempotent — these are already deployed on `.15`; the role just codifies them.
+(The GRUB cmdline line is *owned* by the role — add future kernel params to `hypervisor_grub_cmdline_default` in `defaults/main.yml`.)
 
 ## Not managed here
 - The runtime `/etc/nut/ARMED` toggle — operator-controlled on purpose.

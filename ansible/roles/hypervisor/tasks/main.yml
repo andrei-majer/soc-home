@@ -77,3 +77,11 @@
     enabled: true
     state: started
     daemon_reload: true
+
+- name: Set GRUB kernel cmdline (pcie_aspm=off — e1000e NIC hang belt-and-suspenders)
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="{{ hypervisor_grub_cmdline_default }}"'
+    backup: true
+  notify: Update grub
