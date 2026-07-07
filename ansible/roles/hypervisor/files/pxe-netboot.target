@@ -1,0 +1,3 @@
+[Unit]
+Description=PXE netboot server (.15) — on-demand group
+# Started/stopped only via /usr/local/sbin/pxe-clone. Not WantedBy multi-user.

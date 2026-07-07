@@ -1,0 +1,14 @@
+[Unit]
+Description=PXE netboot proxyDHCP + TFTP (.15, on-demand)
+After=network-online.target
+Wants=network-online.target
+PartOf=pxe-netboot.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/dnsmasq --test --conf-file=/etc/netboot/dnsmasq-pxe.conf
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=/etc/netboot/dnsmasq-pxe.conf
+Restart=no
+
+[Install]
+WantedBy=pxe-netboot.target

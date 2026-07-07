@@ -1,0 +1,14 @@
+[Unit]
+Description=PXE Clonezilla NFS repo export (.15, on-demand)
+Requires=nfs-server.service
+After=nfs-server.service
+PartOf=pxe-netboot.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/exportfs -o rw,sync,no_subtree_check,no_root_squash 192.168.1.0/24:/mnt/backup/clonezilla-images
+ExecStop=/usr/sbin/exportfs -u 192.168.1.0/24:/mnt/backup/clonezilla-images
+
+[Install]
+WantedBy=pxe-netboot.target

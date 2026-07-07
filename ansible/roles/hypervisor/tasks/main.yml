@@ -85,3 +85,80 @@
     line: 'GRUB_CMDLINE_LINUX_DEFAULT="{{ hypervisor_grub_cmdline_default }}"'
     backup: true
   notify: Update grub
+
+# ---------- PXE / UEFI netboot server (on-demand; assets fetched manually) ----------
+# 2026-07-07: on-demand, Secure-Boot-capable UEFI netboot server (Clonezilla +
+# Ubuntu Server + Fedora). Every unit is DISABLED by default and toggled only via
+# `pxe-clone start|stop` — off = zero footprint. This role provisions the FRAMEWORK
+# (packages, masked stock dnsmasq, dirs, config, units, grub menu); the boot ASSETS
+# (ISOs, filesystem.squashfs, signed shims/grubs, kernels) are large and fetched by
+# hand — see scripts/netboot-15/README.md and docs/superpowers/plans/2026-07-06-
+# pxe-netboot-server.md. dnsmasq runs proxyDHCP-only (port=0, never assigns IPs —
+# .1 stays the DHCP authority). Validated end-to-end 2026-07-07 via QEMU+OVMF.
+- name: Ensure PXE netboot packages present
+  ansible.builtin.apt:
+    name:
+      - dnsmasq
+      - nfs-kernel-server
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Mask stock dnsmasq (a dedicated pxe-dnsmasq instance is used)
+  ansible.builtin.systemd:
+    name: dnsmasq
+    masked: true
+    enabled: false
+
+- name: Ensure nfs-server is not enabled at boot (pxe-clone starts it on demand)
+  ansible.builtin.systemd:
+    name: nfs-server
+    enabled: false
+
+- name: Create PXE netboot directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/netboot
+    - /srv/tftp/grub
+    - /srv/tftp/clonezilla
+    - /srv/tftp/ubuntu-server
+    - /srv/tftp/fedora44
+    - /mnt/backup/clonezilla-images
+
+- name: Deploy PXE dnsmasq config + grub netboot menu
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: dnsmasq-pxe.conf, dest: /etc/netboot/dnsmasq-pxe.conf }
+    - { src: grub.cfg, dest: /srv/tftp/grub/grub.cfg }
+
+- name: Deploy PXE systemd units (disabled by default — on-demand only)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - pxe-dnsmasq.service
+    - pxe-http.service
+    - pxe-nfs-export.service
+    - pxe-netboot.target
+  notify: Reload systemd
+
+- name: Deploy pxe-clone toggle
+  ansible.builtin.copy:
+    src: pxe-clone
+    dest: /usr/local/sbin/pxe-clone
+    owner: root
+    group: root
+    mode: "0755"
