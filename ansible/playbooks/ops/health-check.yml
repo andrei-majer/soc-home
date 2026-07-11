@@ -366,6 +366,17 @@
       ansible.builtin.command: VBoxManage list runningvms
       register: vms_15
       changed_when: false
+    - name: OpenCTi actual VBox VMState (.15)  # noqa: command-instead-of-module
+      # Distinguishes a legitimate on-demand savestate/poweroff from 'aborted' (crashed
+      # mid-run or mid-savestate) — the OpenCTI play below only sees SSH reachability, which
+      # can't tell 'saved' from 'aborted' since both are unreachable. Found 2026-07-11: VM sat
+      # in 'aborted' for 8 days undetected. See soc-lab/opencti-135.md "Aborted-state gap".
+      ansible.builtin.shell: |
+        VBoxManage showvminfo OpenCTi --machinereadable 2>/dev/null | grep -oP '^VMState="\K[^"]+' || echo unknown
+      args:
+        executable: /bin/bash
+      register: opencti_vbox_state_15
+      changed_when: false
     - name: VM storage free GB (/mnt/vms on .15)
       ansible.builtin.shell: |
         df --output=avail /mnt/vms | tail -1 | awk '{printf "%.1f\n", $1/1024/1024}'
@@ -462,6 +473,8 @@
           {% endfor %}
           /mnt/vms free: {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 30 else '' }}
           /mnt/backup free: {{ hostvars['hypervisor-15']['disk_15_backup']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15_backup']['stdout'] | default('999') | trim | float) < 20 else '' }}
+          {% set octi_vbox = hostvars['hypervisor-15']['opencti_vbox_state_15']['stdout'] | default('unknown') | trim %}
+          OpenCTi VMState: {{ octi_vbox }}{{ ' [FAIL] unexpected state — needs cold boot, see opencti-135.md' if octi_vbox not in ['running', 'saved', 'poweroff'] else '' }}
           ==========================================================
 
     - name: Fail if any service is down
@@ -524,6 +537,16 @@
       ansible.builtin.fail:
         msg: ".15 hypervisor /mnt/backup free < 10 GB (WARN at 20 GB)"
       when: (hostvars['hypervisor-15']['disk_15_backup']['stdout'] | default('999') | trim | float) < 10
+
+    - name: Fail if OpenCTI VM is in an unexpected VBox state
+      ansible.builtin.fail:
+        msg: >-
+          OpenCTi VM is in VBoxManage state '{{ hostvars['hypervisor-15']['opencti_vbox_state_15']['stdout'] | default('unknown') | trim }}'
+          (expected running/saved/poweroff) — likely crashed mid-run or mid-savestate.
+          Recover: VBoxManage startvm OpenCTi --type headless from .15 (an 'aborted' state
+          cold-boots directly, no discardstate needed) or run opencti-wake.ps1 from .13.
+          See soc-lab/opencti-135.md "Aborted-state gap".
+      when: (hostvars['hypervisor-15']['opencti_vbox_state_15']['stdout'] | default('unknown') | trim) not in ['running', 'saved', 'poweroff']
 
     - name: Fail if disk >= 90%
       ansible.builtin.fail:
