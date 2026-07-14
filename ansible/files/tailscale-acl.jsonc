@@ -6,6 +6,7 @@
         "tag:vps":         ["autogroup:admin"],
         "tag:workstation": ["autogroup:admin"],
         "tag:mobile":      ["autogroup:admin"],
+        "tag:kvm":         ["autogroup:admin"],
     },
 
     "grants": [
@@ -47,6 +48,14 @@
         {
             "src": ["tag:vps"],
             "dst": ["tag:vps"],
+            "ip":  ["*"],
+        },
+
+        // Workstations -> glkvm IP-KVM appliance only. No tag:kvm -> anything grant:
+        // the device only needs to be reached, never to reach routers/VPS/workstations itself.
+        {
+            "src": ["tag:workstation"],
+            "dst": ["tag:kvm"],
             "ip":  ["*"],
         },
 
@@ -93,7 +102,15 @@
     "tests": [
         {
             "src":    "tag:workstation",
-            "accept": ["tag:router:22", "tag:vps:22", "1.1.1.1:443"],
+            "accept": ["tag:router:22", "tag:vps:22", "tag:kvm:80", "1.1.1.1:443"],
+        },
+        {
+            "src":  "tag:vps",
+            "deny": ["tag:kvm:80"],
+        },
+        {
+            "src":  "tag:router",
+            "deny": ["tag:kvm:80"],
         },
         {
             "src":    "tag:mobile",
