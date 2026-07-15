@@ -13,12 +13,12 @@
 #   arkime-capture stop
 #   arkime-capture status
 #
-# UI: http://192.168.1.120:8005
+# UI: http://192.168.1.20:8005
 
 set -euo pipefail
 
 SERVICES="arkimecapture arkimeviewer"
-VIEWER_URL="http://192.168.1.120:8005"
+VIEWER_URL="http://192.168.1.20:8005"
 
 case "${1:-status}" in
   start)

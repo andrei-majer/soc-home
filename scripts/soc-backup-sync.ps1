@@ -18,9 +18,9 @@ $MirrorRoot    = '/mnt/backup/soc-data'
 
 # (host, service-list) tuples - must match where the Ansible role deployed scripts
 $Sources = @(
-  @{ Host = '192.168.1.133'; Services = @('misp','wazuh','kibana') }
-  @{ Host = '192.168.1.135'; Services = @('opencti') }
-  @{ Host = '192.168.1.120'; Services = @('velociraptor','grafana','evebox') }
+  @{ Host = '192.168.1.21'; Services = @('misp','wazuh','kibana') }
+  @{ Host = '192.168.1.22'; Services = @('opencti') }
+  @{ Host = '192.168.1.20'; Services = @('velociraptor','grafana','evebox') }
 )
 
 function Write-Log($msg) {

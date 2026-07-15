@@ -36,5 +36,5 @@ wazuh_taxii_token: "{{ vault_opencti_taxii_token }}"
 wazuh_taxii_output: /var/ossec/etc/lists/opencti-ioc
 
 # ---------- Plan 4: soc-contain AR trigger ----------
-wazuh_soc_contain_url: "http://192.168.1.120:8765"
+wazuh_soc_contain_url: "http://192.168.1.20:8765"
 wazuh_soc_contain_token_path: /var/ossec/etc/soc-contain-token

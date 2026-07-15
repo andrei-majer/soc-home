@@ -22,18 +22,17 @@ soc_contain_vr_artifacts:
 
 soc_contain_tailscale_quarantine_tag: tag:quarantine
 
-# Plan 4 — receiver + ntfy
-soc_contain_listen_host: 192.168.1.120
+# Plan 4 — receiver + notifications (Telegram; migrated off ntfy 2026-06-29)
+soc_contain_listen_host: 192.168.1.20
 soc_contain_listen_port: 8765
 
-soc_contain_ntfy_base_url: "http://192.168.1.120:8090"
-soc_contain_ntfy_topic: "soc-contain-{{ vault_soc_contain_ntfy_topic_suffix }}"
-soc_contain_ntfy_priority_t0_armed: 5
-soc_contain_ntfy_priority_t0_dryrun: 4
-soc_contain_ntfy_priority_t1: 4
-soc_contain_ntfy_priority_t2: 3
-soc_contain_ntfy_priority_dedup: 2
-soc_contain_ntfy_priority_kill_switch: 5
-soc_contain_ntfy_priority_reaper_ok: 2
-soc_contain_ntfy_priority_reaper_failed: 5
-soc_contain_ntfy_timeout_seconds: 5
+# telegram_bot_token / telegram_chat_id come from group_vars/all (vault-backed)
+soc_contain_telegram_priority_t0_armed: 5
+soc_contain_telegram_priority_t0_dryrun: 4
+soc_contain_telegram_priority_t1: 4
+soc_contain_telegram_priority_t2: 3
+soc_contain_telegram_priority_dedup: 2
+soc_contain_telegram_priority_kill_switch: 5
+soc_contain_telegram_priority_reaper_ok: 2
+soc_contain_telegram_priority_reaper_failed: 5
+soc_contain_telegram_timeout_seconds: 5

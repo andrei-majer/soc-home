@@ -138,7 +138,7 @@
 
 - name: Wait for OpenCanary to listen on key ports
   ansible.builtin.wait_for:
-    host: 192.168.1.140
+    host: 192.168.1.24
     port: "{{ item }}"
     timeout: 30
   loop: [21, 80, 445, 3306]
@@ -185,7 +185,7 @@
 
 - name: Wait for sinkhole to listen on canonical port (4444)
   ansible.builtin.wait_for:
-    host: 192.168.1.140
+    host: 192.168.1.24
     port: 4444
     timeout: 30
   when: inventory_hostname in groups['canary']

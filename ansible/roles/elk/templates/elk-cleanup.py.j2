@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 {{ ansible_managed | comment }}
 """Delete old ES indices based on retention policy.
-Run daily via cron on 192.168.1.133.
+Run daily via cron on 192.168.1.21.
 Retention:
   suricata-*              {{ retention_suricata }} days
   zeek-*                  {{ retention_zeek }} days

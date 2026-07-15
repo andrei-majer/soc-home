@@ -9,7 +9,7 @@
 # The two SSD families expose DIFFERENT SMART attribute IDs for life/writes, so
 # the awk below coalesces per-model: Crucial/Micron (202,246,197,198,187,173)
 # vs Silicon Motion / ADATA SU800 (169,241,160,199,167).
-LOKI="http://192.168.1.120:3100/loki/api/v1/push"
+LOKI="http://192.168.1.20:3100/loki/api/v1/push"
 HOST="15"
 
 push() {  # $1 = stream-labels JSON fragment   $2 = logfmt line

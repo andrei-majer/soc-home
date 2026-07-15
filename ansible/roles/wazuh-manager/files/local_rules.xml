@@ -157,7 +157,7 @@
        from firing on sinkhole events and letting 100306/307 chain instead). -->
   <rule id="100300" level="3">
     <decoded_as>json</decoded_as>
-    <field name="dst_host">192.168.1.140</field>
+    <field name="dst_host">192.168.1.24</field>
     <field name="logtype" type="pcre2">^\d+$</field>
     <description>Canary hit on .140 (base, silent)</description>
   </rule>

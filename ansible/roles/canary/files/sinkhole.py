@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TCP sinkhole listener on 192.168.1.140 (C2/exotic port set).
+"""TCP sinkhole listener on 192.168.1.24 (C2/exotic port set).
 Logs all inbound connections as JSON -> /var/log/sinkhole.json.
 Companion to OpenCanary on the same host — sinkhole covers C2/exotic ports
 OpenCanary does not ship; OpenCanary covers banner-emulated service ports.
@@ -7,7 +7,7 @@ OpenCanary does not ship; OpenCanary covers banner-emulated service ports.
 import asyncio, json, sys, logging
 from datetime import datetime, timezone
 
-SINKHOLE_IP = "192.168.1.140"
+SINKHOLE_IP = "192.168.1.24"
 LOG_FILE    = "/var/log/sinkhole.json"
 
 PORTS = [

@@ -2,7 +2,7 @@
 # Read router UPS, push to Loki (.120). Best-effort (Loki may be asleep).
 # Pushes twice per invocation (t=0 and t=+30s); with the every-minute cron this
 # yields ~30s sample spacing to match .15 (smoother Grafana graphs).
-LOKI="http://192.168.1.120:3100/loki/api/v1/push"
+LOKI="http://192.168.1.20:3100/loki/api/v1/push"
 sample(){
   out="$(upsc ted 2>/dev/null)" || return 0
   g(){ echo "$out" | awk -F': ' -v k="$1" '$1==k{print $2; exit}'; }

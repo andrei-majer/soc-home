@@ -17,7 +17,7 @@ Scheduled every minute as SYSTEM (see install-task.ps1); two pushes/run -> ~30s 
 import os, sys, json, time, urllib.request, traceback
 
 VID, PID = 0x0665, 0x5161
-LOKI = "http://192.168.1.120:3100/loki/api/v1/push"
+LOKI = "http://192.168.1.20:3100/loki/api/v1/push"
 HOST = "13"
 LOG = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "soc-ups", "ups-collect.log")
 

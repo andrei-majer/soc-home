@@ -40,7 +40,7 @@
         // Mobile -> Grafana web UI only (via xndrei subnet route). Keeps "stolen phone can't pivot".
         {
             "src": ["tag:mobile"],
-            "dst": ["192.168.1.120"],
+            "dst": ["192.168.1.20"],
             "ip":  ["tcp:3000"],
         },
 
@@ -114,13 +114,13 @@
         },
         {
             "src":    "tag:mobile",
-            "accept": ["192.168.1.120:3000"],
+            "accept": ["192.168.1.20:3000"],
             "deny": [
                 "tag:workstation:22",
                 "tag:router:22",
                 "tag:vps:22",
-                "192.168.1.120:22",
-                "192.168.1.133:3000",
+                "192.168.1.20:22",
+                "192.168.1.21:3000",
             ],
         },
         {
