@@ -1,12 +1,12 @@
 #!/bin/bash
 # soc-wake.sh — cold-boot SOC VMs in the morning; verify each via ping with one auto-reset.
 # Invoked by soc-wake.service (timer @ 06:00 daily). Logs via journal.
+# Suricata (.20) excluded 2026-07-16: hosts Grafana, kept up 24/7 for Tailscale mobile access.
 set -u
 declare -A SOC_VMS=(
-  ["Suricata"]="192.168.1.120"
-  ["ELK"]="192.168.1.133"
-  ["T-Pot Hive"]="192.168.1.130"
-  ["OpenCanary"]="192.168.1.140"
+  ["ELK"]="192.168.1.21"
+  ["T-Pot Hive"]="192.168.1.23"
+  ["OpenCanary"]="192.168.1.24"
 )
 PING_RETRIES=12
 PING_INTERVAL=15

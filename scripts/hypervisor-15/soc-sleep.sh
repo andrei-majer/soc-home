@@ -1,8 +1,9 @@
 #!/bin/bash
 # soc-sleep.sh — ACPI shutdown of SOC VMs nightly; force-poweroff stragglers after 5 min.
 # Invoked by soc-sleep.service (timer @ 23:00 daily). Logs via journal.
+# Suricata (.20) excluded 2026-07-16: hosts Grafana, kept up 24/7 for Tailscale mobile access.
 set -u
-SOC_VMS=("Suricata" "ELK" "T-Pot Hive" "OpenCanary")
+SOC_VMS=("ELK" "T-Pot Hive" "OpenCanary")
 TIMEOUT=300
 VBOX=/usr/bin/VBoxManage
 
