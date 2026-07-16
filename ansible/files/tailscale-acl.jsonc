@@ -43,6 +43,12 @@
             "dst": ["192.168.1.20"],
             "ip":  ["tcp:3000"],
         },
+        // Mobile -> Nextcloud on .15 (direct Tailscale IP, no subnet-route dependency).
+        {
+            "src": ["tag:mobile"],
+            "dst": ["100.81.37.72"],
+            "ip":  ["tcp:80"],
+        },
 
         // VPS <-> VPS
         {
@@ -114,13 +120,14 @@
         },
         {
             "src":    "tag:mobile",
-            "accept": ["192.168.1.20:3000"],
+            "accept": ["192.168.1.20:3000", "100.81.37.72:80"],
             "deny": [
                 "tag:workstation:22",
                 "tag:router:22",
                 "tag:vps:22",
                 "192.168.1.20:22",
                 "192.168.1.21:3000",
+                "100.81.37.72:22",
             ],
         },
         {
