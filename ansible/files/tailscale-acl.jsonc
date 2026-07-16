@@ -49,6 +49,13 @@
             "dst": ["100.81.37.72"],
             "ip":  ["tcp:80"],
         },
+        // Mobile -> Grafana, reverse-proxied through .15 (nginx -> 192.168.1.20:3000 over LAN).
+        // Avoids the xndrei subnet-route dependency the direct 192.168.1.20:3000 grant has.
+        {
+            "src": ["tag:mobile"],
+            "dst": ["100.81.37.72"],
+            "ip":  ["tcp:3000"],
+        },
 
         // VPS <-> VPS
         {
@@ -120,7 +127,7 @@
         },
         {
             "src":    "tag:mobile",
-            "accept": ["192.168.1.20:3000", "100.81.37.72:80"],
+            "accept": ["192.168.1.20:3000", "100.81.37.72:80", "100.81.37.72:3000"],
             "deny": [
                 "tag:workstation:22",
                 "tag:router:22",
