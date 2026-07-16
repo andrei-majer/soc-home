@@ -1,0 +1,10 @@
+[Unit]
+Description=Trigger SOC VM sleep at 23:00 daily
+
+[Timer]
+OnCalendar=*-*-* 23:00:00
+Persistent=true
+Unit=soc-sleep.service
+
+[Install]
+WantedBy=timers.target

@@ -2,8 +2,12 @@
 
 Replaces the Windows Task Scheduler `SOC-Sleep` / `SOC-ResumeVMs` jobs that
 ran on the pre-2026-06-08 Windows hypervisor. systemd timers do the same job
-on the new Ubuntu 24.04 host: ACPI-shutdown 4 SOC VMs at 23:00 local
+on the new Ubuntu 24.04 host: ACPI-shutdown the SOC VMs at 23:00 local
 (Bucharest), cold-boot them at 06:00. Logs go to journal.
+
+**Now Ansible-managed** — see `ansible/roles/hypervisor/tasks/main.yml`
+(added 2026-07-16). This directory remains the canonical source for the
+script/unit content the role copies from.
 
 ## Files
 
@@ -56,7 +60,13 @@ hanging if the cable is unplugged.)
 
 ## VMs covered
 
-`Suricata` (.120), `ELK` (.133), `T-Pot Hive` (.130), `OpenCanary` (.140).
+`ELK` (.21), `T-Pot Hive` (.23), `OpenCanary` (.24).
+
+`Suricata` (.20) is **deliberately excluded since 2026-07-16** — it now hosts
+Grafana (reverse-proxied over Tailscale for mobile access, see the
+`grafana-proxy` container and memory `soc-lab/tailscale.md`), so it stays up
+24/7 instead of cycling nightly.
+
 `OpenCTi` is **deliberately excluded** — it runs in on-demand savestate mode
 since 2026-06-07 (woken manually via `opencti-wake.ps1` on `.13` when needed).
 `OpenClaw` and the retired `T-Pot Sensor` are not SOC services and stay off.

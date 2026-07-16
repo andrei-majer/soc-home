@@ -1,0 +1,13 @@
+[Unit]
+Description=Cold-boot all SOC VMs in the morning
+After=network.target vboxdrv.service systemd-modules-load.service
+
+[Service]
+Type=oneshot
+User=andrei
+ExecStart=/usr/local/bin/soc-wake.sh
+TimeoutStartSec=900
+# Don't kill the VBoxHeadless children when the script exits — they're our payload, not part of the service.
+KillMode=process
+StandardOutput=journal
+StandardError=journal

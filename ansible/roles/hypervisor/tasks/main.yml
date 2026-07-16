@@ -9,11 +9,12 @@
 # Scope (first pass, 2026-07-06): Docker storage guardrails only.
 #   - docker-prune : weekly prune of unused images/cache/stopped containers >7d
 #   - disk-alert   : hourly Telegram alert when / or /mnt/vms crosses 85%
+# Added 2026-07-16: soc-sleep/wake (nightly SOC VM ACPI shutdown/cold-boot).
 # Idempotent — these are already deployed on .15; this just codifies them.
 #
 # Deliberately NOT managed here: the runtime /etc/nut/ARMED toggle (operator-
-# controlled). Future passes: ups-loki, ssd-smart-loki, soc-sleep/wake,
-# lm-sensors, NUT config (needs vault for upsd.users).
+# controlled). Future passes: ups-loki, ssd-smart-loki, lm-sensors, NUT config
+# (needs vault for upsd.users).
 # ============================================================================
 
 - name: Install .15 host guardrail scripts
@@ -50,6 +51,45 @@
   loop:
     - docker-prune.timer
     - disk-alert.timer
+
+# ---------- soc-sleep/wake: nightly SOC VM ACPI shutdown/cold-boot ----------
+# Suricata excluded from SOC_VMS in both scripts 2026-07-16: it now hosts
+# Grafana (grafana-proxy container, see roles/hypervisor or memory soc-lab/
+# tailscale.md), reached over Tailscale from mobile, so it stays up 24/7.
+- name: Install soc-sleep/wake scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - soc-sleep.sh
+    - soc-wake.sh
+
+- name: Install soc-sleep/wake systemd units
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - soc-sleep.service
+    - soc-sleep.timer
+    - soc-wake.service
+    - soc-wake.timer
+  notify: Reload systemd
+
+- name: Enable and start soc-sleep/wake timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - soc-sleep.timer
+    - soc-wake.timer
 
 # ---------- NIC: e1000e "Detected Hardware Unit Hang" mitigation ----------
 # 2026-07-06: eno1 (Intel I219-V) hung 829x, dropping .15 off the LAN while the
