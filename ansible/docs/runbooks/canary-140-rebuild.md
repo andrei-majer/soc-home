@@ -4,7 +4,7 @@ Rebuilds the internal trip-wire canary host from scratch. Cold rebuild ~30 min;
 fast-path (OVA restore) ~5 min once an OVA backup exists.
 
 **Naming:** VirtualBox VM name is `OpenCanary`. Guest OS hostname is `fs1`.
-Ansible inventory name is `fileserver-140`. SMB netbiosname is `FS1`. Three
+Ansible inventory name is `fileserver-24`. SMB netbiosname is `FS1`. Three
 different names — pay attention to which one each step needs.
 
 ## Prereqs
@@ -107,7 +107,7 @@ EOF
 
 ### 5. Converge IaC
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit fileserver-140'
+ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit fileserver-24'
 ```
 
 Idempotent re-run should show `changed=0`. If samba `full_audit` errors with `Could not find opname X` after a samba major upgrade, the operation names may have changed again — see the `success = all` line in `roles/canary/templates/smb.conf.j2`.

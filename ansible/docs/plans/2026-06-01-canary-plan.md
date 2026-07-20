@@ -4,7 +4,7 @@
 
 **Goal:** Deploy an internal trip-wire canary on a new dedicated VM `.140 fileserver01` (OpenCanary banner emulation + relocated `sinkhole.py` for C2/exotic ports), pipe T-Pot internal-source hits into the main Wazuh/ntfy pipeline, and decommission the unmanaged `.121` alias + `sinkhole.service` from `.120` in the same change-set.
 
-**Architecture:** New Ansible role `canary` deploys OpenCanary (Python venv, 8 banner ports: FTP/Telnet/HTTP/HTTPS/SMB/MySQL/RDP/VNC with 3 fake shares) and the relocated `sinkhole.py` (14 C2 ports with the 7 overlapping ports trimmed) on `.140`. Wazuh agent on `.140` ships both log files to `.133`; new manager rules `1003xx` tier alerts by port (lvl 10 banner, lvl 12 critical/cred) with hourly per-source-IP dedup. T-Pot tap extends the existing `tpot` role with a `blockinfile` adding 6 JSON honeypot localfiles to `/var/ossec/etc/ossec.conf` on `.130` and `.125`; new rules `1004xx` filter on `^192\.168\.1\.` source IPs so only LAN-source hits page (external internet noise stays in T-Pot's own Kibana on `.130:64297`). All wired into the existing `custom-ntfy` integration on `.133` by extending the integration's `<rule_id>` list. Cutover on `.120` removes `.121` alias + `sinkhole.service` files via `state: absent` after `.140` is verified live, gated to `inventory_hostname == 'suricata-120'`.
+**Architecture:** New Ansible role `canary` deploys OpenCanary (Python venv, 8 banner ports: FTP/Telnet/HTTP/HTTPS/SMB/MySQL/RDP/VNC with 3 fake shares) and the relocated `sinkhole.py` (14 C2 ports with the 7 overlapping ports trimmed) on `.140`. Wazuh agent on `.140` ships both log files to `.133`; new manager rules `1003xx` tier alerts by port (lvl 10 banner, lvl 12 critical/cred) with hourly per-source-IP dedup. T-Pot tap extends the existing `tpot` role with a `blockinfile` adding 6 JSON honeypot localfiles to `/var/ossec/etc/ossec.conf` on `.130` and `.125`; new rules `1004xx` filter on `^192\.168\.1\.` source IPs so only LAN-source hits page (external internet noise stays in T-Pot's own Kibana on `.130:64297`). All wired into the existing `custom-ntfy` integration on `.133` by extending the integration's `<rule_id>` list. Cutover on `.120` removes `.121` alias + `sinkhole.service` files via `state: absent` after `.140` is verified live, gated to `inventory_hostname == 'suricata-20'`.
 
 **Tech Stack:** Ansible (production lint profile), OpenCanary (pip in `/opt/opencanary-venv`), `sinkhole.py` (Python 3.11 asyncio), Wazuh agent/manager 4.14.5, ntfy.sh (`wazuh-Qzwhd0BgI6pQDaxb` topic), VirtualBox 7.2 on `.15`, Debian 12 minimal.
 
@@ -173,7 +173,7 @@ Expected: `fileserver01`
 
 **Files:**
 - Modify: `/opt/soc-ansible/inventory/hosts.yml`
-- Create: `/opt/soc-ansible/inventory/host_vars/fileserver-140/main.yml`
+- Create: `/opt/soc-ansible/inventory/host_vars/fileserver-24/main.yml`
 
 - [ ] **Step 1: Read current inventory structure**
 
@@ -184,12 +184,12 @@ cat /opt/soc-ansible/inventory/hosts.yml
 
 Locate the `debian:` group. The plan's next step shows the diff that needs adding.
 
-- [ ] **Step 2: Add `fileserver-140` to inventory under `debian` group and new `canary` group**
+- [ ] **Step 2: Add `fileserver-24` to inventory under `debian` group and new `canary` group**
 
 Edit `/opt/soc-ansible/inventory/hosts.yml`. Add to the existing `debian:` group's `hosts:` block:
 
 ```yaml
-    fileserver-140:
+    fileserver-24:
       ansible_host: 192.168.1.140
 ```
 
@@ -198,16 +198,16 @@ Add a new top-level group at the bottom of the file:
 ```yaml
 canary:
   hosts:
-    fileserver-140:
+    fileserver-24:
 ```
 
 - [ ] **Step 3: Create the host_vars directory and main.yml**
 
 ```bash
-mkdir -p /opt/soc-ansible/inventory/host_vars/fileserver-140
-cat > /opt/soc-ansible/inventory/host_vars/fileserver-140/main.yml <<'EOF'
+mkdir -p /opt/soc-ansible/inventory/host_vars/fileserver-24
+cat > /opt/soc-ansible/inventory/host_vars/fileserver-24/main.yml <<'EOF'
 ---
-# fileserver-140 — internal canary host (see docs/specs/2026-06-01-canary-design.md)
+# fileserver-24 — internal canary host (see docs/specs/2026-06-01-canary-design.md)
 # No host-specific vars beyond ansible_host (inherited from inventory).
 EOF
 ```
@@ -216,12 +216,12 @@ EOF
 
 ```bash
 cd /opt/soc-ansible
-ansible fileserver-140 -m ping
+ansible fileserver-24 -m ping
 ```
 
 Expected:
 ```
-fileserver-140 | SUCCESS => {
+fileserver-24 | SUCCESS => {
     "ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},
     "changed": false,
     "ping": "pong"
@@ -231,7 +231,7 @@ fileserver-140 | SUCCESS => {
 - [ ] **Step 5: Run the `common` role against `.140`**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit fileserver-140 --tags common
+ansible-playbook playbooks/site.yml --limit fileserver-24 --tags common
 ```
 
 Expected: `ok=N changed=≤M failed=0`. The `common` role installs the base packages, journald cap, disk-alert script, SSH keys, timezone. Repeat run should show `changed=0` (idempotent).
@@ -240,9 +240,9 @@ Expected: `ok=N changed=≤M failed=0`. The `common` role installs the base pack
 
 ```bash
 cd /opt/soc-ansible
-ansible-lint inventory/hosts.yml inventory/host_vars/fileserver-140/
-git add inventory/hosts.yml inventory/host_vars/fileserver-140/
-git -c user.email='168788872+andrei-majer@users.noreply.github.com' -c user.name='Andrei Majer' commit -m 'inventory: add fileserver-140 (.140) canary host
+ansible-lint inventory/hosts.yml inventory/host_vars/fileserver-24/
+git add inventory/hosts.yml inventory/host_vars/fileserver-24/
+git -c user.email='168788872+andrei-majer@users.noreply.github.com' -c user.name='Andrei Majer' commit -m 'inventory: add fileserver-24 (.140) canary host
 
 New VM on .15, Debian 12 minimal, 1 vCPU / 768MB / 4GB. Joins `debian` group
 (inherits group_vars/debian.yml) and new `canary` group for the role play
@@ -280,14 +280,14 @@ Wazuh agent, which ships to `.133:1514`. Manager rules `1003xx` page ntfy on
 LAN-source hits (lvl 10 banner, lvl 12 critical/cred), per-src-IP hourly dedup.
 
 The role also contains a cutover task block (gated on
-`inventory_hostname == 'suricata-120'`) that removes the legacy `.121` alias
+`inventory_hostname == 'suricata-20'`) that removes the legacy `.121` alias
 + `sinkhole.service` from .120. See `docs/specs/2026-06-01-canary-design.md`.
 
 ## --tags gotcha
 
 The role's tasks are NOT individually tagged. `--tags canary` only fires
 fact-gathering. Deploy untagged: `ansible-playbook playbooks/site.yml
---limit fileserver-140`.
+--limit fileserver-24`.
 
 ## Deploy
 
@@ -295,7 +295,7 @@ fact-gathering. Deploy untagged: `ansible-playbook playbooks/site.yml
 
 ## Verify
 
-    ansible-playbook playbooks/ops/health-check.yml --limit fileserver-140
+    ansible-playbook playbooks/ops/health-check.yml --limit fileserver-24
 EOF
 ```
 
@@ -671,7 +671,7 @@ Expected: `0 failure(s), 0 warning(s)` at production profile.
 
 ```bash
 cd /opt/soc-ansible
-ansible-playbook playbooks/site.yml --limit fileserver-140 --check --diff
+ansible-playbook playbooks/site.yml --limit fileserver-24 --check --diff
 ```
 
 Expected: tasks listed as `changed` for apt, venv create, pip install, config deploy, unit deploy, systemd enable/start.
@@ -679,7 +679,7 @@ Expected: tasks listed as `changed` for apt, venv create, pip install, config de
 - [ ] **Step 6: Live converge**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit fileserver-140
+ansible-playbook playbooks/site.yml --limit fileserver-24
 ```
 
 Expected: `ok=N changed=M failed=0`. If OpenCanary's `--copyconfig` complains about unknown config keys during start, capture the error from `journalctl -u opencanary -n 50` on `.140`, trim the offending keys from `opencanary.conf.j2`, re-run.
@@ -695,7 +695,7 @@ Expected: 8 lines, all `0.0.0.0:<port>` or `*:<port>`, all owned by `opencanaryd
 - [ ] **Step 8: Re-run for idempotence check**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit fileserver-140
+ansible-playbook playbooks/site.yml --limit fileserver-24
 ```
 
 Expected: `changed=0`.
@@ -800,7 +800,7 @@ Expected: `0 failure(s)`. (Suppress `risky-file-permissions` if it flags — dec
 - [ ] **Step 4: Converge**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit fileserver-140
+ansible-playbook playbooks/site.yml --limit fileserver-24
 ```
 
 Expected: 30 files synced, `changed=N failed=0`.
@@ -829,7 +829,7 @@ Expected: list of HR/* filenames.
 - [ ] **Step 7: Idempotence re-run**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit fileserver-140
+ansible-playbook playbooks/site.yml --limit fileserver-24
 ```
 
 Expected: `changed=0`.
@@ -975,8 +975,8 @@ After the OpenCanary `wait_for` task and before the cutover section (which doesn
 ```bash
 cd /opt/soc-ansible
 ansible-lint
-ansible-playbook playbooks/site.yml --limit fileserver-140 --check --diff
-ansible-playbook playbooks/site.yml --limit fileserver-140
+ansible-playbook playbooks/site.yml --limit fileserver-24 --check --diff
+ansible-playbook playbooks/site.yml --limit fileserver-24
 ```
 
 Expected: `failed=0`, sinkhole.service started.
@@ -1015,7 +1015,7 @@ Expected: `{"timestamp":"...", "event":"sinkhole_hit", "client_ip":"192.168.1.13
 - [ ] **Step 7: Idempotence**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit fileserver-140
+ansible-playbook playbooks/site.yml --limit fileserver-24
 ```
 
 Expected: `changed=0`.
@@ -1088,19 +1088,19 @@ Expected: one line listing fileserver01 / `192.168.1.140` / `Active`.
 
 - [ ] **Step 5: Update host_vars to note agent install was done**
 
-Edit `/opt/soc-ansible/inventory/host_vars/fileserver-140/main.yml` — add a comment:
+Edit `/opt/soc-ansible/inventory/host_vars/fileserver-24/main.yml` — add a comment:
 
 ```yaml
 ---
-# fileserver-140 — internal canary host (see docs/specs/2026-06-01-canary-design.md)
+# fileserver-24 — internal canary host (see docs/specs/2026-06-01-canary-design.md)
 # Wazuh agent 4.14.5 installed manually 2026-06-XX, pinned (`dpkg --set-selections hold`)
 ```
 
 - [ ] **Step 6: Commit the host_vars update**
 
 ```bash
-git add inventory/host_vars/fileserver-140/main.yml
-git -c user.email='168788872+andrei-majer@users.noreply.github.com' -c user.name='Andrei Majer' commit -m 'inventory: note Wazuh agent install on fileserver-140'
+git add inventory/host_vars/fileserver-24/main.yml
+git -c user.email='168788872+andrei-majer@users.noreply.github.com' -c user.name='Andrei Majer' commit -m 'inventory: note Wazuh agent install on fileserver-24'
 ```
 
 ---
@@ -1144,7 +1144,7 @@ After the sinkhole `wait_for` task, append:
 ```bash
 cd /opt/soc-ansible
 ansible-lint
-ansible-playbook playbooks/site.yml --limit fileserver-140 --diff
+ansible-playbook playbooks/site.yml --limit fileserver-24 --diff
 ```
 
 Expected: `changed=1` for the blockinfile, handler `Restart wazuh-agent` fires.
@@ -1322,10 +1322,10 @@ Expected: no output (valid XML).
 
 ```bash
 cd /opt/soc-ansible
-ansible-playbook playbooks/site.yml --limit elk-133
+ansible-playbook playbooks/site.yml --limit elk-21
 ```
 
-**DEPLOY GOTCHA (per `[[ansible]]` memory):** `--tags wazuh-manager` only gathers facts (`ok=2 changed=0`); the wazuh-manager role tasks aren't tagged. Use untagged `--limit elk-133`.
+**DEPLOY GOTCHA (per `[[ansible]]` memory):** `--tags wazuh-manager` only gathers facts (`ok=2 changed=0`); the wazuh-manager role tasks aren't tagged. Use untagged `--limit elk-21`.
 
 Expected: `changed=1` for the rules file, `wazuh-manager` restarted via handler.
 
@@ -1435,7 +1435,7 @@ Also add a task in `roles/wazuh-manager/tasks/main.yml` to deploy the new script
 ```bash
 cd /opt/soc-ansible
 ansible-lint
-ansible-playbook playbooks/site.yml --limit elk-133
+ansible-playbook playbooks/site.yml --limit elk-21
 ```
 
 Expected: `changed=1` for the ossec.conf template, manager restart handler fires.
@@ -1713,7 +1713,7 @@ Note the top-level field names: `src_ip`, `dst_port`, `eventid`. (Cowrie uses th
 ```bash
 xmllint --noout /opt/soc-ansible/roles/wazuh-manager/files/local_rules.xml
 cd /opt/soc-ansible
-ansible-playbook playbooks/site.yml --limit elk-133
+ansible-playbook playbooks/site.yml --limit elk-21
 ```
 
 Expected: `changed=1`, manager restart fires.
@@ -1736,7 +1736,7 @@ In `roles/wazuh-manager/templates/ossec.conf.j2`, extend the rule_id attribute a
 
 Re-deploy:
 ```bash
-ansible-playbook playbooks/site.yml --limit elk-133
+ansible-playbook playbooks/site.yml --limit elk-21
 ```
 
 - [ ] **Step 6: End-to-end test**
@@ -1782,7 +1782,7 @@ Find the `- name: Health check — T-Pot hosts (.130, .125)` block. After its ta
     - name: Check systemd services (.140)  # noqa: command-instead-of-module
       ansible.builtin.command: "systemctl is-active {{ item }}"
       loop: [opencanary, sinkhole, wazuh-agent]
-      register: svc_140
+      register: svc_24
       failed_when: false
       changed_when: false
 
@@ -1790,29 +1790,29 @@ Find the `- name: Health check — T-Pot hosts (.130, .125)` block. After its ta
       ansible.builtin.shell: ss -tln '! ( sport = :22 )' | grep -c LISTEN
       args:
         executable: /bin/bash
-      register: ports_140
+      register: ports_24
       failed_when: false
       changed_when: false
 
     - name: OpenCanary log stat (.140)
       ansible.builtin.stat:
         path: /var/tmp/opencanary.log
-      register: ocan_log_140
+      register: ocan_log_24
 
     - name: Sinkhole log stat (.140)
       ansible.builtin.stat:
         path: /var/log/sinkhole.json
-      register: sink_log_140
+      register: sink_log_24
 
     - name: Disk pct (.140)
       ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
-      register: disk_pct_140
+      register: disk_pct_24
       failed_when: false
       changed_when: false
 
     - name: Disk detail (.140)
       ansible.builtin.command: df -h /
-      register: disk_140
+      register: disk_24
       failed_when: false
       changed_when: false
 ```
@@ -1834,14 +1834,14 @@ Find the `Summary table` task. In the `msg: |` block, after the `--- T-Pot hosts
 
 ```jinja
           --- .140 canary services ---
-          {% for r in hostvars['fileserver-140']['svc_140']['results'] | default([]) %}
+          {% for r in hostvars['fileserver-24']['svc_24']['results'] | default([]) %}
           {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
           {% endfor %}
-          listening    : {{ hostvars['fileserver-140']['ports_140']['stdout'] | default('?') | trim }} ports{{ ' [FAIL] expected ' ~ canary_expected_port_count if (hostvars['fileserver-140']['ports_140']['stdout'] | default('0') | trim | int) < 22 else '' }}
-          opencanary.log : {{ 'present' if hostvars['fileserver-140']['ocan_log_140']['stat']['exists'] | default(false) else '[FAIL] missing' }}
-          sinkhole.json  : {{ 'present' if hostvars['fileserver-140']['sink_log_140']['stat']['exists'] | default(false) else '[FAIL] missing' }}
-          disk         : {{ hostvars['fileserver-140']['disk_pct_140']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['fileserver-140']['disk_pct_140']['stdout'] | default('0') | trim | int) >= 80 else '' }}
-          {{ hostvars['fileserver-140']['disk_140']['stdout'] | default('n/a') }}
+          listening    : {{ hostvars['fileserver-24']['ports_24']['stdout'] | default('?') | trim }} ports{{ ' [FAIL] expected ' ~ canary_expected_port_count if (hostvars['fileserver-24']['ports_24']['stdout'] | default('0') | trim | int) < 22 else '' }}
+          opencanary.log : {{ 'present' if hostvars['fileserver-24']['ocan_log_24']['stat']['exists'] | default(false) else '[FAIL] missing' }}
+          sinkhole.json  : {{ 'present' if hostvars['fileserver-24']['sink_log_24']['stat']['exists'] | default(false) else '[FAIL] missing' }}
+          disk         : {{ hostvars['fileserver-24']['disk_pct_24']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['fileserver-24']['disk_pct_24']['stdout'] | default('0') | trim | int) >= 80 else '' }}
+          {{ hostvars['fileserver-24']['disk_24']['stdout'] | default('n/a') }}
 
 ```
 
@@ -1858,7 +1858,7 @@ Find the line in the summary template:
 
 If a similar pattern exists for `Wazuh agents`, update `expected 4` → `expected 7`. If not, add one:
 ```jinja
-          Wazuh agents : {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') | trim }}{{ ' [FAIL] expected 7' if (hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('-1') | trim | int) != 7 else '' }}
+          Wazuh agents : {{ hostvars['elk-21']['wazuh_agents_21']['stdout'] | default('n/a') | trim }}{{ ' [FAIL] expected 7' if (hostvars['elk-21']['wazuh_agents_21']['stdout'] | default('-1') | trim | int) != 7 else '' }}
 ```
 
 And add a fail task at the end (after the existing `Fail if MISP enabled feed count drifted`):
@@ -1866,7 +1866,7 @@ And add a fail task at the end (after the existing `Fail if MISP enabled feed co
 - name: Fail if Wazuh agent count drifted
   ansible.builtin.fail:
     msg: "Wazuh enrolled agent count != 7 — check /var/ossec/etc/client.keys on .133 for missing/extra agents"
-  when: (hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('-1') | trim | int) != 7
+  when: (hostvars['elk-21']['wazuh_agents_21']['stdout'] | default('-1') | trim | int) != 7
 ```
 
 - [ ] **Step 5: Add new fail asserts at the bottom**
@@ -1878,20 +1878,20 @@ After existing fail tasks, before the closing of the summary play:
   ansible.builtin.fail:
     msg: "One or more canary services down on .140 — opencanary/sinkhole/wazuh-agent (see summary)"
   when: >
-    hostvars['fileserver-140']['svc_140']['results'] | default([])
+    hostvars['fileserver-24']['svc_24']['results'] | default([])
       | selectattr('stdout', '!=', 'active') | list | length > 0
 
 - name: Fail if canary port count drifted
   ansible.builtin.fail:
     msg: "Canary listening port count < 22 on .140 — OpenCanary or sinkhole missing ports (expected 8+14)"
-  when: (hostvars['fileserver-140']['ports_140']['stdout'] | default('0') | trim | int) < 22
+  when: (hostvars['fileserver-24']['ports_24']['stdout'] | default('0') | trim | int) < 22
 
 - name: Fail if canary log files missing
   ansible.builtin.fail:
     msg: "Canary log file(s) missing on .140 — OpenCanary or sinkhole never started writing"
   when: >
-    not (hostvars['fileserver-140']['ocan_log_140']['stat']['exists'] | default(false))
-    or not (hostvars['fileserver-140']['sink_log_140']['stat']['exists'] | default(false))
+    not (hostvars['fileserver-24']['ocan_log_24']['stat']['exists'] | default(false))
+    or not (hostvars['fileserver-24']['sink_log_24']['stat']['exists'] | default(false))
 ```
 
 - [ ] **Step 6: Lint**
@@ -1954,7 +1954,7 @@ At the bottom of the file, after the Wazuh agent localfile blockinfile task, app
 ```yaml
 # ============================================================================
 # .120 cutover — decommission legacy .121 alias + sinkhole.service
-# Gated on inventory_hostname == 'suricata-120'. Runs as part of the canary
+# Gated on inventory_hostname == 'suricata-20'. Runs as part of the canary
 # role to keep migration + cleanup in a single change-set. Reversible from git.
 # ============================================================================
 
@@ -1965,51 +1965,51 @@ At the bottom of the file, after the Wazuh agent localfile blockinfile task, app
     enabled: false
     daemon_reload: true
   failed_when: false  # service may already be absent on a previous re-run
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Remove legacy sinkhole.service unit file from .120
   ansible.builtin.file:
     path: /etc/systemd/system/sinkhole.service
     state: absent
   notify: Reload systemd
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Remove legacy sinkhole.py from .120
   ansible.builtin.file:
     path: /usr/local/bin/sinkhole.py
     state: absent
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Remove legacy .121 alias interface config from .120
   ansible.builtin.file:
     path: /etc/network/interfaces.d/sinkhole
     state: absent
   register: alias_removed
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Tear down .121 alias immediately if it was removed (ifdown enp0s3:0)
   ansible.builtin.command: ifdown enp0s3:0
   failed_when: false  # idempotent — succeeds if already down
   when:
-    - inventory_hostname == 'suricata-120'
+    - inventory_hostname == 'suricata-20'
     - alias_removed.changed
 ```
 
-- [ ] **Step 3: Add `suricata-120` to canary play in site.yml temporarily for the cutover**
+- [ ] **Step 3: Add `suricata-20` to canary play in site.yml temporarily for the cutover**
 
 Edit `/opt/soc-ansible/playbooks/site.yml`. The existing canary play targets `canary` group only — but the cutover tasks need to run on `.120`. Two options:
 
 **(a)** Add a one-off limit override for the cutover commit, then revert:
 ```bash
-ansible-playbook playbooks/site.yml --limit suricata-120 --tags <none>
+ansible-playbook playbooks/site.yml --limit suricata-20 --tags <none>
 ```
-But the tasks are gated `when: inventory_hostname == 'suricata-120'` so they won't fire unless `suricata-120` is targeted by the play.
+But the tasks are gated `when: inventory_hostname == 'suricata-20'` so they won't fire unless `suricata-20` is targeted by the play.
 
-**(b)** Add a sibling play to site.yml that runs the canary role on `suricata-120` JUST for the cutover tasks (which then become no-ops on future runs since files are already absent):
+**(b)** Add a sibling play to site.yml that runs the canary role on `suricata-20` JUST for the cutover tasks (which then become no-ops on future runs since files are already absent):
 
 ```yaml
 - name: Canary cutover on .120 (decommission legacy sinkhole)
-  hosts: suricata-120
+  hosts: suricata-20
   become: true
   roles:
     - canary
@@ -2024,7 +2024,7 @@ Use option (b) — keeps cutover idempotent and visible in `site.yml`. The role'
 ```bash
 cd /opt/soc-ansible
 ansible-lint
-ansible-playbook playbooks/site.yml --limit suricata-120 --tags canary_cutover --check --diff
+ansible-playbook playbooks/site.yml --limit suricata-20 --tags canary_cutover --check --diff
 ```
 
 Expected diff: removal of 3 files + systemd disable.
@@ -2032,7 +2032,7 @@ Expected diff: removal of 3 files + systemd disable.
 - [ ] **Step 5: Live cutover converge**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit suricata-120 --tags canary_cutover
+ansible-playbook playbooks/site.yml --limit suricata-20 --tags canary_cutover
 ```
 
 Expected: `changed=4-5`. Watch for the alias removal step to fire.
@@ -2051,7 +2051,7 @@ Expected:
 - [ ] **Step 7: Idempotence**
 
 ```bash
-ansible-playbook playbooks/site.yml --limit suricata-120 --tags canary_cutover
+ansible-playbook playbooks/site.yml --limit suricata-20 --tags canary_cutover
 ```
 
 Expected: `changed=0` (all files already absent).
@@ -2071,7 +2071,7 @@ git add roles/canary/tasks/main.yml playbooks/site.yml
 git -c user.email='168788872+andrei-majer@users.noreply.github.com' -c user.name='Andrei Majer' commit -m 'canary: cutover — remove legacy sinkhole.service + .121 alias from .120
 
 Pre-cutover: verified .140 canary live + ntfy fires end-to-end.
-Tasks gated on inventory_hostname == suricata-120 (state: absent for the
+Tasks gated on inventory_hostname == suricata-20 (state: absent for the
 .service unit, the python script, and the interfaces.d alias config),
 plus a one-shot ifdown enp0s3:0 to tear the alias down immediately
 (not wait for next reboot). New canary_cutover-tagged play in site.yml
@@ -2233,12 +2233,12 @@ EOF
 
 ### 3. Converge IaC
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit fileserver-140'
+ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit fileserver-24'
 ```
 
 ### 4. Verify
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml --limit fileserver-140'
+ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml --limit fileserver-24'
 ```
 
 Expected: canary section green, 22 listening ports + sshd.
@@ -2295,7 +2295,7 @@ Then converge the IaC to restore localfile blocks:
 
 ```bash
 ssh -i ~/.ssh/openwrt root@192.168.1.120 \
-  'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-130|tpot-sensor-125>'
+  'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-23|tpot-sensor-125>'
 ```
 
 Verify agent enrolled (count should return to 7):
@@ -2370,7 +2370,7 @@ Simpler approach — batch all changes since the spec commit into a single mirro
 ```powershell
 cd $env:TEMP\soc-home-push
 # copy the full updated tree
-foreach ($f in @('inventory/hosts.yml','playbooks/site.yml','playbooks/ops/health-check.yml','roles/canary','roles/tpot','roles/wazuh-manager','docs/runbooks/canary-140-rebuild.md','docs/runbooks/tpot-rebuild.md','inventory/host_vars/fileserver-140/main.yml')) {
+foreach ($f in @('inventory/hosts.yml','playbooks/site.yml','playbooks/ops/health-check.yml','roles/canary','roles/tpot','roles/wazuh-manager','docs/runbooks/canary-140-rebuild.md','docs/runbooks/tpot-rebuild.md','inventory/host_vars/fileserver-24/main.yml')) {
     $src = "root@192.168.1.120:/opt/soc-ansible/$f"
     $dst = "ansible/$f"
     if ($f.EndsWith('/')) { scp -r -i $env:USERPROFILE\.ssh\openwrt $src $dst }
@@ -2448,7 +2448,7 @@ Spec: `/opt/soc-ansible/docs/specs/2026-06-01-canary-design.md`.
 
 ## Gotchas
 - OpenCanary SSH module DISABLED (collides with real sshd on 0.0.0.0:22)
-- `--tags canary` only fires fact-gathering (role tasks not tagged) — deploy untagged `--limit fileserver-140`
+- `--tags canary` only fires fact-gathering (role tasks not tagged) — deploy untagged `--limit fileserver-24`
 - Wazuh agent install is manual one-time (matches existing convention — agent ossec.conf not Ansible-managed except for the localfile blockinfile)
 - Decoy SMB shares are world-readable on purpose (`risky-file-permissions` lint suppression)
 - Field name caveat: OpenCanary's exact decoded paths confirmed empirically via `wazuh-logtest` during deploy — if a future OpenCanary upgrade changes the JSON layout, re-test before relying on rules
@@ -2614,7 +2614,7 @@ the things you didn't think to grep for.
 - ✅ §10 Implementation notes: woven into Tasks 2.3 (`--copyconfig`), 4.3 (wazuh-logtest), 6.2 (cutover ordering), 6.1 (Jinja whitespace)
 
 **Type / name consistency:**
-- Inventory host name `fileserver-140`, group `canary` — used consistently throughout
+- Inventory host name `fileserver-24`, group `canary` — used consistently throughout
 - Variables in defaults match references in tasks/templates
 - Rule IDs cross-referenced correctly: 100301/302/303/307 in ntfy integration matches definitions in local_rules.xml
 - Log paths `/var/tmp/opencanary.log` + `/var/log/sinkhole.json` used in role tasks + Wazuh blockinfile + health-check stat + memory file

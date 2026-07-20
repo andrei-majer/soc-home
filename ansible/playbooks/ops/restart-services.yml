@@ -1,6 +1,6 @@
 ---
 - name: Restart services (dangerous — requires confirm=yes)
-  hosts: elk-133:suricata-120:opencti-135
+  hosts: elk-21:suricata-20:opencti-22
   gather_facts: false
   serial: 1
   pre_tasks:
@@ -13,7 +13,7 @@
       run_once: true
       delegate_to: localhost
   tasks:
-    - name: Restart .133 services in order
+    - name: Restart .21 services in order
       ansible.builtin.systemd:
         name: "{{ item }}"
         state: restarted
@@ -25,7 +25,7 @@
         - wazuh-dashboard
         - apache2
         - misp-workers
-      when: inventory_hostname == "elk-133"
+      when: inventory_hostname == "elk-21"
 
     - name: Wait for ES to become green/yellow after restart
       ansible.builtin.uri:
@@ -35,9 +35,9 @@
       retries: 30
       delay: 10
       until: "'green' in es_health.json.status or 'yellow' in es_health.json.status"
-      when: inventory_hostname == "elk-133"
+      when: inventory_hostname == "elk-21"
 
-    - name: Restart .120 services in order
+    - name: Restart .20 services in order
       ansible.builtin.systemd:
         name: "{{ item }}"
         state: restarted
@@ -50,7 +50,7 @@
         - loki
         - grafana-server
         - evebox
-      when: inventory_hostname == "suricata-120"
+      when: inventory_hostname == "suricata-20"
 
     - name: Wait for Suricata socket to become ready (~7 min)
       ansible.builtin.command: suricatasc -c version
@@ -59,11 +59,11 @@
       delay: 30
       until: sc_check.rc == 0
       changed_when: false
-      when: inventory_hostname == "suricata-120"
+      when: inventory_hostname == "suricata-20"
 
     - name: Restart OpenCTI docker compose stack
       ansible.builtin.command:
         cmd: docker compose up -d
         chdir: /opt/opencti
-      when: inventory_hostname == "opencti-135"
+      when: inventory_hostname == "opencti-22"
       changed_when: true

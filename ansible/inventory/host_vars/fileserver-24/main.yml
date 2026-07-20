@@ -1,0 +1,5 @@
+---
+# fileserver-24 (.140 fs1) - internal canary host
+# Spec: docs/specs/2026-06-01-canary-design.md
+# OS hostname is fs1 (set during Debian install; inventory name kept as fileserver-24 for unambiguity)
+# Wazuh agent install will be done manually before agent localfile block deploys

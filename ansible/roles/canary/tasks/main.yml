@@ -215,7 +215,7 @@
 
 # ============================================================================
 # .120 cutover — decommission legacy .121 alias + sinkhole.service.
-# Gated on inventory_hostname == 'suricata-120'. Reversible from git.
+# Gated on inventory_hostname == 'suricata-20'. Reversible from git.
 # Runs only via the canary_cutover-tagged play in site.yml.
 # ============================================================================
 
@@ -226,27 +226,27 @@
     enabled: false
     daemon_reload: true
   failed_when: false
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Remove legacy sinkhole.service unit file from .120
   ansible.builtin.file:
     path: /etc/systemd/system/sinkhole.service
     state: absent
   notify: Reload systemd
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Remove legacy sinkhole.py from .120
   ansible.builtin.file:
     path: /usr/local/bin/sinkhole.py
     state: absent
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Remove legacy .121 alias interface config from .120
   ansible.builtin.file:
     path: /etc/network/interfaces.d/sinkhole
     state: absent
   register: alias_removed
-  when: inventory_hostname == 'suricata-120'
+  when: inventory_hostname == 'suricata-20'
 
 - name: Tear down .121 alias immediately (ip addr del)
   ansible.builtin.command: ip addr del 192.168.1.121/24 dev enp0s3
@@ -256,5 +256,5 @@
     - "'Cannot assign requested address' not in ip_del.stderr"
   register: ip_del
   when:
-    - inventory_hostname == 'suricata-120'
+    - inventory_hostname == 'suricata-20'
     - alias_removed.changed

@@ -1,6 +1,6 @@
 ---
-- name: TI health — Suricata IOC pull (.120)
-  hosts: suricata-120
+- name: TI health — Suricata IOC pull (.20)
+  hosts: suricata-20
   gather_facts: true
   tasks:
     - name: Last successful misp-pull-rules run (syslog)  # noqa: command-instead-of-module
@@ -19,12 +19,12 @@
         echo "$age_s ${rules:-0}"
       args:
         executable: /bin/bash
-      register: misp_pull_log_120
+      register: misp_pull_log_20
       failed_when: false
       changed_when: false
 
-- name: TI health — OpenCTI (.135)
-  hosts: opencti-135
+- name: TI health — OpenCTI (.22)
+  hosts: opencti-22
   ignore_unreachable: true
   gather_facts: false
   vars:
@@ -93,12 +93,12 @@
         done
       args:
         executable: /bin/bash
-      register: opencti_workers_135
+      register: opencti_workers_22
       failed_when: false
       changed_when: false
 
-- name: TI health — MISP workers (.133)
-  hosts: elk-133
+- name: TI health — MISP workers (.21)
+  hosts: elk-21
   gather_facts: false
   tasks:
     - name: MISP CakeResque worker queues (one PHP process per queue)
@@ -108,7 +108,7 @@
         ps -eo pid,args | grep 'php ./bin/resque' | grep -v grep | wc -l
       args:
         executable: /bin/bash
-      register: misp_workers_count_133
+      register: misp_workers_count_21
       failed_when: false
       changed_when: false
     - name: MISP CakeResque worker queue names
@@ -118,7 +118,7 @@
         ps -eo args | grep -oE "QUEUE='[a-z]+'" | sort -u | tr -d "QUEUE='" | paste -sd, -
       args:
         executable: /bin/bash
-      register: misp_workers_queues_133
+      register: misp_workers_queues_21
       failed_when: false
       changed_when: false
     - name: MISP enabled feeds list (id+name only)
@@ -126,12 +126,12 @@
         mysql misp -Nse "SELECT id, name FROM feeds WHERE enabled=1 ORDER BY id"
       args:
         executable: /bin/bash
-      register: misp_feeds_list_133
+      register: misp_feeds_list_21
       failed_when: false
       changed_when: false
 
 - name: TI health summary and fail-gates
-  hosts: suricata-120
+  hosts: suricata-20
   gather_facts: false
   vars:
     expected_connectors: [MITRE ATT&CK, ThreatFox, URLhaus, CISA KEV, MISP]
@@ -141,61 +141,61 @@
       ansible.builtin.debug:
         msg: |
           ================ SOC LAB TI PIPELINE HEALTH ================
-          --- Suricata IOC pull (.120) ---
-          {% set pull = (hostvars['suricata-120']['misp_pull_log_120']['stdout'] | default('-1 0')).split() %}
+          --- Suricata IOC pull (.20) ---
+          {% set pull = (hostvars['suricata-20']['misp_pull_log_20']['stdout'] | default('-1 0')).split() %}
           {% if pull[0] | int < 0 %}
           [FAIL] no successful misp-pull-rules entry in syslog
           {% else %}
           last pull    : {{ (pull[0] | int) // 60 }}m ago ({{ pull[1] }} rules pulled){{ ' [FAIL] >24h' if (pull[0] | int) > 86400 else (' [WARN] >8h' if (pull[0] | int) > 28800 else ' [OK]') }}
           {% endif %}
 
-          --- OpenCTI connectors (.135) ---
-          {% set active_conns = hostvars['opencti-135']['opencti_connectors_status'] | default([]) | map(attribute='name') | list %}
+          --- OpenCTI connectors (.22) ---
+          {% set active_conns = hostvars['opencti-22']['opencti_connectors_status'] | default([]) | map(attribute='name') | list %}
           {% for c in expected_connectors %}
           {{ '[OK]  ' if c in active_conns else '[FAIL]' }} {{ c }}
           {% endfor %}
 
-          --- OpenCTI workers (.135) ---
-          {{ hostvars['opencti-135']['opencti_workers_135']['stdout'] | default('n/a') }}
+          --- OpenCTI workers (.22) ---
+          {{ hostvars['opencti-22']['opencti_workers_22']['stdout'] | default('n/a') }}
 
           --- OpenCTI RabbitMQ push_* consumer counts ---
-          {% set max_c = (hostvars['opencti-135']['opencti_queue_consumers']['stdout'] | default('0') | trim | int) %}
+          {% set max_c = (hostvars['opencti-22']['opencti_queue_consumers']['stdout'] | default('0') | trim | int) %}
           max consumers on any push_ queue: {{ max_c }}{{ ' [FAIL] expected 3 (workers not consuming)' if max_c < 3 else ' [OK]' }}
 
-          --- MISP feeds (.133) ---
-          {{ hostvars['elk-133']['misp_feeds_list_133']['stdout'] | default('n/a') }}
+          --- MISP feeds (.21) ---
+          {{ hostvars['elk-21']['misp_feeds_list_21']['stdout'] | default('n/a') }}
 
-          --- MISP CakeResque workers (.133) ---
-          {% set w = hostvars['elk-133']['misp_workers_count_133']['stdout'] | default('0') | trim | int %}
+          --- MISP CakeResque workers (.21) ---
+          {% set w = hostvars['elk-21']['misp_workers_count_21']['stdout'] | default('0') | trim | int %}
           worker count : {{ w }}{{ ' [FAIL] expected >= 5' if w < 5 else ' [OK]' }}
-          queues       : {{ hostvars['elk-133']['misp_workers_queues_133']['stdout'] | default('n/a') | trim }}
+          queues       : {{ hostvars['elk-21']['misp_workers_queues_21']['stdout'] | default('n/a') | trim }}
           ============================================================
 
     - name: Fail if any expected OpenCTI connector inactive
       ansible.builtin.fail:
         msg: "OpenCTI connector(s) not active=true — see summary above"
       vars:
-        active_conns: "{{ hostvars['opencti-135']['opencti_connectors_status'] | default([]) | map(attribute='name') | list }}"
+        active_conns: "{{ hostvars['opencti-22']['opencti_connectors_status'] | default([]) | map(attribute='name') | list }}"
       when: expected_connectors | reject('in', active_conns) | list | length > 0
 
     - name: Fail if misp-pull-rules has not run successfully in >24h
       ansible.builtin.fail:
         msg: "Suricata IOC pull has not run successfully in 24h — check /usr/local/bin/misp-pull-rules.sh and cron"
       vars:
-        pull_age: "{{ (hostvars['suricata-120']['misp_pull_log_120']['stdout'] | default('-1 0')).split()[0] | int }}"
+        pull_age: "{{ (hostvars['suricata-20']['misp_pull_log_20']['stdout'] | default('-1 0')).split()[0] | int }}"
       when: pull_age < 0 or pull_age > 86400
 
     - name: Fail if MISP enabled feed count drifted
       ansible.builtin.fail:
         msg: "MISP enabled feed count != {{ expected_feeds }} — check /feeds in MISP UI"
-      when: (hostvars['elk-133']['misp_feeds_list_133']['stdout_lines'] | default([]) | length) != expected_feeds
+      when: (hostvars['elk-21']['misp_feeds_list_21']['stdout_lines'] | default([]) | length) != expected_feeds
 
     - name: Fail if OpenCTI workers not consuming push queues
       ansible.builtin.fail:
         msg: "No OpenCTI push_ queue has 3 consumers — workers aren't pulling from RabbitMQ. Restart workers + connectors."
-      when: (hostvars['opencti-135']['opencti_queue_consumers']['stdout'] | default('0') | trim | int) < 3
+      when: (hostvars['opencti-22']['opencti_queue_consumers']['stdout'] | default('0') | trim | int) < 3
 
     - name: Fail if MISP CakeResque worker count too low
       ansible.builtin.fail:
         msg: "MISP has <5 resque workers running — restart misp-workers.service"
-      when: (hostvars['elk-133']['misp_workers_count_133']['stdout'] | default('0') | trim | int) < 5
+      when: (hostvars['elk-21']['misp_workers_count_21']['stdout'] | default('0') | trim | int) < 5

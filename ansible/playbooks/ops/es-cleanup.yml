@@ -7,7 +7,7 @@
 # ES was down — exactly when you most need the cleanup to complete.)
 
 - name: Elasticsearch index cleanup + disk reclaim
-  hosts: elk-133
+  hosts: elk-21
   gather_facts: false
   tasks:
     - name: Check disk before cleanup

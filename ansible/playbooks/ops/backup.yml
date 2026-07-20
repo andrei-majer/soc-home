@@ -1,6 +1,6 @@
 ---
 - name: Backup critical configs
-  hosts: suricata-120:elk-133:opencti-135
+  hosts: suricata-20:elk-21:opencti-22
   gather_facts: true
   vars:
     backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
@@ -13,7 +13,7 @@
         mode: "0750"
       delegate_to: localhost
 
-    - name: Build archive on .120
+    - name: Build archive on .20
       community.general.archive:
         path:
           - /etc/suricata
@@ -23,9 +23,9 @@
         dest: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
         mode: "0600"
         format: gz
-      when: inventory_hostname == "suricata-120"
+      when: inventory_hostname == "suricata-20"
 
-    - name: Build archive on .133
+    - name: Build archive on .21
       community.general.archive:
         path:
           - /etc/elasticsearch
@@ -35,9 +35,9 @@
         dest: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
         mode: "0600"
         format: gz
-      when: inventory_hostname == "elk-133"
+      when: inventory_hostname == "elk-21"
 
-    - name: Build archive on .135
+    - name: Build archive on .22
       community.general.archive:
         path:
           - /opt/opencti/docker-compose.yml
@@ -46,7 +46,7 @@
         dest: "/tmp/soc-backup-{{ backup_timestamp }}.tar.gz"
         mode: "0600"
         format: gz
-      when: inventory_hostname == "opencti-135"
+      when: inventory_hostname == "opencti-22"
 
     - name: Fetch archive to control node
       ansible.builtin.fetch:

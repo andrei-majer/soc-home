@@ -10,9 +10,9 @@
       register: hv_ping
       changed_when: false
       failed_when: false
-    - name: Probe OpenCTI .135 SSH reachability (distinguishes running vs saved/off)
+    - name: Probe OpenCTI .22 SSH reachability (distinguishes running vs saved/off)
       ansible.builtin.wait_for:
-        host: 192.168.1.135
+        host: 192.168.1.22
         port: 22
         timeout: 3
         state: started
@@ -27,33 +27,33 @@
     - name: Abort early if hypervisor .15 is down
       ansible.builtin.fail:
         msg: >-
-          Hypervisor .15 is DOWN — every SOC VM (.120/.133/.130; .135 on-demand) is
+          Hypervisor .15 is DOWN — every SOC VM (.20/.21/.23; .22 on-demand) is
           unreachable until it is back up. Recover: WoL .15 from .13 (magic packet
           to MAC B4:2E:99:34:9C:6B), wait ~2-3 min for the VMs to cold-boot, then
           re-run this health check.
       when: hv_ping.rc != 0
 
-- name: Health check — Suricata host (.120)
-  hosts: suricata-120
+- name: Health check — Suricata host (.20)
+  hosts: suricata-20
   gather_facts: true
   tasks:
-    - name: Check systemd services (.120)  # noqa: command-instead-of-module
+    - name: Check systemd services (.20)  # noqa: command-instead-of-module
       ansible.builtin.command: "systemctl is-active {{ item }}"
       loop: [suricata, snort3, fail2ban, filebeat, loki, promtail, grafana-server, evebox, velociraptor]
-      register: svc_120
+      register: svc_20
       failed_when: false
       changed_when: false
-    - name: Disk pct (.120)
+    - name: Disk pct (.20)
       ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
-      register: disk_pct_120
+      register: disk_pct_20
       failed_when: false
       changed_when: false
-    - name: Disk detail (.120)
+    - name: Disk detail (.20)
       ansible.builtin.command: df -h /
-      register: disk_120
+      register: disk_20
       failed_when: false
       changed_when: false
-    - name: Suricata rule count (.120)
+    - name: Suricata rule count (.20)
       ansible.builtin.shell: |
         suricatasc -c dump-counters 2>/dev/null | python3 -c "
         import sys,json; d=json.load(sys.stdin)
@@ -61,94 +61,94 @@
         " 2>/dev/null || grep -oP 'rules loaded: \K[0-9]+' /var/log/suricata/suricata.log | tail -1 || echo n/a
       args:
         executable: /bin/bash
-      register: rules_120
+      register: rules_20
       failed_when: false
       changed_when: false
-    - name: EVE log freshness in seconds (.120)
+    - name: EVE log freshness in seconds (.20)
       ansible.builtin.shell: |
         last=$(stat -c %Y /var/log/suricata/eve.json 2>/dev/null) || { echo -1; exit 0; }
         echo "$(( $(date +%s) - last ))"
       args:
         executable: /bin/bash
-      register: eve_age_120
+      register: eve_age_20
       failed_when: false
       changed_when: false
-    - name: MISP IOC rules file age in seconds (.120)
+    - name: MISP IOC rules file age in seconds (.20)
       ansible.builtin.shell: |
         f=/etc/suricata/rules/misp.rules
         [ -f "$f" ] && echo $(( $(date +%s) - $(stat -c %Y "$f") )) || echo -1
       args:
         executable: /bin/bash
-      register: misp_rules_age_120
+      register: misp_rules_age_20
       failed_when: false
       changed_when: false
-    - name: MISP IOC rules line count (.120)
+    - name: MISP IOC rules line count (.20)
       ansible.builtin.shell: wc -l < /etc/suricata/rules/misp.rules 2>/dev/null || echo 0
       args:
         executable: /bin/bash
-      register: misp_rules_count_120
+      register: misp_rules_count_20
       failed_when: false
       changed_when: false
-    - name: Zeek node status (.120)
+    - name: Zeek node status (.20)
       ansible.builtin.command: /opt/zeek/bin/zeekctl status
-      register: zeek_status_120
+      register: zeek_status_20
       failed_when: false
       changed_when: false
-    - name: Zeek conn.log freshness in seconds (.120)
+    - name: Zeek conn.log freshness in seconds (.20)
       ansible.builtin.shell: |
         f=/opt/zeek/logs/current/conn.log
         [ -f "$f" ] && echo "$(( $(date +%s) - $(stat -c %Y "$f") ))" || echo -1
       args:
         executable: /bin/bash
-      register: zeek_conn_age_120
+      register: zeek_conn_age_20
       failed_when: false
       changed_when: false
 
-- name: Health check — ELK host (.133)
-  hosts: elk-133
+- name: Health check — ELK host (.21)
+  hosts: elk-21
   gather_facts: true
   tasks:
-    - name: Check systemd services (.133)  # noqa: command-instead-of-module
+    - name: Check systemd services (.21)  # noqa: command-instead-of-module
       ansible.builtin.command: "systemctl is-active {{ item }}"
       loop: [elasticsearch, kibana, logstash, filebeat, wazuh-manager, wazuh-dashboard, apache2, mariadb, misp-workers]
-      register: svc_133
+      register: svc_21
       failed_when: false
       changed_when: false
-    - name: Elasticsearch cluster health (.133)
+    - name: Elasticsearch cluster health (.21)
       ansible.builtin.uri:
         url: http://localhost:9200/_cluster/health
         return_content: true
-      register: es_health_133
+      register: es_health_21
       failed_when: false
-    - name: Wazuh agent count (.133)
+    - name: Wazuh agent count (.21)
       ansible.builtin.shell: wc -l < /var/ossec/etc/client.keys 2>/dev/null || echo 0
       args:
         executable: /bin/bash
-      register: wazuh_agents_133
+      register: wazuh_agents_21
       failed_when: false
       changed_when: false
-    - name: Wazuh API port (.133)
+    - name: Wazuh API port (.21)
       ansible.builtin.uri:
         url: https://localhost:55000/
         validate_certs: false
         status_code: [200, 401]
-      register: wazuh_api_133
+      register: wazuh_api_21
       failed_when: false
-    - name: MISP enabled feeds count (.133)
+    - name: MISP enabled feeds count (.21)
       ansible.builtin.shell: mysql misp -Nse "SELECT COUNT(*) FROM feeds WHERE enabled=1" 2>/dev/null || echo -1
       args:
         executable: /bin/bash
-      register: misp_feeds_133
+      register: misp_feeds_21
       failed_when: false
       changed_when: false
-    - name: Disk pct (.133)
+    - name: Disk pct (.21)
       ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
-      register: disk_pct_133
+      register: disk_pct_21
       failed_when: false
       changed_when: false
-    - name: Disk detail (.133)
+    - name: Disk detail (.21)
       ansible.builtin.command: df -h /
-      register: disk_133
+      register: disk_21
       failed_when: false
       changed_when: false
 
@@ -158,9 +158,9 @@
     - name: Auto-remediate wazuh-manager if failed (opt-in)
       when:
         - auto_remediate | default(false) | bool
-        - (svc_133.results | selectattr('item', 'equalto', 'wazuh-manager') | map(attribute='stdout') | first | trim) == 'failed'
-        - (disk_pct_133.stdout | default(99) | int) < 90
-        - (es_health_133.status | default(0)) == 200
+        - (svc_21.results | selectattr('item', 'equalto', 'wazuh-manager') | map(attribute='stdout') | first | trim) == 'failed'
+        - (disk_pct_21.stdout | default(99) | int) < 90
+        - (es_health_21.status | default(0)) == 200
         - (ansible_memfree_mb | default(0) | int) > 1024
       block:
         - name: "[remediate] Stop wazuh-manager cleanly"
@@ -225,27 +225,27 @@
               wazuh-manager auto-remediated — service={{ wazuh_post_remediate.stdout | trim }},
               api status={{ post_remediate_api.status }}
 
-- name: Health check — OpenCTI host (.135)
+- name: Health check — OpenCTI host (.22)
   vars:
     opencti_vm_state: "{{ hostvars['localhost']['opencti_vm_state'] | default('unknown') }}"
   any_errors_fatal: false
   ignore_unreachable: true
-  hosts: opencti-135
+  hosts: opencti-22
   gather_facts: true
   tasks:
     - name: Check opencti systemd service  # noqa: command-instead-of-module
       ansible.builtin.command: systemctl is-active opencti
-      register: svc_135
+      register: svc_22
       failed_when: false
       changed_when: false
-    - name: OpenCTI docker container count (.135)
+    - name: OpenCTI docker container count (.22)
       ansible.builtin.shell: docker compose -f /opt/opencti/docker-compose.yml ps -q 2>/dev/null | wc -l
       args:
         executable: /bin/bash
-      register: docker_135
+      register: docker_22
       failed_when: false
       changed_when: false
-    - name: OpenCTI core restart count + uptime + status (.135)
+    - name: OpenCTI core restart count + uptime + status (.22)
       ansible.builtin.shell: |
         rc=$(docker inspect opencti-opencti-1 -f '{% raw %}{{.RestartCount}}{% endraw %}' 2>/dev/null || echo -1)
         st=$(docker inspect opencti-opencti-1 -f '{% raw %}{{.State.Status}}{% endraw %}' 2>/dev/null || echo unknown)
@@ -259,21 +259,21 @@
         echo "$rc $up_h $up_m $st"
       args:
         executable: /bin/bash
-      register: opencti_core_135
+      register: opencti_core_22
       failed_when: false
       changed_when: false
-    - name: Disk pct (.135)
+    - name: Disk pct (.22)
       ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
-      register: disk_pct_135
+      register: disk_pct_22
       failed_when: false
       changed_when: false
-    - name: Disk detail (.135)
+    - name: Disk detail (.22)
       ansible.builtin.command: df -h /
-      register: disk_135
+      register: disk_22
       failed_when: false
       changed_when: false
 
-- name: Health check — T-Pot host (.130)
+- name: Health check — T-Pot host (.23)
   hosts: tpot
   gather_facts: true
   tasks:
@@ -301,39 +301,39 @@
       failed_when: false
       changed_when: false
 
-- name: Health check — canary (.140 fs1)
+- name: Health check — canary (.24 fs1)
   hosts: canary
   gather_facts: true
   tasks:
-    - name: Check systemd services (.140)  # noqa: command-instead-of-module
+    - name: Check systemd services (.24)  # noqa: command-instead-of-module
       ansible.builtin.command: "systemctl is-active {{ item }}"
       loop: [opencanary, sinkhole, wazuh-agent, smbd]
-      register: svc_140
+      register: svc_24
       failed_when: false
       changed_when: false
-    - name: Canary listening port count (.140)
+    - name: Canary listening port count (.24)
       ansible.builtin.shell: ss -tln | grep -v ':22 ' | grep -c LISTEN
       args:
         executable: /bin/bash
-      register: ports_140
+      register: ports_24
       failed_when: false
       changed_when: false
-    - name: OpenCanary log stat (.140)
+    - name: OpenCanary log stat (.24)
       ansible.builtin.stat:
         path: /var/tmp/opencanary.log
-      register: ocan_log_140
-    - name: Sinkhole log stat (.140)
+      register: ocan_log_24
+    - name: Sinkhole log stat (.24)
       ansible.builtin.stat:
         path: /var/log/sinkhole.json
-      register: sink_log_140
-    - name: Disk pct (.140)
+      register: sink_log_24
+    - name: Disk pct (.24)
       ansible.builtin.shell: df / | awk 'NR==2{print $5}' | tr -d '%'
-      register: disk_pct_140
+      register: disk_pct_24
       failed_when: false
       changed_when: false
-    - name: Disk detail (.140)
+    - name: Disk detail (.24)
       ansible.builtin.command: df -h /
-      register: disk_140
+      register: disk_24
       failed_when: false
       changed_when: false
 
@@ -370,7 +370,7 @@
       # Distinguishes a legitimate on-demand savestate/poweroff from 'aborted' (crashed
       # mid-run or mid-savestate) — the OpenCTI play below only sees SSH reachability, which
       # can't tell 'saved' from 'aborted' since both are unreachable. Found 2026-07-11: VM sat
-      # in 'aborted' for 8 days undetected. See soc-lab/opencti-135.md "Aborted-state gap".
+      # in 'aborted' for 8 days undetected. See soc-lab/opencti-22.md "Aborted-state gap".
       ansible.builtin.shell: |
         VBoxManage showvminfo OpenCTi --machinereadable 2>/dev/null | grep -oP '^VMState="\K[^"]+' || echo unknown
       args:
@@ -389,7 +389,7 @@
       changed_when: false
 
 - name: Print health summary and fail on issues
-  hosts: suricata-120
+  hosts: suricata-20
   gather_facts: false
   vars:
     opencti_vm_state: "{{ hostvars['localhost']['opencti_vm_state'] | default('unknown') }}"
@@ -399,44 +399,44 @@
       ansible.builtin.debug:
         msg: |
           ================= SOC LAB HEALTH SUMMARY =================
-          --- .120 suricata services ---
-          {% for r in hostvars['suricata-120']['svc_120']['results'] %}
+          --- .20 suricata services ---
+          {% for r in hostvars['suricata-20']['svc_20']['results'] %}
           {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
           {% endfor %}
-          rules loaded : {{ hostvars['suricata-120']['rules_120']['stdout'] | default('n/a') | trim }}
-          {% set eve_secs = hostvars['suricata-120']['eve_age_120']['stdout'] | default('-1') | trim | int %}
+          rules loaded : {{ hostvars['suricata-20']['rules_20']['stdout'] | default('n/a') | trim }}
+          {% set eve_secs = hostvars['suricata-20']['eve_age_20']['stdout'] | default('-1') | trim | int %}
           eve.json     : {{ 'missing [FAIL]' if eve_secs < 0 else (eve_secs ~ 's ago' ~ (' [FAIL]' if eve_secs > 300 else (' [WARN]' if eve_secs > 60 else ''))) }}
-          {% set zk_secs = hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('-1') | trim | int %}
-          Zeek         : {{ '[OK]   running' if 'running' in (hostvars['suricata-120']['zeek_status_120']['stdout'] | default('')) else '[FAIL] not running' }}, conn.log {{ 'missing [FAIL]' if zk_secs < 0 else (zk_secs ~ 's ago' ~ (' [FAIL]' if zk_secs > 300 else (' [WARN]' if zk_secs > 60 else ''))) }}
-          MISP rules   : {{ hostvars['suricata-120']['misp_rules_count_120']['stdout'] | default('?') | trim }} rules, {{ (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) // 3600 }}h old{{ ' [FAIL] file missing' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) < 0 else (' [WARN]' if (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('0') | trim | int) > 28800 else '') }}
-          disk         : {{ hostvars['suricata-120']['disk_pct_120']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 80 else '' }}
-          {{ hostvars['suricata-120']['disk_120']['stdout'] | default('n/a') }}
+          {% set zk_secs = hostvars['suricata-20']['zeek_conn_age_20']['stdout'] | default('-1') | trim | int %}
+          Zeek         : {{ '[OK]   running' if 'running' in (hostvars['suricata-20']['zeek_status_20']['stdout'] | default('')) else '[FAIL] not running' }}, conn.log {{ 'missing [FAIL]' if zk_secs < 0 else (zk_secs ~ 's ago' ~ (' [FAIL]' if zk_secs > 300 else (' [WARN]' if zk_secs > 60 else ''))) }}
+          MISP rules   : {{ hostvars['suricata-20']['misp_rules_count_20']['stdout'] | default('?') | trim }} rules, {{ (hostvars['suricata-20']['misp_rules_age_20']['stdout'] | default('-1') | trim | int) // 3600 }}h old{{ ' [FAIL] file missing' if (hostvars['suricata-20']['misp_rules_age_20']['stdout'] | default('-1') | trim | int) < 0 else (' [WARN]' if (hostvars['suricata-20']['misp_rules_age_20']['stdout'] | default('0') | trim | int) > 28800 else '') }}
+          disk         : {{ hostvars['suricata-20']['disk_pct_20']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['suricata-20']['disk_pct_20']['stdout'] | default('0') | trim | int) >= 80 else '' }}
+          {{ hostvars['suricata-20']['disk_20']['stdout'] | default('n/a') }}
 
-          --- .133 elk services ---
-          {% for r in hostvars['elk-133']['svc_133']['results'] | default([]) %}
+          --- .21 elk services ---
+          {% for r in hostvars['elk-21']['svc_21']['results'] | default([]) %}
           {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
           {% endfor %}
-          ES health    : {{ hostvars['elk-133']['es_health_133']['json']['status'] | default('n/a') }}{{ ' [WARN]' if hostvars['elk-133']['es_health_133']['json']['status'] | default('') not in ['green','yellow'] else '' }}
-          Wazuh agents : {{ hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('n/a') | trim }}
-          Wazuh API    : {{ '[OK]  ' if hostvars['elk-133']['wazuh_api_133']['status'] | default(-1) in [200, 401] else '[FAIL] port 55000 down' }}
-          MISP feeds   : {{ hostvars['elk-133']['misp_feeds_133']['stdout'] | default('?') | trim }} enabled{{ ' [FAIL] expected 8' if (hostvars['elk-133']['misp_feeds_133']['stdout'] | default('-1') | trim | int) != 8 else '' }}
-          disk         : {{ hostvars['elk-133']['disk_pct_133']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 80 else '' }}
-          {{ hostvars['elk-133']['disk_133']['stdout'] | default('n/a') }}
+          ES health    : {{ hostvars['elk-21']['es_health_21']['json']['status'] | default('n/a') }}{{ ' [WARN]' if hostvars['elk-21']['es_health_21']['json']['status'] | default('') not in ['green','yellow'] else '' }}
+          Wazuh agents : {{ hostvars['elk-21']['wazuh_agents_21']['stdout'] | default('n/a') | trim }}
+          Wazuh API    : {{ '[OK]  ' if hostvars['elk-21']['wazuh_api_21']['status'] | default(-1) in [200, 401] else '[FAIL] port 55000 down' }}
+          MISP feeds   : {{ hostvars['elk-21']['misp_feeds_21']['stdout'] | default('?') | trim }} enabled{{ ' [FAIL] expected 8' if (hostvars['elk-21']['misp_feeds_21']['stdout'] | default('-1') | trim | int) != 8 else '' }}
+          disk         : {{ hostvars['elk-21']['disk_pct_21']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['elk-21']['disk_pct_21']['stdout'] | default('0') | trim | int) >= 80 else '' }}
+          {{ hostvars['elk-21']['disk_21']['stdout'] | default('n/a') }}
 
-          --- .135 opencti ({{ opencti_vm_state | default('unknown') }}) ---
+          --- .22 opencti ({{ opencti_vm_state | default('unknown') }}) ---
           {% if (opencti_vm_state | default('unknown')) == 'saved' %}
           [SAVED] OpenCTI VM is in on-demand savestate mode — wake with opencti-wake.ps1 (.13) if needed
           {% else %}
-          {{ '[OK]  ' if (hostvars['opencti-135']['svc_135'] is defined and hostvars['opencti-135']['svc_135']['stdout'] == 'active') else '[FAIL]' }} opencti svc
-          containers   : {{ hostvars['opencti-135']['docker_135']['stdout'] | default('n/a') | trim }}
-          {% set octi = (hostvars['opencti-135']['opencti_core_135']['stdout'] | default('-1 -1 -1 unknown')).split() %}
+          {{ '[OK]  ' if (hostvars['opencti-22']['svc_22'] is defined and hostvars['opencti-22']['svc_22']['stdout'] == 'active') else '[FAIL]' }} opencti svc
+          containers   : {{ hostvars['opencti-22']['docker_22']['stdout'] | default('n/a') | trim }}
+          {% set octi = (hostvars['opencti-22']['opencti_core_22']['stdout'] | default('-1 -1 -1 unknown')).split() %}
           core restarts: {{ octi[0] }} (up {{ octi[1] }}h, {{ octi[3] }}){{ ' [WARN] restart loop?' if (octi[3] != 'running') or ((octi[0] | int) > 2 and (octi[2] | int) >= 0 and (octi[2] | int) < 10) else '' }}
-          disk         : {{ hostvars['opencti-135']['disk_pct_135']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 80 else '' }}
-          {{ hostvars['opencti-135']['disk_135']['stdout'] | default('n/a') }}
+          disk         : {{ hostvars['opencti-22']['disk_pct_22']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-22']['disk_pct_22']['stdout'] | default('0') | trim | int) >= 80 else '' }}
+          {{ hostvars['opencti-22']['disk_22']['stdout'] | default('n/a') }}
           {% endif %}
 
           --- T-Pot hosts ---
-          {% for h in ['tpot-hive-130'] %}
+          {% for h in ['tpot-hive-23'] %}
           {% if hostvars[h]['svc_tpot'] is not defined %}
           [UNREACH] {{ h }}: facts not gathered (host unreachable)
           {% else %}
@@ -446,18 +446,18 @@
           {% endif %}
           {% endfor %}
 
-          --- .140 canary services ---
-          {% if hostvars['fileserver-140']['svc_140'] is defined %}
-          {% for r in hostvars['fileserver-140']['svc_140']['results'] %}
+          --- .24 canary services ---
+          {% if hostvars['fileserver-24']['svc_24'] is defined %}
+          {% for r in hostvars['fileserver-24']['svc_24']['results'] %}
           {{ '[OK]  ' if r.stdout == 'active' else '[FAIL]' }} {{ '%-20s' | format(r.item) }} {{ r.stdout | default('?') }}
           {% endfor %}
-          listening    : {{ hostvars['fileserver-140']['ports_140']['stdout'] | default('?') | trim }} ports{{ ' [FAIL] expected >=22' if (hostvars['fileserver-140']['ports_140']['stdout'] | default('0') | trim | int) < 22 else '' }}
-          opencanary.log : {{ 'present' if hostvars['fileserver-140']['ocan_log_140']['stat']['exists'] | default(false) else '[FAIL] missing' }}
-          sinkhole.json  : {{ 'present' if hostvars['fileserver-140']['sink_log_140']['stat']['exists'] | default(false) else '[FAIL] missing' }}
-          disk         : {{ hostvars['fileserver-140']['disk_pct_140']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['fileserver-140']['disk_pct_140']['stdout'] | default('0') | trim | int) >= 80 else '' }}
-          {{ hostvars['fileserver-140']['disk_140']['stdout'] | default('n/a') }}
+          listening    : {{ hostvars['fileserver-24']['ports_24']['stdout'] | default('?') | trim }} ports{{ ' [FAIL] expected >=22' if (hostvars['fileserver-24']['ports_24']['stdout'] | default('0') | trim | int) < 22 else '' }}
+          opencanary.log : {{ 'present' if hostvars['fileserver-24']['ocan_log_24']['stat']['exists'] | default(false) else '[FAIL] missing' }}
+          sinkhole.json  : {{ 'present' if hostvars['fileserver-24']['sink_log_24']['stat']['exists'] | default(false) else '[FAIL] missing' }}
+          disk         : {{ hostvars['fileserver-24']['disk_pct_24']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['fileserver-24']['disk_pct_24']['stdout'] | default('0') | trim | int) >= 80 else '' }}
+          {{ hostvars['fileserver-24']['disk_24']['stdout'] | default('n/a') }}
           {% else %}
-          [UNREACH] .140 fileserver-140: facts not gathered
+          [UNREACH] .24 fileserver-24: facts not gathered
           {% endif %}
 
           --- Router ---
@@ -474,44 +474,44 @@
           /mnt/vms free: {{ hostvars['hypervisor-15']['disk_15']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15']['stdout'] | default('999') | trim | float) < 30 else '' }}
           /mnt/backup free: {{ hostvars['hypervisor-15']['disk_15_backup']['stdout'] | default('?') | trim }} GB{{ ' [WARN]' if (hostvars['hypervisor-15']['disk_15_backup']['stdout'] | default('999') | trim | float) < 20 else '' }}
           {% set octi_vbox = hostvars['hypervisor-15']['opencti_vbox_state_15']['stdout'] | default('unknown') | trim %}
-          OpenCTi VMState: {{ octi_vbox }}{{ ' [FAIL] unexpected state — needs cold boot, see opencti-135.md' if octi_vbox not in ['running', 'saved', 'poweroff'] else '' }}
+          OpenCTi VMState: {{ octi_vbox }}{{ ' [FAIL] unexpected state — needs cold boot, see opencti-22.md' if octi_vbox not in ['running', 'saved', 'poweroff'] else '' }}
           ==========================================================
 
     - name: Fail if any service is down
       ansible.builtin.fail:
         msg: "One or more services are not active — see summary above"
       when: >
-        hostvars['suricata-120']['svc_120']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0
-        or hostvars['elk-133']['svc_133']['results'] | default([]) | selectattr('stdout', '!=', 'active') | list | length > 0
-        or ((opencti_vm_state | default('unknown')) == 'running' and hostvars['opencti-135']['svc_135']['stdout'] | default('') != 'active')
-        or (hostvars['tpot-hive-130']['svc_tpot'] is defined and hostvars['tpot-hive-130']['svc_tpot']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
-        or (hostvars['fileserver-140']['svc_140'] is defined and hostvars['fileserver-140']['svc_140']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
+        hostvars['suricata-20']['svc_20']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0
+        or hostvars['elk-21']['svc_21']['results'] | default([]) | selectattr('stdout', '!=', 'active') | list | length > 0
+        or ((opencti_vm_state | default('unknown')) == 'running' and hostvars['opencti-22']['svc_22']['stdout'] | default('') != 'active')
+        or (hostvars['tpot-hive-23']['svc_tpot'] is defined and hostvars['tpot-hive-23']['svc_tpot']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
+        or (hostvars['fileserver-24']['svc_24'] is defined and hostvars['fileserver-24']['svc_24']['results'] | selectattr('stdout', '!=', 'active') | list | length > 0)
 
     - name: Fail if canary listening port count drifted
       ansible.builtin.fail:
-        msg: "Canary listening port count < 22 on .140 — OpenCanary or sinkhole missing ports (expected 8 banner + 14 sinkhole)"
+        msg: "Canary listening port count < 22 on .24 — OpenCanary or sinkhole missing ports (expected 8 banner + 14 sinkhole)"
       when:
-        - hostvars['fileserver-140']['ports_140'] is defined
-        - (hostvars['fileserver-140']['ports_140']['stdout'] | default('0') | trim | int) < 22
+        - hostvars['fileserver-24']['ports_24'] is defined
+        - (hostvars['fileserver-24']['ports_24']['stdout'] | default('0') | trim | int) < 22
 
     - name: Fail if canary log files missing
       ansible.builtin.fail:
-        msg: "Canary log file(s) missing on .140 — OpenCanary or sinkhole never wrote anything"
+        msg: "Canary log file(s) missing on .24 — OpenCanary or sinkhole never wrote anything"
       when:
-        - hostvars['fileserver-140']['svc_140'] is defined
+        - hostvars['fileserver-24']['svc_24'] is defined
         - >
-          not (hostvars['fileserver-140']['ocan_log_140']['stat']['exists'] | default(false))
-          or not (hostvars['fileserver-140']['sink_log_140']['stat']['exists'] | default(false))
+          not (hostvars['fileserver-24']['ocan_log_24']['stat']['exists'] | default(false))
+          or not (hostvars['fileserver-24']['sink_log_24']['stat']['exists'] | default(false))
 
     - name: Fail if Wazuh agent count drifted
       ansible.builtin.fail:
-        msg: "Wazuh enrolled agent count != 6 — check /var/ossec/etc/client.keys on .133 (existing 4 + .140 + .130 = 6 (sensor .125 retired 2026-06-07))"
-      when: (hostvars['elk-133']['wazuh_agents_133']['stdout'] | default('-1') | trim | int) != 6
+        msg: "Wazuh enrolled agent count != 6 — check /var/ossec/etc/client.keys on .21 (existing 4 + .24 + .23 = 6 (sensor .125 retired 2026-06-07))"
+      when: (hostvars['elk-21']['wazuh_agents_21']['stdout'] | default('-1') | trim | int) != 6
 
     - name: Fail if Wazuh API is down
       ansible.builtin.fail:
-        msg: "Wazuh API not responding on .133 port 55000 — run health-check to see details"
-      when: hostvars['elk-133']['wazuh_api_133']['status'] | default(-1) not in [200, 401]
+        msg: "Wazuh API not responding on .21 port 55000 — run health-check to see details"
+      when: hostvars['elk-21']['wazuh_api_21']['status'] | default(-1) not in [200, 401]
 
     - name: Fail if router uhttpd or AdGuardHome down
       ansible.builtin.fail:
@@ -545,42 +545,42 @@
           (expected running/saved/poweroff) — likely crashed mid-run or mid-savestate.
           Recover: VBoxManage startvm OpenCTi --type headless from .15 (an 'aborted' state
           cold-boots directly, no discardstate needed) or run opencti-wake.ps1 from .13.
-          See soc-lab/opencti-135.md "Aborted-state gap".
+          See soc-lab/opencti-22.md "Aborted-state gap".
       when: (hostvars['hypervisor-15']['opencti_vbox_state_15']['stdout'] | default('unknown') | trim) not in ['running', 'saved', 'poweroff']
 
     - name: Fail if disk >= 90%
       ansible.builtin.fail:
         msg: "Disk usage >= 90% on one or more hosts — check summary above (WARN at 80%)"
       when: >
-        (hostvars['suricata-120']['disk_pct_120']['stdout'] | default('0') | trim | int) >= 90
-        or (hostvars['elk-133']['disk_pct_133']['stdout'] | default('0') | trim | int) >= 90
-        or ((opencti_vm_state | default('unknown')) == 'running' and (hostvars['opencti-135']['disk_pct_135']['stdout'] | default('0') | trim | int) >= 90)
-        or (hostvars['tpot-hive-130']['disk_pct_tpot'] is defined and (hostvars['tpot-hive-130']['disk_pct_tpot']['stdout'] | trim | int) >= 90)
+        (hostvars['suricata-20']['disk_pct_20']['stdout'] | default('0') | trim | int) >= 90
+        or (hostvars['elk-21']['disk_pct_21']['stdout'] | default('0') | trim | int) >= 90
+        or ((opencti_vm_state | default('unknown')) == 'running' and (hostvars['opencti-22']['disk_pct_22']['stdout'] | default('0') | trim | int) >= 90)
+        or (hostvars['tpot-hive-23']['disk_pct_tpot'] is defined and (hostvars['tpot-hive-23']['disk_pct_tpot']['stdout'] | trim | int) >= 90)
         or (hostvars['router-1']['disk_pct_router'] is defined and (hostvars['router-1']['disk_pct_router']['stdout'] | trim | int) >= 90)
 
     - name: Fail if MISP IOC rules stale or too few
       ansible.builtin.fail:
         msg: "Suricata MISP rules pipe broken — file missing, >24h stale, or <100k rules (cron: misp-pull-rules every 6h; WARN shows at >8h)"
       when: >
-        (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('-1') | trim | int) < 0
-        or (hostvars['suricata-120']['misp_rules_age_120']['stdout'] | default('0') | trim | int) > 86400
-        or (hostvars['suricata-120']['misp_rules_count_120']['stdout'] | default('0') | trim | int) < 100000
+        (hostvars['suricata-20']['misp_rules_age_20']['stdout'] | default('-1') | trim | int) < 0
+        or (hostvars['suricata-20']['misp_rules_age_20']['stdout'] | default('0') | trim | int) > 86400
+        or (hostvars['suricata-20']['misp_rules_count_20']['stdout'] | default('0') | trim | int) < 100000
 
     - name: Fail if MISP enabled feed count drifted
       ansible.builtin.fail:
         msg: "MISP enabled feed count != 8 — check /feeds in MISP UI for disabled/added feeds"
-      when: (hostvars['elk-133']['misp_feeds_133']['stdout'] | default('-1') | trim | int) != 8
+      when: (hostvars['elk-21']['misp_feeds_21']['stdout'] | default('-1') | trim | int) != 8
 
     - name: Fail if Suricata EVE log stale or missing
       ansible.builtin.fail:
-        msg: "Suricata eve.json missing or > 300s stale on .120 — daemon up but SPAN/capture pipeline broken (WARN shows at >60s)"
+        msg: "Suricata eve.json missing or > 300s stale on .20 — daemon up but SPAN/capture pipeline broken (WARN shows at >60s)"
       when: >
-        (hostvars['suricata-120']['eve_age_120']['stdout'] | default('-1') | trim | int) < 0
-        or (hostvars['suricata-120']['eve_age_120']['stdout'] | default('0') | trim | int) > 300
+        (hostvars['suricata-20']['eve_age_20']['stdout'] | default('-1') | trim | int) < 0
+        or (hostvars['suricata-20']['eve_age_20']['stdout'] | default('0') | trim | int) > 300
 
     - name: Fail if Zeek conn.log stale or missing
       ansible.builtin.fail:
-        msg: "Zeek conn.log missing or > 300s stale on .120 — zeekctl reports running but SPAN tap may be broken (WARN shows at >60s)"
+        msg: "Zeek conn.log missing or > 300s stale on .20 — zeekctl reports running but SPAN tap may be broken (WARN shows at >60s)"
       when: >
-        (hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('-1') | trim | int) < 0
-        or (hostvars['suricata-120']['zeek_conn_age_120']['stdout'] | default('0') | trim | int) > 300
+        (hostvars['suricata-20']['zeek_conn_age_20']['stdout'] | default('-1') | trim | int) < 0
+        or (hostvars['suricata-20']['zeek_conn_age_20']['stdout'] | default('0') | trim | int) > 300

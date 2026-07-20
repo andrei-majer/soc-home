@@ -1,3 +1,0 @@
----
-# soc-ansible/inventory/host_vars/opencti-135/vars.yml
-backup_enable_opencti: true

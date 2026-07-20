@@ -51,7 +51,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
-          "expr": "last_over_time({job=\"soc-ansible\", host=\"elk-133\"} | json | es_status != `` | line_format `{{.es_status}}` [1h])"
+          "expr": "last_over_time({job=\"soc-ansible\", host=\"elk-21\"} | json | es_status != `` | line_format `{{.es_status}}` [1h])"
         }
       ],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "colorMode": "background" },
@@ -75,7 +75,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
-          "expr": "avg_over_time({job=\"soc-ansible\", host=\"suricata-120\"} | json | rules != `` | unwrap rules [5m])",
+          "expr": "avg_over_time({job=\"soc-ansible\", host=\"suricata-20\"} | json | rules != `` | unwrap rules [5m])",
           "legendFormat": "rules"
         }
       ]
@@ -121,7 +121,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
-          "expr": "last_over_time({job=\"soc-ansible\", host=\"opencti-135\"} | json | containers != `` | unwrap containers [1h])",
+          "expr": "last_over_time({job=\"soc-ansible\", host=\"opencti-22\"} | json | containers != `` | unwrap containers [1h])",
           "queryType": "instant"
         }
       ],

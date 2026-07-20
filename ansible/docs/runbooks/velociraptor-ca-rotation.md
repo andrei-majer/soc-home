@@ -77,7 +77,7 @@ Reset the GUI admin password (hash/secret context changed):
 
 ```bash
 # vault_velociraptor_admin_password holds the value; read it on-host, do not echo.
-P=$(cd /opt/soc-ansible && ansible-vault view inventory/host_vars/suricata-120/vault.yml \
+P=$(cd /opt/soc-ansible && ansible-vault view inventory/host_vars/suricata-20/vault.yml \
       | awk -F': ' '/^vault_velociraptor_admin_password:/{print $2}' | tr -d '" ')
 velociraptor --config /etc/velociraptor/server.config.yaml \
   user add --role administrator admin "$P"; unset P

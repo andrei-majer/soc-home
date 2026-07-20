@@ -6,8 +6,8 @@
 # Invoked every 15 min via /usr/local/bin/soc-ansible-state.sh cron.
 # ============================================================================
 
-- name: Collect state from suricata-120
-  hosts: suricata-120
+- name: Collect state from suricata-20
+  hosts: suricata-20
   gather_facts: false
   vars:
     ansible_shell_executable: /bin/bash
@@ -50,8 +50,8 @@
           disk_avail_gb: "{{ (disk_out.stdout_lines | select('search','avail=') | first).split('=')[1] | int }}"
           rules: "{{ (rules_out.stdout.strip() or 0) | int }}"
 
-- name: Collect state from elk-133
-  hosts: elk-133
+- name: Collect state from elk-21
+  hosts: elk-21
   gather_facts: false
   vars:
     ansible_shell_executable: /bin/bash
@@ -97,8 +97,8 @@
           es_status: "{{ (es_out.stdout | from_json).status | default('unknown') }}"
           es_unassigned: "{{ (es_out.stdout | from_json).unassigned_shards | default(-1) | int }}"
 
-- name: Collect state from opencti-135
-  hosts: opencti-135
+- name: Collect state from opencti-22
+  hosts: opencti-22
   ignore_unreachable: true
   gather_facts: false
   vars:
@@ -164,7 +164,7 @@
           containers: "{{ cont_out.stdout.strip() | int }}"
 
 # ----------------------------------------------------------------------------
-# Final play: write collected state to /var/log/soc-ansible/state.jsonl on .120
+# Final play: write collected state to /var/log/soc-ansible/state.jsonl on .20
 # ----------------------------------------------------------------------------
 - name: Write state to log
   hosts: localhost
@@ -173,10 +173,10 @@
   vars:
     state_log: /var/log/soc-ansible/state.jsonl
     target_hosts:
-      - suricata-120
-      - elk-133
-      - opencti-135
-      - tpot-hive-130
+      - suricata-20
+      - elk-21
+      - opencti-22
+      - tpot-hive-23
   tasks:
     - name: Ensure log directory exists
       ansible.builtin.file:

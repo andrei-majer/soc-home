@@ -8,11 +8,11 @@ See the [top-level README](../README.md) for the full project overview, architec
 
 | Host | IP | Role | Mode |
 |---|---|---|---|
-| suricata-120 | 192.168.1.120 | IDS / NSM (Suricata + Zeek + Snort 3 + Grafana/Loki/Promtail + EveBox + Arkime + Velociraptor + fail2ban + ntfy) + control node + `soc-contain` | Full convergence (control node, `local`) |
-| elk-133 | 192.168.1.133 | SIEM (Elasticsearch + Kibana + Logstash + Wazuh Manager + MISP) | Full convergence |
-| opencti-135 | 192.168.1.135 | Threat intel (OpenCTI Docker Compose stack) | Full convergence |
-| fileserver-140 | 192.168.1.140 | Internal canary `fs1` (OpenCanary + Samba decoys + sinkhole.py) | Full convergence |
-| tpot-hive-130 | 192.168.1.130 | Honeypot HIVE (combined collector+sensor) | Backup/pull-only (SSH :64295) |
+| suricata-20 | 192.168.1.120 | IDS / NSM (Suricata + Zeek + Snort 3 + Grafana/Loki/Promtail + EveBox + Arkime + Velociraptor + fail2ban + ntfy) + control node + `soc-contain` | Full convergence (control node, `local`) |
+| elk-21 | 192.168.1.133 | SIEM (Elasticsearch + Kibana + Logstash + Wazuh Manager + MISP) | Full convergence |
+| opencti-22 | 192.168.1.135 | Threat intel (OpenCTI Docker Compose stack) | Full convergence |
+| fileserver-24 | 192.168.1.140 | Internal canary `fs1` (OpenCanary + Samba decoys + sinkhole.py) | Full convergence |
+| tpot-hive-23 | 192.168.1.130 | Honeypot HIVE (combined collector+sensor) | Backup/pull-only (SSH :64295) |
 | router-1 | 192.168.1.1 | OpenWrt edge router (AdGuard Home + Unbound + BanIP + soc-watchdog) | Backup/pull-only (`raw` + `scp`, no Python) |
 
 The former `tpot-sensor-125` (192.168.1.125) was retired 2026-06-07 — it is commented out in `inventory/hosts.yml`; HIVE covers the honeypot role and the `.140` canary provides the second LAN-source signal.
@@ -59,13 +59,13 @@ All commands run on the control node (192.168.1.120) from `/opt/soc-ansible/`.
 ansible-playbook playbooks/site.yml
 
 # Single host
-ansible-playbook playbooks/site.yml --limit elk-133
+ansible-playbook playbooks/site.yml --limit elk-21
 
 # Check mode (dry run)
 ansible-playbook playbooks/site.yml --check
 
 # Single role
-ansible-playbook playbooks/site.yml --limit suricata-120 --tags suricata
+ansible-playbook playbooks/site.yml --limit suricata-20 --tags suricata
 ```
 
 ## Secrets
@@ -74,11 +74,11 @@ Secrets are encrypted with Ansible Vault. The vault password is at `~/.vault_pas
 
 To edit a vault file:
 ```bash
-ansible-vault edit inventory/host_vars/elk-133/vault.yml
+ansible-vault edit inventory/host_vars/elk-21/vault.yml
 ansible-vault view inventory/group_vars/all/vault.yml
 ```
 
-Vault files are scoped per host plus a shared `group_vars/all/vault.yml` — see `inventory/host_vars/<host>/vault.yml`. The canary host (`fileserver-140`) carries no secrets and has no vault file.
+Vault files are scoped per host plus a shared `group_vars/all/vault.yml` — see `inventory/host_vars/<host>/vault.yml`. The canary host (`fileserver-24`) carries no secrets and has no vault file.
 
 ## Idempotency
 
@@ -92,11 +92,11 @@ Vault files are scoped per host plus a shared `group_vars/all/vault.yml` — see
 
 | Host | Roles applied |
 |---|---|
-| suricata-120 | common, suricata, backups, soc-contain (+ canary cutover) |
-| elk-133 | common, elk, wazuh-manager, misp, backups |
-| opencti-135 | common, opencti, backups |
-| fileserver-140 | common, canary |
-| tpot-hive-130 | tpot |
+| suricata-20 | common, suricata, backups, soc-contain (+ canary cutover) |
+| elk-21 | common, elk, wazuh-manager, misp, backups |
+| opencti-22 | common, opencti, backups |
+| fileserver-24 | common, canary |
+| tpot-hive-23 | tpot |
 | router-1 | openwrt |
 
 T-Pot and OpenWrt hosts skip `common` by design — T-Pot self-manages its base OS (fighting it causes drift) and the OpenWrt router has no Python.

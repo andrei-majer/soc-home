@@ -1,6 +1,6 @@
 ---
 - name: Rule update on Suricata host
-  hosts: suricata-120
+  hosts: suricata-20
   gather_facts: false
   tasks:
     - name: Run suricata-update

@@ -132,8 +132,8 @@ roles/canary/
 
 ### 4b. Inventory
 
-- Add `fileserver-140` to `inventory/hosts.yml` under both `debian` group and new `canary` group
-- New `inventory/host_vars/fileserver-140/main.yml` with `ansible_host: 192.168.1.140`
+- Add `fileserver-24` to `inventory/hosts.yml` under both `debian` group and new `canary` group
+- New `inventory/host_vars/fileserver-24/main.yml` with `ansible_host: 192.168.1.140`
 - No new `vault.yml` — canary has no secrets of its own; the ntfy topic var lives in `.133`'s vault scope where the manager runs
 
 ### 4c. Site playbook
@@ -143,7 +143,7 @@ roles/canary/
 
 ### 4d. `.120` cutover
 
-`canary` role contains an `ansible.builtin.file: state: absent` task block, gated on `inventory_hostname == 'suricata-120'`, that removes:
+`canary` role contains an `ansible.builtin.file: state: absent` task block, gated on `inventory_hostname == 'suricata-20'`, that removes:
 
 - `/etc/network/interfaces.d/sinkhole`
 - `/etc/systemd/system/sinkhole.service` (after `systemd: state: stopped, enabled: no`)
@@ -300,20 +300,20 @@ New play targeting `canary` group:
     - name: Check systemd services (.140)
       ansible.builtin.command: "systemctl is-active {{ item }}"
       loop: [opencanary, sinkhole, wazuh-agent]
-      register: svc_140
+      register: svc_24
       failed_when: false
       changed_when: false
     - name: Canary listening port count (.140)
       ansible.builtin.shell: ss -tln '! ( sport = :22 )' | grep -c LISTEN
-      register: ports_140
+      register: ports_24
       failed_when: false
       changed_when: false
     - name: OpenCanary log exists (.140)
       ansible.builtin.stat: { path: /var/tmp/opencanary.log }
-      register: ocan_log_140
+      register: ocan_log_24
     - name: Sinkhole log exists (.140)
       ansible.builtin.stat: { path: /var/log/sinkhole.json }
-      register: sink_log_140
+      register: sink_log_24
     - name: Disk pct (.140)        # standard df pattern
     - name: Disk detail (.140)
 ```
@@ -327,7 +327,7 @@ Summary table gains `.140 canary` section ([OK]/[FAIL] per service, port count v
 
 New fail asserts (same structure as existing tiered fail tasks):
 - `Fail if canary services down` — any inactive of opencanary/sinkhole/wazuh-agent on `.140`
-- `Fail if canary port count drifted` — `ports_140 < 22`
+- `Fail if canary port count drifted` — `ports_24 < 22`
 - `Fail if canary log files missing` — neither stat exists (means OpenCanary or sinkhole never wrote anything; OpenCanary writes initialization line on startup)
 
 Display thresholds use the same WARN-in-summary / FAIL-in-assert pattern. Templating uses inline ternary or `{% endif +%}` (see `feedback/jinja-trim-blocks-fix.md`).

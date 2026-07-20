@@ -158,7 +158,7 @@ systemctl enable --now wazuh-agent
 Then converge the IaC to restore the localfile blockinfile:
 
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-130|tpot-sensor-125>'
+ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-23|tpot-sensor-125>'
 ```
 
 Verify agent enrolled (count should return to 8):
