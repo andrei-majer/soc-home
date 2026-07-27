@@ -8,4 +8,4 @@ common_packages:
   - rsync
   - python3-pip
 
-disk_alert_threshold: 85
+disk_alert_threshold: 95

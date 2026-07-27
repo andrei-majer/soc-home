@@ -31,6 +31,7 @@
     mode: "0755"
     owner: root
     group: root
+  tags: disk-alert
 
 - name: Configure disk-alert cron (hourly)
   ansible.builtin.cron:
@@ -38,6 +39,7 @@
     minute: "0"
     job: "{{ disk_alert_script }}"
     user: root
+  tags: disk-alert
 
 - name: Create timesyncd drop-in directory
   ansible.builtin.file:
