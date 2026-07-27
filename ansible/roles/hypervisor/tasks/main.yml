@@ -10,11 +10,12 @@
 #   - docker-prune : weekly prune of unused images/cache/stopped containers >7d
 #   - disk-alert   : hourly Telegram alert when / or /mnt/vms crosses 85%
 # Added 2026-07-16: soc-sleep/wake (nightly SOC VM ACPI shutdown/cold-boot).
+# Added 2026-07-27: ups-loki (UPS reading -> Loki push, every 30s).
 # Idempotent — these are already deployed on .15; this just codifies them.
 #
 # Deliberately NOT managed here: the runtime /etc/nut/ARMED toggle (operator-
-# controlled). Future passes: ups-loki, ssd-smart-loki, lm-sensors, NUT config
-# (needs vault for upsd.users).
+# controlled), NUT itself (/etc/nut/*.conf — needs vault for upsd.users). Future
+# passes: ssd-smart-loki, lm-sensors.
 # ============================================================================
 
 - name: Install .15 host guardrail scripts
@@ -90,6 +91,39 @@
   loop:
     - soc-sleep.timer
     - soc-wake.timer
+
+# ---------- ups-loki: push UPS readings to Loki every 30s ----------
+# 2026-07-27: this was the "future pass" flagged in the role header above. Root-caused
+# the same day — the script still pointed at the pre-renumber 192.168.1.120 Loki address
+# (2026-07-15 renumber moved Grafana/Loki to .20), so the UPS Grafana panels went dark
+# with the collector silently failing every 30s (curl error swallowed by `|| true`).
+# Fixed live by hand first, now codified so a reinstall doesn't reintroduce the stale IP.
+- name: Install ups-loki collector script
+  ansible.builtin.copy:
+    src: ups-loki-push.sh
+    dest: /usr/local/bin/ups-loki-push.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install ups-loki systemd units
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - ups-loki.service
+    - ups-loki.timer
+  notify: Reload systemd
+
+- name: Enable and start ups-loki timer
+  ansible.builtin.systemd:
+    name: ups-loki.timer
+    enabled: true
+    state: started
+    daemon_reload: true
 
 # ---------- NIC: e1000e "Detected Hardware Unit Hang" mitigation ----------
 # 2026-07-06: eno1 (Intel I219-V) hung 829x, dropping .15 off the LAN while the

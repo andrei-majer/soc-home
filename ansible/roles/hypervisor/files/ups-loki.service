@@ -1,0 +1,6 @@
+[Unit]
+Description=Push one UPS reading to Loki
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ups-loki-push.sh

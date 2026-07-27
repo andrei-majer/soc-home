@@ -1,8 +1,8 @@
 #!/bin/sh
 # OpenWrt/BusyBox collector — install at /usr/bin/ups-loki-push.sh, run every minute
-# via cron (see crontab.snippet). Pushes one logfmt line to Loki on .120 (host="1").
+# via cron (see crontab.snippet). Pushes one logfmt line to Loki on .20 (host="1").
 # Notes: BusyBox `date` lacks %N, so append zeros for ns; use `tr` (no bash ${//}).
-LOKI="http://192.168.1.120:3100/loki/api/v1/push"
+LOKI="http://192.168.1.20:3100/loki/api/v1/push"
 out="$(upsc ted 2>/dev/null)" || exit 0
 g(){ echo "$out" | awk -F': ' -v k="$1" '$1==k{print $2; exit}'; }
 bv="$(g battery.voltage)"; iv="$(g input.voltage)"; ov="$(g output.voltage)"
