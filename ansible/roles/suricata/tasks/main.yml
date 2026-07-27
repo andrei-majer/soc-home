@@ -531,6 +531,16 @@
 
 # ---------- Loki + Promtail ----------
 
+- name: Deploy loki config
+  ansible.builtin.copy:
+    src: loki.yaml
+    dest: /etc/loki/loki.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart loki
+
 - name: Deploy loki systemd unit
   ansible.builtin.copy:
     src: loki.service

@@ -43,6 +43,11 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
+- name: Restart loki
+  ansible.builtin.systemd:
+    name: loki
+    state: restarted
+
 - name: Restart promtail
   ansible.builtin.systemd:
     name: promtail
