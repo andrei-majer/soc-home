@@ -272,6 +272,33 @@
       register: disk_22
       failed_when: false
       changed_when: false
+    # Connector freshness (added 2026-07-30) — catches the "connectors stuck in
+    # Python retry loop after cold-boot" pathology where containers are Up but
+    # the pycti retry never recovers (see soc-lab/opencti-22.md). Emits
+    # `<max_stale_secs> <stale_names_csv>` where max_stale_secs = seconds since
+    # newest heartbeat of ANY active TI connector (excludes internal
+    # `[TASK]`/`[FILE]`/`[DRAFT]` connectors, which have null updated_at).
+    # Heartbeat interval is ~30s; >5min stale = definitely broken.
+    - name: OpenCTI connector freshness (.22)
+      ansible.builtin.shell: |
+        token=$(grep '^OPENCTI_ADMIN_TOKEN=' /opt/opencti/.env | cut -d= -f2)
+        [ -z "$token" ] && { echo "-1 no-token"; exit 0; }
+        resp=$(curl -sS --max-time 10 -X POST http://localhost:8080/graphql \
+          -H "Authorization: Bearer $token" \
+          -H "Content-Type: application/json" \
+          -d '{"query":"{ connectors { name active updated_at } }"}' 2>/dev/null) || { echo "-1 curl-fail"; exit 0; }
+        echo "$resp" | jq -r --arg now "$(date -u +%s)" '
+          [.data.connectors[]
+            | select(.active==true and (.name | startswith("[") | not) and .updated_at)
+            | {name, age: (($now|tonumber) - (.updated_at | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601))}]
+          | if length == 0 then "-1 no-connectors"
+            else "\(max_by(.age).age) \([.[] | select(.age > 300) | .name] | join(","))"
+            end' 2>/dev/null || echo "-1 parse-fail"
+      args:
+        executable: /bin/bash
+      register: opencti_conn_freshness_22
+      failed_when: false
+      changed_when: false
 
 - name: Health check — T-Pot host (.23)
   hosts: tpot
@@ -431,6 +458,10 @@
           containers   : {{ hostvars['opencti-22']['docker_22']['stdout'] | default('n/a') | trim }}
           {% set octi = (hostvars['opencti-22']['opencti_core_22']['stdout'] | default('-1 -1 -1 unknown')).split() %}
           core restarts: {{ octi[0] }} (up {{ octi[1] }}h, {{ octi[3] }}){{ ' [WARN] restart loop?' if (octi[3] != 'running') or ((octi[0] | int) > 2 and (octi[2] | int) >= 0 and (octi[2] | int) < 10) else '' }}
+          {% set conn_parts = (hostvars['opencti-22']['opencti_conn_freshness_22']['stdout'] | default('-1 unknown')).split(' ', 1) %}
+          {% set conn_age = conn_parts[0] | int %}
+          {% set conn_stale = conn_parts[1] | default('') | trim %}
+          connectors   : {{ 'newest heartbeat ' ~ conn_age ~ 's ago' if conn_age >= 0 else 'unavailable (' ~ conn_stale ~ ')' }}{{ ' [FAIL] stuck: ' ~ conn_stale if conn_age > 300 and conn_stale not in ['', 'no-token', 'curl-fail', 'no-connectors', 'parse-fail'] else '' }}
           disk         : {{ hostvars['opencti-22']['disk_pct_22']['stdout'] | default('?') | trim }}%{{ ' [WARN]' if (hostvars['opencti-22']['disk_pct_22']['stdout'] | default('0') | trim | int) >= 80 else '' }}
           {{ hostvars['opencti-22']['disk_22']['stdout'] | default('n/a') }}
           {% endif %}
@@ -547,6 +578,27 @@
           cold-boots directly, no discardstate needed) or run opencti-wake.ps1 from .13.
           See soc-lab/opencti-22.md "Aborted-state gap".
       when: (hostvars['hypervisor-15']['opencti_vbox_state_15']['stdout'] | default('unknown') | trim) not in ['running', 'saved', 'poweroff']
+
+    # Connector-freshness gate (added 2026-07-30). Only fires when VM is
+    # `running` — savestate is expected-quiet, no connectors heartbeat.
+    # Threshold 300s aligns with the summary's [FAIL] marker; heartbeats
+    # every ~30s in practice.
+    - name: Fail if OpenCTI TI connectors are stale
+      ansible.builtin.fail:
+        msg: >-
+          OpenCTI TI connectors have stopped heartbeating on .22 (newest heartbeat
+          {{ (hostvars['opencti-22']['opencti_conn_freshness_22']['stdout'] | default('-1 unknown')).split(' ', 1)[0] }}s ago,
+          stuck: {{ (hostvars['opencti-22']['opencti_conn_freshness_22']['stdout'] | default('-1 unknown')).split(' ', 1)[1] | default('') | trim }}).
+          Likely the "Python retry loop after cold-boot" pathology — restart with
+          `docker restart opencti-connector-{misp,threatfox,urlhaus,mitre,cisa-kev}-1 opencti-worker-1`
+          on .22, or re-run opencti-wake.ps1 (patched 2026-07-30 to auto-restart on cold-boot).
+          See soc-lab/opencti-22.md "Connectors stuck in Python retry loop after cold-boot".
+      vars:
+        _cf: "{{ (hostvars['opencti-22']['opencti_conn_freshness_22']['stdout'] | default('-1 unknown')).split(' ', 1) }}"
+      when:
+        - (opencti_vm_state | default('unknown')) == 'running'
+        - (_cf[0] | int) > 300
+        - (_cf[1] | default('') | trim) not in ['', 'no-token', 'curl-fail', 'no-connectors', 'parse-fail']
 
     - name: Fail if disk >= 90%
       ansible.builtin.fail:
