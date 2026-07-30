@@ -160,6 +160,60 @@
     backup: true
   notify: Update grub
 
+# ---------- Suricata VM: boot-start + watchdog ----------
+# 2026-07-29: after a RAM-upgrade reboot, Suricata stayed down until noticed
+# manually. soc-wake.timer excludes it (kept up 24/7 for the Grafana mobile
+# proxy), and no VBox autostart was configured, so nothing brought it back.
+# Two defenses:
+#   1. suricata-vm-start.service — cold-starts the VM on host boot (User=andrei,
+#      polls /dev/vboxdrv up to 60s to survive the vboxdrv-udev race that
+#      already bit soc-wake.sh, KillMode=process so VBoxHeadless survives the
+#      oneshot exit).
+#   2. suricata-watchdog.sh — andrei crontab */5 min, checks VBoxManage
+#      runningvms, sends one Telegram alert + re-alerts every 3h while broken,
+#      recovery message on return. Reuses ~/teslamate/.telegram.env creds
+#      (TG_TOKEN / TG_CHAT — NOT TELEGRAM_BOT_TOKEN/CHAT_ID as generic naming
+#      would suggest).
+# Coverage gap (deliberate): neither catches "VM up but suricata process dead"
+# nor "SPAN NIC carrier lost" — that would need SSH .15->.20 which isn't set up.
+- name: Install Suricata VM boot-start unit
+  ansible.builtin.copy:
+    src: suricata-vm-start.service
+    dest: /etc/systemd/system/suricata-vm-start.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable Suricata VM boot-start (do NOT start — VM is already running)
+  ansible.builtin.systemd:
+    name: suricata-vm-start.service
+    enabled: true
+    daemon_reload: true
+
+- name: Ensure /home/andrei/suricata directory exists
+  ansible.builtin.file:
+    path: /home/andrei/suricata
+    state: directory
+    owner: andrei
+    group: andrei
+    mode: "0755"
+
+- name: Install Suricata watchdog script
+  ansible.builtin.copy:
+    src: suricata-watchdog.sh
+    dest: /home/andrei/suricata/suricata-watchdog.sh
+    owner: andrei
+    group: andrei
+    mode: "0755"
+
+- name: Install andrei cron entry for Suricata watchdog (every 5 min)
+  ansible.builtin.cron:
+    name: suricata-watchdog
+    user: andrei
+    minute: "*/5"
+    job: /home/andrei/suricata/suricata-watchdog.sh
+
 # ---------- PXE / UEFI netboot server (on-demand; assets fetched manually) ----------
 # 2026-07-07: on-demand, Secure-Boot-capable UEFI netboot server (Clonezilla +
 # Ubuntu Server + Fedora). Every unit is DISABLED by default and toggled only via

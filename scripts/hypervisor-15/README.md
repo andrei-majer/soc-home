@@ -122,6 +122,32 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now docker-prune.timer disk-alert.timer
 ```
 
+## Suricata boot-recovery + watchdog (added 2026-07-29)
+
+After a `.15` reboot for a RAM upgrade, Suricata stayed down until noticed
+manually — `soc-wake.timer` excludes it (deliberate; see above) and there was
+no VBox autostart, so nothing brought it back. Two defenses:
+
+| File | Install path on `.15` | Purpose |
+|---|---|---|
+| `suricata-vm-start.service` | `/etc/systemd/system/` (644 root:root) | Cold-starts the Suricata VM at host boot as `andrei`. `After=vboxdrv.service systemd-modules-load.service`, `ExecStartPre` polls `/dev/vboxdrv` for 60s (same race that bit `soc-wake.sh`), `KillMode=process` so VBoxHeadless survives oneshot exit. `ExecStop=controlvm ... acpipowerbutton`. |
+| `suricata-watchdog.sh` | `/home/andrei/suricata/` (755 andrei:andrei) | Andrei crontab `*/5 * * * *`. Checks `VBoxManage list runningvms`; sends one Telegram alert + re-alerts every 3h while broken, plus a recovery message when VM returns. Reuses `~/teslamate/.telegram.env` (**note: `TG_TOKEN` / `TG_CHAT`, not the generic `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`**). Logs to `watchdog.log` in the same dir, state in `watchdog.state`. |
+
+```bash
+sudo install -m 644 -o root -g root suricata-vm-start.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable suricata-vm-start.service
+# Do NOT start now — VM is already running; enable fires at next boot only.
+
+sudo -u andrei mkdir -p /home/andrei/suricata
+sudo install -m 755 -o andrei -g andrei suricata-watchdog.sh /home/andrei/suricata/
+sudo -u andrei bash -c '(crontab -l 2>/dev/null; echo "*/5 * * * * /home/andrei/suricata/suricata-watchdog.sh") | crontab -'
+```
+
+**Coverage gap (deliberate):** neither defense catches "VM up but Suricata
+process dead" nor "SPAN NIC carrier lost." Adding that would need SSH
+`.15`→`.20` keys wired up and an `eve.json`-mtime probe in the watchdog.
+
 ## See also
 
 - [`hypervisor-15` memory](https://github.com/andrei-majer/soc-home) — full migration history

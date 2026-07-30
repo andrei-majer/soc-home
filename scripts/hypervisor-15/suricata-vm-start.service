@@ -1,0 +1,20 @@
+[Unit]
+Description=Auto-start Suricata VM on host boot
+After=vboxdrv.service systemd-modules-load.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/dev/vboxdrv
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=andrei
+Group=vboxusers
+# Wait up to 60s for vboxdrv (matches soc-wake.sh cold-boot race handling)
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do [ -c /dev/vboxdrv ] && exit 0; sleep 1; done; echo "vboxdrv never appeared"; exit 1'
+ExecStart=/usr/bin/VBoxManage startvm Suricata --type headless
+ExecStop=/usr/bin/VBoxManage controlvm Suricata acpipowerbutton
+TimeoutStartSec=120
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
