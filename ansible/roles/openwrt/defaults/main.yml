@@ -54,3 +54,9 @@ openwrt_optional_files:
     dest: config-uhttpd
   - src: /etc/nginx/teslamate.htpasswd
     dest: teslamate.htpasswd
+  - src: /etc/samba/smb.conf.template
+    dest: samba-smb.conf.template
+  - src: /etc/config/samba4
+    dest: config-samba4
+  - src: /etc/init.d/AdGuardHome
+    dest: initd-AdGuardHome
