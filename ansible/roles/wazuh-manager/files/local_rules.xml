@@ -89,7 +89,7 @@
 </group>
 
 <!-- ================= Zeek (lean Wazuh integration, 2026-05-31) =================
-     Zeek notice.log + dns.log arrive from the .120 agent as JSON localfiles and
+     Zeek notice.log + dns.log arrive from the .20 agent as JSON localfiles and
      are parsed by Wazuh's built-in JSON decoder (NO custom decoder). The bundled
      0635-owlh-zeek_rules.xml (66001-66004) is dead: it matches an obsolete
      'bro_engine' field absent from Zeek 8.x JSON. We alert on Zeek's curated
@@ -159,7 +159,7 @@
     <decoded_as>json</decoded_as>
     <field name="dst_host">192.168.1.24</field>
     <field name="logtype" type="pcre2">^\d+$</field>
-    <description>Canary hit on .140 (base, silent)</description>
+    <description>Canary hit on .24 (base, silent)</description>
   </rule>
 
   <!-- All source rules fire at their full alert level. Per-(rule,src) hourly
@@ -192,7 +192,7 @@
   <rule id="100303" level="12">
     <if_sid>100300</if_sid>
     <field name="logdata.USERNAME" type="pcre2">.+</field>
-    <description>Canary credential attempt captured on .140 (user=$(logdata.USERNAME))</description>
+    <description>Canary credential attempt captured on .24 (user=$(logdata.USERNAME))</description>
     <group>canary_creds,soc-contain,</group>
   </rule>
 
@@ -200,7 +200,7 @@
   <rule id="100306" level="3">
     <decoded_as>json</decoded_as>
     <field name="event">^sinkhole_hit$</field>
-    <description>Sinkhole hit on .140 (base, silent)</description>
+    <description>Sinkhole hit on .24 (base, silent)</description>
   </rule>
 
   <!-- Sinkhole LAN source -->
@@ -216,7 +216,7 @@
 <!-- ================================================================
      T-Pot internal lateral-movement rules (100400-100409)
      Only LAN-source hits page - external internet noise stays in T-Pot
-     Kibana on .130:64297, unchanged. Field paths confirmed empirically:
+     Kibana on .23:64297, unchanged. Field paths confirmed empirically:
      Cowrie/Dionaea/Heralding/Honeytrap/Tanner all emit src_ip at TOP
      level. Cowrie uses eventid:cowrie.* prefix; others vary so the base
      rule matches by location field instead (Wazuh adds it automatically
@@ -242,11 +242,11 @@
   <rule id="100401" level="12">
     <if_sid>100400</if_sid>
     <field name="src_ip" type="pcre2">^192\.168\.1\.</field>
-    <description>T-Pot Cowrie lateral movement: $(src_ip) -> .130 SSH</description>
+    <description>T-Pot Cowrie lateral movement: $(src_ip) -> .23 SSH</description>
     <group>tpot,attack,</group>
   </rule>
 
-  <!-- Honeytrap (generic TCP catch-all on .130 high ports). Decoded as
+  <!-- Honeytrap (generic TCP catch-all on .23 high ports). Decoded as
        attack_connection.remote_ip, .local_port, .protocol nested. -->
   <rule id="100402" level="3">
     <decoded_as>json</decoded_as>
@@ -257,7 +257,7 @@
   <rule id="100403" level="12">
     <if_sid>100402</if_sid>
     <field name="attack_connection.remote_ip" type="pcre2">^192\.168\.1\.</field>
-    <description>T-Pot Honeytrap lateral movement: $(attack_connection.remote_ip) -> .130:$(attack_connection.local_port)</description>
+    <description>T-Pot Honeytrap lateral movement: $(attack_connection.remote_ip) -> .23:$(attack_connection.local_port)</description>
     <group>tpot,attack,</group>
   </rule>
 
@@ -272,7 +272,7 @@
   <rule id="100405" level="12">
     <if_sid>100404</if_sid>
     <field name="peer.ip" type="pcre2">^192\.168\.1\.</field>
-    <description>T-Pot Tanner lateral movement: $(peer.ip) -> .130 HTTP $(method) $(path)</description>
+    <description>T-Pot Tanner lateral movement: $(peer.ip) -> .23 HTTP $(method) $(path)</description>
     <group>tpot,attack,</group>
   </rule>
 
@@ -286,7 +286,7 @@
   <rule id="100407" level="12">
     <if_sid>100406</if_sid>
     <field name="src_ip" type="pcre2">^192\.168\.1\.</field>
-    <description>T-Pot Elasticpot lateral movement: $(src_ip) -> .130:9200 $(eventid)</description>
+    <description>T-Pot Elasticpot lateral movement: $(src_ip) -> .23:9200 $(eventid)</description>
     <group>tpot,attack,</group>
   </rule>
 

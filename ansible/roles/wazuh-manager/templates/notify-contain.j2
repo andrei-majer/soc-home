@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """notify-contain — Wazuh active-response. Reads the AR envelope on stdin, extracts
-rule_id/src_ip/category/dest_ip/domain, POSTs to the soc-contain receiver on .120.
+rule_id/src_ip/category/dest_ip/domain, POSTs to the soc-contain receiver on .20.
 Never blocks execd: exits 0 on every path. Stdlib only. Mirrors custom-ntfy source-extraction.
 """
 import json
@@ -25,6 +25,8 @@ def log(msg):
 def extract_source(alert):
     d = alert.get('data', {}) or {}
     return (d.get('src_host') or d.get('client_ip') or d.get('src_ip')
+            or d.get('src')
+            or (d.get('id') or {}).get('orig_h')
             or (d.get('peer') or {}).get('ip')
             or (d.get('attack_connection') or {}).get('remote_ip')
             or (d.get('win', {}).get('eventdata', {}) or {}).get('sourceIp')
@@ -34,7 +36,8 @@ def extract_source(alert):
 
 def extract_dest(alert):
     d = alert.get('data', {}) or {}
-    return (d.get('dest_ip') or d.get('dstip')
+    return (d.get('dest_ip') or d.get('dstip') or d.get('dst')
+            or (d.get('id') or {}).get('resp_h')
             or (d.get('win', {}).get('eventdata', {}) or {}).get('destinationIp')
             or '')
 
