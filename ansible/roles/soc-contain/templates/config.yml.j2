@@ -23,17 +23,18 @@ tailscale:
   tailnet: "{{ vault_tailscale_tailnet }}"
   quarantine_tag: {{ soc_contain_tailscale_quarantine_tag }}
 
-ntfy:
-  topic_url: "{{ soc_contain_ntfy_base_url }}/{{ soc_contain_ntfy_topic }}"
-  priority_t0_armed: {{ soc_contain_ntfy_priority_t0_armed }}
-  priority_t0_dryrun: {{ soc_contain_ntfy_priority_t0_dryrun }}
-  priority_t1: {{ soc_contain_ntfy_priority_t1 }}
-  priority_t2: {{ soc_contain_ntfy_priority_t2 }}
-  priority_dedup: {{ soc_contain_ntfy_priority_dedup }}
-  priority_kill_switch: {{ soc_contain_ntfy_priority_kill_switch }}
-  priority_reaper_ok: {{ soc_contain_ntfy_priority_reaper_ok }}
-  priority_reaper_failed: {{ soc_contain_ntfy_priority_reaper_failed }}
-  timeout_seconds: {{ soc_contain_ntfy_timeout_seconds }}
+telegram:
+  bot_token: "{{ telegram_bot_token }}"
+  chat_id: "{{ telegram_chat_id }}"
+  priority_t0_armed: {{ soc_contain_telegram_priority_t0_armed }}
+  priority_t0_dryrun: {{ soc_contain_telegram_priority_t0_dryrun }}
+  priority_t1: {{ soc_contain_telegram_priority_t1 }}
+  priority_t2: {{ soc_contain_telegram_priority_t2 }}
+  priority_dedup: {{ soc_contain_telegram_priority_dedup }}
+  priority_kill_switch: {{ soc_contain_telegram_priority_kill_switch }}
+  priority_reaper_ok: {{ soc_contain_telegram_priority_reaper_ok }}
+  priority_reaper_failed: {{ soc_contain_telegram_priority_reaper_failed }}
+  timeout_seconds: {{ soc_contain_telegram_timeout_seconds }}
 
 receiver:
   auth_token: "{{ vault_soc_contain_recv_token }}"
