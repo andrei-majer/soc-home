@@ -8,7 +8,7 @@ Procedure for rebuilding the Netgear R7800 gateway from a full wipe.
 | Firmware | OpenWrt 24.10.5 r29087, target `ipq806x/generic`, image `netgear_r7800` |
 | LAN IP | 192.168.1.1 |
 | Hostname | `xndrei.go.ro` |
-| Backup source | `.120:/opt/soc-ansible/backups/openwrt/router-1/` |
+| Backup source | `.20:/opt/soc-ansible/backups/openwrt/router-1/` |
 
 ## Backup contents
 
@@ -41,13 +41,13 @@ Run `ansible-playbook playbooks/site.yml --limit router-1` before a planned rebu
    cat >> /etc/dropbear/authorized_keys << 'EOF'
    # xndre@147K (.13 workstation)
    ssh-ed25519 AAAA... xndre@147K
-   # root@suricata (.120 control node)
+   # root@suricata (.20 control node)
    ssh-ed25519 AAAA... root@suricata
    # andrei@13xD+ (laptop)
    ssh-ed25519 AAAA... andrei@13xD+
    EOF
    ```
-   Get the actual public keys from `.13:~/.ssh/id_ed25519.pub`, `.120:~/.ssh/id_ed25519.pub`, and the laptop.
+   Get the actual public keys from `.13:~/.ssh/id_ed25519.pub`, `.20:~/.ssh/id_ed25519.pub`, and the laptop.
 
 ---
 
@@ -56,7 +56,7 @@ Run `ansible-playbook playbooks/site.yml --limit router-1` before a planned rebu
 Copy backup files to the router, then import:
 
 ```sh
-# From .120 control node:
+# From .20 control node:
 scp /opt/soc-ansible/backups/openwrt/router-1/uci-export.txt root@192.168.1.1:/tmp/
 scp /opt/soc-ansible/backups/openwrt/router-1/packages.txt root@192.168.1.1:/tmp/
 scp /opt/soc-ansible/backups/openwrt/router-1/crontab.txt root@192.168.1.1:/tmp/
@@ -125,7 +125,7 @@ nslookup google.com 127.0.0.1
 ## Phase 5 — nginx + WOL relay CGI
 
 ```sh
-# From .120:
+# From .20:
 scp /opt/soc-ansible/backups/openwrt/router-1/nginx-xndrei.conf root@192.168.1.1:/etc/nginx/conf.d/xndrei.conf
 scp /opt/soc-ansible/backups/openwrt/router-1/wol-cgi root@192.168.1.1:/usr/share/wol-relay/cgi-bin/wol
 
@@ -155,7 +155,7 @@ Expected entries:
 ## Phase 7 — TLS certificate (Let's Encrypt)
 
 ```sh
-# From .120:
+# From .20:
 scp /opt/soc-ansible/backups/openwrt/router-1/acme-renew.sh root@192.168.1.1:/usr/local/bin/acme-renew.sh
 
 # On the router:
@@ -232,7 +232,7 @@ banip -q status
 showmount -e localhost
 ```
 
-Full Ansible health check from `.120` once SSH keys are in place:
+Full Ansible health check from `.20` once SSH keys are in place:
 ```sh
 ansible-playbook playbooks/ops/health-check.yml --limit router-1
 ```

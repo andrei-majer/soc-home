@@ -1,6 +1,6 @@
-# Runbook: MISP Rebuild (192.168.1.133)
+# Runbook: MISP Rebuild (192.168.1.21)
 
-MISP 2.5.32 installation + database restore procedure. MISP shares the .133 host with Elasticsearch, Kibana, and Wazuh manager.
+MISP 2.5.32 installation + database restore procedure. MISP shares the .21 host with Elasticsearch, Kibana, and Wazuh manager.
 
 ## Overview
 
@@ -26,7 +26,7 @@ MISP 2.5.32 installation + database restore procedure. MISP shares the .133 host
 
 | Field | Value |
 |---|---|
-| URL | http://192.168.1.133 |
+| URL | http://192.168.1.21 |
 | Admin user | `admin@admin.test` |
 | Admin password | _rotated; stored in vault as `vault_misp_admin_password`_ |
 
@@ -109,9 +109,9 @@ Always stop workers before restoring — in-flight Redis jobs will reference sta
 
 | Flow | Mechanism | Schedule |
 |---|---|---|
-| MISP to Suricata rules | `/usr/local/bin/misp-pull-rules.sh` on .120 | cron every 6h |
-| Suricata to MISP sightings | `/usr/local/bin/misp-push-sightings.py` on .120 | cron hourly at :30 |
-| MISP to OpenCTI | connector on .135 | every 5 minutes |
+| MISP to Suricata rules | `/usr/local/bin/misp-pull-rules.sh` on .20 | cron every 6h |
+| Suricata to MISP sightings | `/usr/local/bin/misp-push-sightings.py` on .20 | cron hourly at :30 |
+| MISP to OpenCTI | connector on .22 | every 5 minutes |
 
 ## Known Issues
 
@@ -123,11 +123,11 @@ Always stop workers before restoring — in-flight Redis jobs will reference sta
 
 ```bash
 # Login page reachable
-curl http://192.168.1.133
+curl http://192.168.1.21
 
 # API works
 curl -H "Authorization: <MISP_API_KEY>" \
-     http://192.168.1.133/events/index.json | head
+     http://192.168.1.21/events/index.json | head
 
 # Worker errors
 tail /var/www/MISP/app/tmp/logs/resque-worker-error.log

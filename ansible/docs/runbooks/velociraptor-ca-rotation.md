@@ -9,7 +9,7 @@ History has been purged and the file removed from the repo, but **the keys must
 still be treated as compromised and rotated**, because copies may already exist.
 
 **Status:** STAGED — not yet executed. Rotating the CA invalidates every enrolled
-client cert, so the **entire fleet (.120, .13, .133, .130, .140) must be
+client cert, so the **entire fleet (.20, .13, .21, .23, .24) must be
 re-enrolled**, with EDR coverage down during the window. Do this in one sitting
 with the operator present.
 
@@ -17,7 +17,7 @@ with the operator present.
 
 ## Blast radius / pre-flight
 
-- Enrolled clients today: `.120` (`C.7ce12e4c591be619`), `.13` Windows
+- Enrolled clients today: `.20` (`C.7ce12e4c591be619`), `.13` Windows
   (`C.ac8c5eec63123b59`), and any others currently shown by `clients()`.
 - During rotation, agents on the old CA cannot connect. Hunts/monitoring pause
   until each agent gets the new client config.
@@ -25,7 +25,7 @@ with the operator present.
   (especially the `.13` Windows workstation, which needs a local service action).
 
 ```bash
-# Snapshot the current fleet first (run on .120)
+# Snapshot the current fleet first (run on .20)
 velociraptor --api_config /etc/velociraptor/automation_api.yaml \
   query "SELECT client_id, os_info.hostname, last_seen_at FROM clients()"
 ```
@@ -34,7 +34,7 @@ velociraptor --api_config /etc/velociraptor/automation_api.yaml \
 
 ## 1. Generate a fresh server config (new CA + server/GUI certs)
 
-On `.120`, generate a brand-new deployment config (this mints a new CA and new
+On `.20`, generate a brand-new deployment config (this mints a new CA and new
 Frontend/GUI certs), then port over the **non-secret operational settings** from
 the current live config (bind addresses, ports, datastore location,
 `expected_clients`, GUI users, logging) — do NOT copy the old keys.
@@ -96,14 +96,14 @@ For each agent, replace its client config with `/root/vr-client.config.yaml` and
 restart the agent. The old client_id may change; that is expected — re-approve in
 the GUI if needary.
 
-- **.120 (Linux, local):**
+- **.20 (Linux, local):**
   ```bash
   install -m 644 /root/vr-client.config.yaml /etc/velociraptor/client.config.yaml
   systemctl restart velociraptor-client    # or the agent unit name in use
   ```
-- **.133 / .130 / .140 (Linux):** scp the client config over and restart the
-  agent unit on each (from .120: `scp /root/vr-client.config.yaml root@<host>:/etc/velociraptor/client.config.yaml && ssh root@<host> systemctl restart velociraptor-client`).
-  `.130` is T-Pot (SSH port 64295). `.135` does not run a VR agent.
+- **.21 / .23 / .24 (Linux):** scp the client config over and restart the
+  agent unit on each (from .20: `scp /root/vr-client.config.yaml root@<host>:/etc/velociraptor/client.config.yaml && ssh root@<host> systemctl restart velociraptor-client`).
+  `.23` is T-Pot (SSH port 64295). `.22` does not run a VR agent.
 - **.13 (Windows workstation):** copy the new client config to the Velociraptor
   program-data config path and restart the `Velociraptor` service
   (`Restart-Service Velociraptor`), or re-run the MSI/`velociraptor.exe service
@@ -146,5 +146,5 @@ Then publish (operator step — vault material, same handling as `vault.yml`): s
 `/opt/soc-ansible` to the `.13` clone, `git add roles/suricata/files/server.config.yaml`,
 commit, push. The AES256 blob is safe in the public repo.
 
-**If you skip this:** the repo keeps the OLD keys; a DR rebuild of `.120` would deploy a
+**If you skip this:** the repo keeps the OLD keys; a DR rebuild of `.20` would deploy a
 config whose CA no longer matches the enrolled agents, breaking the whole fleet.

@@ -7,10 +7,10 @@ copies live here and the deploy is manual per host.
 
 ## Pipeline
 
-Grafana 12 + Loki run on **.120** (Grafana `:3000`, Loki `:3100` bound `*:3100`). There is no
+Grafana 12 + Loki run on **.20** (Grafana `:3000`, Loki `:3100` bound `*:3100`). There is no
 Prometheus/Influx — metrics travel as **Loki log lines**. Each host runs a small collector that
 reads its UPS and POSTs one logfmt line per sample to
-`http://192.168.1.120:3100/loki/api/v1/push`, with stream labels:
+`http://192.168.1.20:3100/loki/api/v1/push`, with stream labels:
 
 ```
 {job="ups", host="<15|1|13>", ups="ted"}
@@ -33,7 +33,7 @@ scheduler (OpenWrt cron / Windows Task Scheduler, both of which have a 60s floor
 `.15`'s smoothness they **push twice per run** — `sample → sleep 30 → sample` — yielding ~30s
 spacing without changing the scheduler. (Set 2026-06-29.)
 
-Verify spacing (run on .120):
+Verify spacing (run on .20):
 
 ```sh
 for h in 15 1 13; do echo "host=$h:"; curl -s -G "http://localhost:3100/loki/api/v1/query_range" \
@@ -62,7 +62,7 @@ edit reverted on that host.
 - This script is also captured into the (gitignored) router backup set via the openwrt role's
   `openwrt_optional_files` (alongside `soc-watchdog.sh`), so drift is snapshotted on each backup run.
 
-Redeploy (from .13 or .120):
+Redeploy (from .13 or .20):
 
 ```sh
 scp -i ~/.ssh/openwrt roles/suricata/files/ups-loki-push-router-1.sh root@192.168.1.1:/usr/bin/ups-loki-push.sh
@@ -98,7 +98,7 @@ Copy-Item <repo>\roles\suricata\files\ups-loki-push-workstation-13.py C:\Program
 `--print` prints parsed values and the logfmt line; errors otherwise log to
 `C:\ProgramData\soc-ups\ups-collect.log` and exit 0 (best-effort — never blocks).
 
-## Dashboards (.120)
+## Dashboards (.20)
 
 Provisioned JSON in `/etc/grafana/provisioning/dashboards/{ups-15,ups-router-1,ups-workstation-13}.json`
 (provider → folder "SOC Dashboards"). Grafana 12 quirks:
@@ -107,10 +107,10 @@ Provisioned JSON in `/etc/grafana/provisioning/dashboards/{ups-15,ups-router-1,u
 - Provisioned dashboards are stored in **unified storage** (`resource` table), not the legacy
   `dashboard` table.
 
-The dashboard JSON is not yet tracked in this repo (lives only on .120). If you want full DR for
+The dashboard JSON is not yet tracked in this repo (lives only on .20). If you want full DR for
 the panels too, capture the three files into `roles/suricata/files/` and add a provisioning task.
 
 ## Night gap
 
-`.120` (Grafana + Loki, a VM on `.15`) sleeps 23:00–06:00 with the SOC VMs, so collection/viewing
+`.20` (Grafana + Loki, a VM on `.15`) sleeps 23:00–06:00 with the SOC VMs, so collection/viewing
 pauses overnight. Collectors keep firing and just fail their push (log + exit 0) while Loki is down.

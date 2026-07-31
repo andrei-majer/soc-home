@@ -21,7 +21,7 @@ Ubuntu 24.04 VirtualBox host running the SOC lab VMs. **NOT managed by Ansible**
 ```bash
 # from .13 (workstation)
 ssh -i ~/.ssh/openwrt andrei@192.168.1.15
-# from .120 (Ansible control node)
+# from .20 (Ansible control node)
 ssh -i ~/.ssh/id_ed25519 andrei@192.168.1.15
 ```
 
@@ -41,11 +41,11 @@ VBoxManage list runningvms   # currently running
 
 | VM | IP | Role | Default state |
 |---|---|---|---|
-| Suricata | 192.168.1.120 | IDS + Ansible control node | on (24/7) |
-| ELK | 192.168.1.133 | Elastic + Wazuh + MISP + Kibana | on |
-| T-Pot Hive | 192.168.1.130 | Honeypot aggregator | on |
-| OpenCanary | 192.168.1.140 | Internal canary (`fs1`) | on |
-| OpenCTi | 192.168.1.135 | CTI platform | off — on-demand savestate (woken via `opencti-wake.ps1` on `.13`) |
+| Suricata | 192.168.1.20 | IDS + Ansible control node | on (24/7) |
+| ELK | 192.168.1.21 | Elastic + Wazuh + MISP + Kibana | on |
+| T-Pot Hive | 192.168.1.23 | Honeypot aggregator | on |
+| OpenCanary | 192.168.1.24 | Internal canary (`fs1`) | on |
+| OpenCTi | 192.168.1.22 | CTI platform | off — on-demand savestate (woken via `opencti-wake.ps1` on `.13`) |
 | OpenClaw | — | non-SOC | off |
 | T-Pot Sensor | 192.168.1.125 | retired 2026-06-07 | off |
 
@@ -137,7 +137,7 @@ ssh root@192.168.1.1 "etherwake -i br-lan B4:2E:99:34:9C:6B"
 6. **VM disk** — append `fstab-vms.snippet` to `/etc/fstab`, `sudo mkdir -p /mnt/vms && sudo mount /mnt/vms`. If the encrypted disk was lost, re-create the LUKS2 `/mnt/storage` + auto-unlock keyfile.
 7. **Re-register VMs** as `andrei` from `/mnt/vms/Virtual Machines/<vm>/<vm>.vbox` (`VBoxManage registervm ...`). `.vbox` files carried over from the Windows host use absolute Windows paths — rewrite them to relative, and remap each VM's bridged adapter to `eno1` (plus `enp4s0` for the Suricata SPAN adapter) before registering.
 8. **Sleep/wake** — install the units per the `scripts/hypervisor-15/` README, then `sudo systemctl enable --now soc-sleep.timer soc-wake.timer`.
-9. **Verify** — `sudo systemctl start soc-wake.service`, then `ping 192.168.1.120 192.168.1.133 192.168.1.130 192.168.1.140` all respond and `VBoxManage list runningvms` shows the 4 SOC VMs.
+9. **Verify** — `sudo systemctl start soc-wake.service`, then `ping 192.168.1.20 192.168.1.21 192.168.1.23 192.168.1.24` all respond and `VBoxManage list runningvms` shows the 4 SOC VMs.
 
 ## See also
 

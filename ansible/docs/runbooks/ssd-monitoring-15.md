@@ -11,7 +11,7 @@ live here and the deploy is a single root installer.
 **sdb = Crucial MX500 250 GB** (`/mnt/vms`). Baseline + attribute meanings: `soc-lab/ssd-health-15` memory.
 
 - **Loki collector** `/usr/local/bin/ssd-smart-loki-push.sh` + systemd `ssd-smart-loki.timer`
-  (every 10 min). Pushes one logfmt line/device to Loki `.120:3100`, labels
+  (every 10 min). Pushes one logfmt line/device to Loki `.20:3100`, labels
   `{job="ssd", host="15", dev=<sda|sdb>, model=...}`:
   `health life_remaining_pct life_used_pct erase_count temp_c tbw_tb reallocated
   realloc_events pending uncorrectable reported_uncorrect power_on_hours power_cycles`.
@@ -55,7 +55,7 @@ not stored.
 ## Verify
 
 ```bash
-# collector landing in Loki (run on .120):
+# collector landing in Loki (run on .20):
 curl -s -G http://localhost:3100/loki/api/v1/query --data-urlencode \
   'query=count_over_time({job="ssd", host="15"}[20m])' | jq -r '.data.result[].value[1]'
 # smartd:
@@ -67,8 +67,8 @@ sudo SMARTD_DEVICESTRING=/dev/sda SMARTD_MESSAGE="manual test" SMARTD_FAILTYPE=T
 
 ## Grafana dashboard
 
-Provisioned on `.120`: **`SSD Health — Hypervisor .15`** (uid `ssd-health-15`,
-`http://192.168.1.120:3000/d/ssd-health-15/`). 10 panels: per-drive life-remaining %, temp,
+Provisioned on `.20`: **`SSD Health — Hypervisor .15`** (uid `ssd-health-15`,
+`http://192.168.1.20:3000/d/ssd-health-15/`). 10 panels: per-drive life-remaining %, temp,
 reallocated stats + life/temp/TBW/error-sector trends. Source tracked at
 `roles/suricata/files/ssd-15.json` → deploy to `/etc/grafana/provisioning/dashboards/ssd-15.json`
 (`root:grafana 0640`) then `systemctl restart grafana-server` (Grafana 12 file provider does not
@@ -76,6 +76,6 @@ re-scan live; stores in the `resource` unified-storage table).
 
 ## Notes
 
-- Night gap: `.120` (Loki) and `.15` both sleep 23:00–06:00, so collection pauses overnight —
+- Night gap: `.20` (Loki) and `.15` both sleep 23:00–06:00, so collection pauses overnight —
   the weekly self-test is scheduled at noon to land while awake.
 - `smartd -m root` is a placeholder (no MTA on .15); the `-M exec` Telegram script is what fires.

@@ -26,11 +26,11 @@ Windows 11 Pro VirtualBox host running the SOC lab VMs. NOT managed by Ansible.
 
 | VM | IP | Role |
 |---|---|---|
-| Suricata | 192.168.1.120 | IDS / Ansible control node |
-| ELK | 192.168.1.133 | Elastic + Wazuh + MISP + Kibana |
-| T-Pot Hive | 192.168.1.130 | Honeypot aggregator |
+| Suricata | 192.168.1.20 | IDS / Ansible control node |
+| ELK | 192.168.1.21 | Elastic + Wazuh + MISP + Kibana |
+| T-Pot Hive | 192.168.1.23 | Honeypot aggregator |
 | T-Pot Sensor | 192.168.1.125 | Honeypot sensor |
-| OpenCTI | 192.168.1.135 | CTI platform |
+| OpenCTI | 192.168.1.22 | CTI platform |
 
 ## Important: VM Ownership
 
@@ -100,4 +100,4 @@ Normally unnecessary — host runs 24/7 since 2026-04-07.
 4. **Restore VM registrations** under the Games account (import `.vbox` files or reattach existing VDIs).
 5. **Deploy `C:\scripts\`** with the four `soc-*.ps1` scripts.
 6. **Create Task Scheduler tasks** (SOC-Sleep, SOC-ResumeVMs, SOC-StartVMs) — all must run as `Games`, not SYSTEM.
-7. **Verify**: `soc-start-vms.ps1` boots all 5 VMs, `ping 192.168.1.120 133 130 125 135` all respond.
+7. **Verify**: `soc-start-vms.ps1` boots all 5 VMs, `ping 192.168.1.20 133 130 125 135` all respond.

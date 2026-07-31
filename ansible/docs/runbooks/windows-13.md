@@ -17,14 +17,14 @@
 
 SSH client keys live under `C:\Users\xndre\.ssh\`:
 
-- `openwrt` — used for `root@192.168.1.1` and `root@192.168.1.120`
-- `id_ed25519` — used for `root@192.168.1.133`, `root@192.168.1.135`
+- `openwrt` — used for `root@192.168.1.1` and `root@192.168.1.20`
+- `id_ed25519` — used for `root@192.168.1.21`, `root@192.168.1.22`
 
 Verified outbound SSH targets:
 - 192.168.1.1 (OpenWrt router)
-- 192.168.1.120 (Suricata / soc-ansible control node)
-- 192.168.1.133 (ELK / Wazuh / MISP)
-- 192.168.1.135 (OpenCTI)
+- 192.168.1.20 (Suricata / soc-ansible control node)
+- 192.168.1.21 (ELK / Wazuh / MISP)
+- 192.168.1.22 (OpenCTI)
 
 ## Sysmon
 
@@ -49,7 +49,7 @@ Installed 2026-04-03. Service name: **Sysmon64**.
 
 ## Wazuh Agent
 
-Agent **008** (name `147_K`) reports to manager `192.168.1.133:1514`.
+Agent **008** (name `147_K`) reports to manager `192.168.1.21:1514`.
 
 `C:\Program Files (x86)\ossec-agent\ossec.conf` contains a localfile block for the Sysmon channel:
 
@@ -107,7 +107,7 @@ Generates alerts like **"ET SCAN Potential SSH Scan OUTBOUND"** — suppress / t
 
 1. **Install Windows 11 Enterprise**, create local user `xndre`, join workgroup, disable telemetry.
 2. **Install Sysmon**: drop binaries to `C:\tools\sysmon\`, run `configure_wazuh_sysmon.ps1` as admin to install service + config.
-3. **Install Wazuh agent** (MSI from 192.168.1.133), register with manager, accept agent ID 008.
+3. **Install Wazuh agent** (MSI from 192.168.1.21), register with manager, accept agent ID 008.
 4. **Deploy `ossec.conf`** with the Sysmon `localfile` block and AR command definitions; restart agent.
 5. **Restore SSH keys** to `C:\Users\xndre\.ssh\` (`openwrt`, `id_ed25519`) with correct ACLs (Users: deny, xndre: read).
 6. **Install Tailscale**, join tailnet `cerberus-barometric.ts.net`, enable Magic DNS.

@@ -1,4 +1,4 @@
-# Runbook — Rebuild `.140` canary (`OpenCanary` VM / `fs1` host)
+# Runbook — Rebuild `.24` canary (`OpenCanary` VM / `fs1` host)
 
 Rebuilds the internal trip-wire canary host from scratch. Cold rebuild ~30 min;
 fast-path (OVA restore) ~5 min once an OVA backup exists.
@@ -9,8 +9,8 @@ different names — pay attention to which one each step needs.
 
 ## Prereqs
 - `.15` hypervisor up (use WoL from `.13` if .15 stayed off after AC loss). `.15` is now Ubuntu 24.04 — see `hypervisor-15.md` for access/VBoxManage/storage details.
-- `.133` Wazuh manager reachable
-- soc-ansible repo on `.120` clean
+- `.21` Wazuh manager reachable
+- soc-ansible repo on `.20` clean
 - Debian 13.x minimal ISO on `.15` at `/mnt/vms/iso/debian-13.x-amd64-netinst.iso` (fetch with `wget` from the host, or `scp` it over)
 
 ## Cold rebuild (no OVA available)
@@ -62,7 +62,7 @@ auto lo
 iface lo inet loopback
 allow-hotplug enp0s3
 iface enp0s3 inet static
-    address 192.168.1.140
+    address 192.168.1.24
     gateway 192.168.1.1
     dns-nameservers 192.168.1.1
 EOF
@@ -82,24 +82,24 @@ systemctl enable --now systemd-timesyncd
 ### 3. SSH keys
 From `.13`:
 ```powershell
-# .120 control-node pubkey (Ansible)
-$pub120 = ssh -i $env:USERPROFILE\.ssh\openwrt root@192.168.1.120 'cat /root/.ssh/id_ed25519.pub'
-ssh root@192.168.1.140 "echo '$pub120' >> /root/.ssh/authorized_keys"
+# .20 control-node pubkey (Ansible)
+$pub120 = ssh -i $env:USERPROFILE\.ssh\openwrt root@192.168.1.20 'cat /root/.ssh/id_ed25519.pub'
+ssh root@192.168.1.24 "echo '$pub120' >> /root/.ssh/authorized_keys"
 
 # openwrt key (admin from .13)
 $openwrt = Get-Content $env:USERPROFILE\.ssh\openwrt.pub
-ssh root@192.168.1.140 "echo '$openwrt' >> /root/.ssh/authorized_keys"
-ssh root@192.168.1.140 'chmod 600 /root/.ssh/authorized_keys'
+ssh root@192.168.1.24 "echo '$openwrt' >> /root/.ssh/authorized_keys"
+ssh root@192.168.1.24 'chmod 600 /root/.ssh/authorized_keys'
 ```
 
 ### 4. Install Wazuh agent (manual one-time, matches existing convention)
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.140 << 'EOF'
+ssh -i ~/.ssh/openwrt root@192.168.1.24 << 'EOF'
 curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import
 chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list
 apt-get update
-WAZUH_MANAGER='192.168.1.133' apt-get install -y wazuh-agent=4.14.5-1
+WAZUH_MANAGER='192.168.1.21' apt-get install -y wazuh-agent=4.14.5-1
 echo "wazuh-agent hold" | dpkg --set-selections
 systemctl enable --now wazuh-agent
 EOF
@@ -107,22 +107,22 @@ EOF
 
 ### 5. Converge IaC
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit fileserver-24'
+ssh -i ~/.ssh/openwrt root@192.168.1.20 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit fileserver-24'
 ```
 
 Idempotent re-run should show `changed=0`. If samba `full_audit` errors with `Could not find opname X` after a samba major upgrade, the operation names may have changed again — see the `success = all` line in `roles/canary/templates/smb.conf.j2`.
 
 ### 6. Verify
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml'
+ssh -i ~/.ssh/openwrt root@192.168.1.20 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml'
 ```
 
 Expected: canary section all `[OK]`, **22+ listening ports** (8 OpenCanary + 14 sinkhole, excluding sshd:22), both log files present.
 
 End-to-end alert test from `.13`:
 ```bash
-smbclient -L 192.168.1.140 -N           # should list HR, Backups, IT
-smbclient //192.168.1.140/HR -N -c 'ls' # 2nd hit within 1h fires ntfy rule 100312
+smbclient -L 192.168.1.24 -N           # should list HR, Backups, IT
+smbclient //192.168.1.24/HR -N -c 'ls' # 2nd hit within 1h fires ntfy rule 100312
 ```
 
 ## Fast path — OVA restore (when OVA backup exists)

@@ -1,6 +1,6 @@
 # Runbook: T-Pot Rebuild (HIVE + Sensor)
 
-Procedure for rebuilding T-Pot 24.04.1 on both the HIVE aggregator (192.168.1.130) and the Sensor (192.168.1.125).
+Procedure for rebuilding T-Pot 24.04.1 on both the HIVE aggregator (192.168.1.23) and the Sensor (192.168.1.125).
 
 Install path on both: `/home/andrei/tpotce/`. User: `andrei`.
 
@@ -8,10 +8,10 @@ Install path on both: `/home/andrei/tpotce/`. User: `andrei`.
 
 | Field | Value |
 |---|---|
-| IP | 192.168.1.130 |
+| IP | 192.168.1.23 |
 | TPOT_TYPE | `HIVE` |
 | SSH port | 64295 |
-| Web UI | https://192.168.1.130:64297 |
+| Web UI | https://192.168.1.23:64297 |
 
 ## Sensor Overview
 
@@ -39,7 +39,7 @@ The NIC pin is required — without it Debian may name the interface `ens3` or s
    ```
    /home/andrei/tpotce/data/nginx/cert/nginx.crt
    ```
-   SAN: `192.168.1.130`. Sensors must trust this cert.
+   SAN: `192.168.1.23`. Sensors must trust this cert.
 
 ## Install Sensor From Scratch
 
@@ -59,18 +59,18 @@ The NIC pin is required — without it Debian may name the interface `ens3` or s
 
    **Option B — manual:**
    - Copy HIVE cert to Sensor: `/home/andrei/tpotce/data/hive.crt`
-   - Update Sensor `.env` with HIVE IP (`192.168.1.130`) and credentials
+   - Update Sensor `.env` with HIVE IP (`192.168.1.23`) and credentials
    - Copy `compose/sensor.yml` to `docker-compose.yml`
    - Reboot
 
 ## Post-Install (REQUIRED for Ansible backup access)
 
-The Ansible control node at .120 needs SSH + firewall access to both T-Pot hosts to run backups.
+The Ansible control node at .20 needs SSH + firewall access to both T-Pot hosts to run backups.
 
-1. **Add .120's SSH key** to `/root/.ssh/authorized_keys` on both HIVE and Sensor.
-2. **Open SSH port 64295 for .120**:
+1. **Add .20's SSH key** to `/root/.ssh/authorized_keys` on both HIVE and Sensor.
+2. **Open SSH port 64295 for .20**:
    ```bash
-   iptables -I INPUT -s 192.168.1.120 -p tcp --dport 64295 -j ACCEPT
+   iptables -I INPUT -s 192.168.1.20 -p tcp --dport 64295 -j ACCEPT
    ```
 3. **Persist**:
    ```bash
@@ -125,7 +125,7 @@ htpasswd /home/andrei/tpotce/data/nginx/conf/lswebpasswd <user>
 **HIVE:**
 ```bash
 docker ps | wc -l       # ~39 containers
-curl -k https://192.168.1.130:64297   # web UI
+curl -k https://192.168.1.23:64297   # web UI
 ```
 
 **Sensor:**
@@ -143,14 +143,14 @@ Expect "Connected" / successful SSL handshake entries.
 ## Wazuh agent (post-rebuild step, added 2026-06-01)
 
 T-Pot rebuilds wipe `/var/ossec`. Re-install the agent after the rebuild
-so internal-source hits keep paging via .133 + ntfy.
+so internal-source hits keep paging via .21 + ntfy.
 
 ```bash
 curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import
 chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list
 apt-get update
-WAZUH_MANAGER='192.168.1.133' apt-get install -y wazuh-agent=4.14.5-1
+WAZUH_MANAGER='192.168.1.21' apt-get install -y wazuh-agent=4.14.5-1
 echo "wazuh-agent hold" | dpkg --set-selections
 systemctl enable --now wazuh-agent
 ```
@@ -158,11 +158,11 @@ systemctl enable --now wazuh-agent
 Then converge the IaC to restore the localfile blockinfile:
 
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-23|tpot-sensor-125>'
+ssh -i ~/.ssh/openwrt root@192.168.1.20 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-23|tpot-sensor-125>'
 ```
 
 Verify agent enrolled (count should return to 8):
 
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.120 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml'
+ssh -i ~/.ssh/openwrt root@192.168.1.20 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml'
 ```
