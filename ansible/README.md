@@ -15,7 +15,7 @@ See the [top-level README](../README.md) for the full project overview, architec
 | tpot-hive-23 | 192.168.1.130 | Honeypot HIVE (combined collector+sensor) | Backup/pull-only (SSH :64295) |
 | router-1 | 192.168.1.1 | OpenWrt edge router (AdGuard Home + Unbound + BanIP + soc-watchdog) | Backup/pull-only (`raw` + `scp`, no Python) |
 
-The former `tpot-sensor-125` (192.168.1.125) was retired 2026-06-07 — it is commented out in `inventory/hosts.yml`; HIVE covers the honeypot role and the `.140` canary provides the second LAN-source signal.
+The `tpot-sensor-25` (192.168.1.25) was retired 2026-06-07 then re-activated 2026-07-31 with a fresh IP (was .125) to join the SOC role band alongside HIVE (.23) and Canary (.24).
 
 The `.13` Windows workstation and `.15` Ubuntu hypervisor (migrated from Windows 11 to Ubuntu 24.04 on 2026-06-08) are documented in runbooks, **not** managed by Ansible.
 
@@ -107,4 +107,4 @@ T-Pot and OpenWrt hosts skip `common` by design — T-Pot self-manages its base 
 - **Phase 2 (done):** OpenWrt router role (`.1`) via `raw` + `scp`
 - **Phase 3 (done):** Operational playbooks (health-check, ti-health, rule-update, es-cleanup, cert-renew, backup, restart-services, state-collect) + runbooks (`.13`, `.15`, T-Pot rebuild, MISP rebuild, canary `.140` rebuild, OpenWrt restore)
 
-Subsequent work added the `canary`, `soc-contain`, and `backups` roles and retired the `tpot-sensor-125` host.
+Subsequent work added the `canary`, `soc-contain`, and `backups` roles. The `tpot-sensor-125` host was retired 2026-06-07 and later re-activated as `tpot-sensor-25` on 2026-07-31.

@@ -1,6 +1,6 @@
 # Runbook: T-Pot Rebuild (HIVE + Sensor)
 
-Procedure for rebuilding T-Pot 24.04.1 on both the HIVE aggregator (192.168.1.23) and the Sensor (192.168.1.125).
+Procedure for rebuilding T-Pot 24.04.1 on both the HIVE aggregator (192.168.1.23) and the Sensor (192.168.1.25).
 
 Install path on both: `/home/andrei/tpotce/`. User: `andrei`.
 
@@ -17,7 +17,7 @@ Install path on both: `/home/andrei/tpotce/`. User: `andrei`.
 
 | Field | Value |
 |---|---|
-| IP | 192.168.1.125 |
+| IP | 192.168.1.25 |
 | TPOT_TYPE | `SENSOR` |
 | SSH port | 64295 |
 | NIC | virtio-net, MAC `08:00:27:7b:64:01` |
@@ -55,7 +55,7 @@ The NIC pin is required — without it Debian may name the interface `ens3` or s
 3. Clone `tpotce`, run `./install.sh`, choose **SENSOR**.
 4. Connect the Sensor to the HIVE using **one** of:
 
-   **Option A — automated (preferred):** run `deploy.sh` on the HIVE. It uses Ansible to push the HIVE cert + credentials to the Sensor. Requires SSH key + sudo password for `andrei@192.168.1.125`.
+   **Option A — automated (preferred):** run `deploy.sh` on the HIVE. It uses Ansible to push the HIVE cert + credentials to the Sensor. Requires SSH key + sudo password for `andrei@192.168.1.25`.
 
    **Option B — manual:**
    - Copy HIVE cert to Sensor: `/home/andrei/tpotce/data/hive.crt`

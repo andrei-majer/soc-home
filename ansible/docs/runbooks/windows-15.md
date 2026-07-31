@@ -29,7 +29,7 @@ Windows 11 Pro VirtualBox host running the SOC lab VMs. NOT managed by Ansible.
 | Suricata | 192.168.1.20 | IDS / Ansible control node |
 | ELK | 192.168.1.21 | Elastic + Wazuh + MISP + Kibana |
 | T-Pot Hive | 192.168.1.23 | Honeypot aggregator |
-| T-Pot Sensor | 192.168.1.125 | Honeypot sensor |
+| T-Pot Sensor | 192.168.1.25 | Honeypot sensor |
 | OpenCTI | 192.168.1.22 | CTI platform |
 
 ## Important: VM Ownership

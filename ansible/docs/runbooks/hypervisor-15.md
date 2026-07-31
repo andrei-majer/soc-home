@@ -47,7 +47,7 @@ VBoxManage list runningvms   # currently running
 | OpenCanary | 192.168.1.24 | Internal canary (`fs1`) | on |
 | OpenCTi | 192.168.1.22 | CTI platform | off — on-demand savestate (woken via `opencti-wake.ps1` on `.13`) |
 | OpenClaw | — | non-SOC | off |
-| T-Pot Sensor | 192.168.1.125 | retired 2026-06-07 | off |
+| T-Pot Sensor | 192.168.1.25 | retired 2026-06-07 | off |
 
 The **4 SOC VMs** (Suricata, ELK, T-Pot Hive, OpenCanary) are the ones the nightly timers manage.
 

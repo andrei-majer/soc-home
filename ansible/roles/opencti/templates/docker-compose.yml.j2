@@ -126,7 +126,7 @@ services:
       - MISP_IMPORT_FROM_DATE=2024-01-01
       - MISP_IMPORT_TAGS=
       - MISP_IMPORT_TAGS_NOT=
-      - MISP_INTERVAL=30
+      - CONNECTOR_DURATION_PERIOD=PT30M
     restart: always
     depends_on:
       - opencti
