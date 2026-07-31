@@ -48,10 +48,17 @@
             "ip":  ["tcp:3000"],
         },
         // Mobile -> Nextcloud on .15 (direct Tailscale IP, no subnet-route dependency).
+        // tcp:443 added 2026-07-31 when Nextcloud moved to HTTPS (tailscale cert +
+        // the snap's Apache). The port-80-only grant silently blocked the iPhone the
+        // moment that cutover landed: Tailscale drops blocked packets at the peer, so
+        // tcpdump on .15's tailscale0 saw ZERO packets and the app spun forever with
+        // no error. tcp:80 kept only so the snap's :80 -> :443 redirect still answers;
+        // clients must use the hostname, since the cert covers
+        // 9700k.cerberus-barometric.ts.net and Tailscale will not issue for an IP.
         {
             "src": ["tag:mobile"],
             "dst": ["100.81.37.72"],
-            "ip":  ["tcp:80"],
+            "ip":  ["tcp:80", "tcp:443"],
         },
         // Mobile -> Grafana, reverse-proxied through .15 (nginx -> 192.168.1.20:3000 over LAN).
         // Avoids the xndrei subnet-route dependency the direct 192.168.1.20:3000 grant has.
@@ -139,7 +146,7 @@
         },
         {
             "src":    "tag:mobile",
-            "accept": ["192.168.1.20:3000", "100.81.37.72:80", "100.81.37.72:3000", "100.81.37.72:8080"],
+            "accept": ["192.168.1.20:3000", "100.81.37.72:80", "100.81.37.72:443", "100.81.37.72:3000", "100.81.37.72:8080"],
             "deny": [
                 "tag:workstation:22",
                 "tag:router:22",
