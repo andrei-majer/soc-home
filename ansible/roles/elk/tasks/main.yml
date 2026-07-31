@@ -134,6 +134,26 @@
     owner: root
     group: root
 
+- name: Configure elk-disk-reclaim cron
+  ansible.builtin.cron:
+    name: "elk-disk-reclaim"
+    hour: "{{ elk_reclaim_cron_hour }}"
+    minute: "{{ elk_reclaim_cron_minute }}"
+    job: "{{ elk_reclaim_script }} >> /var/log/elk-disk-reclaim.log 2>&1"
+    user: root
+
+# Superseded by elk-cleanup.py (wazuh-archives index retention) and by the
+# archive prune in elk-disk-reclaim.sh. Both ran at 03:15/03:30 — inside the
+# .15 power-off window — so neither ever fired.
+- name: Remove superseded out-of-band archive cleanup jobs
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/cron.d/wazuh-archives-cleanup
+    - /etc/cron.d/wazuh-ossec-archives-cleanup
+    - /usr/local/bin/wazuh-archives-cleanup.sh
+
 - name: Deploy Logstash zeek.conf
   ansible.builtin.template:
     src: zeek.conf.j2

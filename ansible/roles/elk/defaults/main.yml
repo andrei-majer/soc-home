@@ -18,8 +18,15 @@ elk_filebeat_config: /etc/filebeat/filebeat.yml
 
 # Index cleanup
 elk_cleanup_script: /usr/local/bin/elk-cleanup.py
-elk_cleanup_cron_hour: "3"
-elk_cleanup_cron_minute: "0"
+# .15 powers these VMs down 23:00-06:00, so anything scheduled overnight never
+# runs (retention silently stalled 2026-06-30..2026-07-31). Keep inside the
+# awake window: reclaim first, then the ES index deletes.
+elk_cleanup_cron_hour: "6"
+elk_cleanup_cron_minute: "30"
+elk_reclaim_cron_hour: "6"
+elk_reclaim_cron_minute: "25"
+# flat Wazuh archive files on disk (separate from the ES index retention above)
+retention_ossec_archives: 7
 retention_suricata: 14
 retention_wazuh_archives: 7
 retention_wazuh_alerts: 14

@@ -15,3 +15,12 @@ if [ -d /var/ossec/logs/archives ]; then
         \( -name 'ossec-archive-*.json' -o -name 'ossec-archive-*.log' \) \
         -mtime +0 -exec gzip {} \; 2>/dev/null || true
 fi
+# 3. Prune compressed Wazuh archives past retention. logall/logall_json write
+#    every raw event to disk (~300MB/day gzipped) and nothing else deletes them.
+if [ -d /var/ossec/logs/archives ]; then
+    find /var/ossec/logs/archives -type f \
+        \( -name 'ossec-archive-*.json*' -o -name 'ossec-archive-*.log*' \
+           -o -name 'ossec-archive-*.sum' \) \
+        -mtime +{{ retention_ossec_archives }} -delete 2>/dev/null || true
+    find /var/ossec/logs/archives -mindepth 1 -type d -empty -delete 2>/dev/null || true
+fi

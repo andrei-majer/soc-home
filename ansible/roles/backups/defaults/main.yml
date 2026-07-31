@@ -5,10 +5,14 @@ backup_retention_days: 180
 backup_log_dir: /var/log
 
 # Monthly schedule: 1st of every month at 02:00 local (OpenCTI at 03:00)
+# .15 stops ELK/.21, T-Pot Hive/.23 and OpenCanary/.24 nightly 23:00-06:00
+# (soc-sleep.timer), so anything scheduled overnight silently never runs —
+# .21's monthly backups last fired 2026-06-02. Keep every schedule inside
+# the guaranteed-awake window, after the 06:25/06:30 disk reclaim.
 backup_cron_minute: 0
-backup_cron_hour: 2
+backup_cron_hour: 7
 backup_cron_day: "1"
-backup_opencti_cron_hour: 3
+backup_opencti_cron_hour: 7
 
 # Per-service flags (overridden in host_vars when host owns the data)
 backup_enable_misp: false
