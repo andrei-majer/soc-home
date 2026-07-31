@@ -467,7 +467,7 @@
           {% endif %}
 
           --- T-Pot hosts ---
-          {% for h in ['tpot-hive-23'] %}
+          {% for h in ['tpot-hive-23', 'tpot-sensor-25'] %}
           {% if hostvars[h]['svc_tpot'] is not defined %}
           [UNREACH] {{ h }}: facts not gathered (host unreachable)
           {% else %}
@@ -536,8 +536,8 @@
 
     - name: Fail if Wazuh agent count drifted
       ansible.builtin.fail:
-        msg: "Wazuh enrolled agent count != 6 — check /var/ossec/etc/client.keys on .21 (existing 4 + .24 + .23 = 6 (sensor .125 retired 2026-06-07))"
-      when: (hostvars['elk-21']['wazuh_agents_21']['stdout'] | default('-1') | trim | int) != 6
+        msg: "Wazuh enrolled agent count != 7 — check /var/ossec/etc/client.keys on .21 (existing 4 + .24 + .23 + .25 = 7 (sensor re-activated as .25 on 2026-07-31))"
+      when: (hostvars['elk-21']['wazuh_agents_21']['stdout'] | default('-1') | trim | int) != 7
 
     - name: Fail if Wazuh API is down
       ansible.builtin.fail:
