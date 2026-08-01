@@ -232,11 +232,14 @@
     update_cache: true
     cache_valid_time: 3600
 
+# `enabled: false` was paired with `masked: true` here until 2026-08-01. A masked
+# unit reports is-enabled=masked, which never satisfies enabled=false, so the task
+# reported `changed` on every single run (confirmed via --check --diff against the
+# live .15, where dnsmasq was already masked). Masking alone prevents start.
 - name: Mask stock dnsmasq (a dedicated pxe-dnsmasq instance is used)
   ansible.builtin.systemd:
     name: dnsmasq
     masked: true
-    enabled: false
 
 - name: Ensure nfs-server is not enabled at boot (pxe-clone starts it on demand)
   ansible.builtin.systemd:
