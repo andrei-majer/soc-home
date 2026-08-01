@@ -7,6 +7,10 @@
         "tag:workstation": ["autogroup:admin"],
         "tag:mobile":      ["autogroup:admin"],
         "tag:kvm":         ["autogroup:admin"],
+        // tag:soc — SOC infrastructure. Added 2026-08-01 to get .20 (suricata) OUT of
+        // tag:vps, which had it sharing an all-ports grant with the two internet-facing
+        // exit-node VPSes.
+        "tag:soc":         ["autogroup:admin"],
     },
 
     "grants": [
@@ -37,16 +41,19 @@
             "dst": ["autogroup:internet"],
             "ip":  ["*"],
         },
-        // Mobile -> Grafana web UI only (via xndrei subnet route). Keeps "stolen phone can't pivot".
-        // NOTE: this subnet-route path is unreliable from the iPhone client (confirmed 2026-07-16 —
-        // tcpdump on both the .20 host and the router's tailscale0 showed zero packets ever arriving,
-        // across 5 retries, so the client isn't routing 192.168.1.0/24 traffic into the tunnel at all).
-        // Left in place for reference/other clients, but do not rely on it for mobile.
-        {
-            "src": ["tag:mobile"],
-            "dst": ["192.168.1.20"],
-            "ip":  ["tcp:3000"],
-        },
+        // Mobile -> Grafana + EveBox on .20's OWN Tailscale IP (100.66.251.41).
+        // .20 joined the tailnet directly, so this replaces both older paths:
+        //   - the dst 192.168.1.20 subnet-route grant (REMOVED 2026-08-01 — proven
+        //     non-functional from the iPhone on 2026-07-16: zero packets across 5
+        //     captures on both the .20 host and the router's tailscale0, so the
+        //     client never routed 192.168.1.0/24 into the tunnel at all), and
+        //   - the .15 nginx proxy grants below, which this makes redundant.
+        // CONFIRMED WORKING from the iPhone 2026-08-01. The .15 proxy was only ever
+        // needed because Grafana/EveBox sat behind a SUBNET ROUTE; a host running
+        // Tailscale itself takes a direct grant and needs no proxy.
+        // Re-pointed from tag:vps to tag:soc on 2026-08-01 once .20 was retagged, so
+        // mobile no longer reaches the two internet-facing VPSes on these ports. The
+        // live grant is the tag:soc one further down.
         // Mobile -> Nextcloud on .15 (direct Tailscale IP, no subnet-route dependency).
         // tcp:443 added 2026-07-31 when Nextcloud moved to HTTPS (tailscale cert +
         // the snap's Apache). The port-80-only grant silently blocked the iPhone the
@@ -60,21 +67,16 @@
             "dst": ["100.81.37.72"],
             "ip":  ["tcp:80", "tcp:443"],
         },
-        // Mobile -> Grafana, reverse-proxied through .15 (nginx -> 192.168.1.20:3000 over LAN).
-        // Avoids the xndrei subnet-route dependency the direct 192.168.1.20:3000 grant has.
-        {
-            "src": ["tag:mobile"],
-            "dst": ["100.81.37.72"],
-            "ip":  ["tcp:3000"],
-        },
-        // Mobile -> EveBox, reverse-proxied through .15 (nginx -> 192.168.1.20:8080 over LAN).
-        // Same workaround as Grafana above — direct 192.168.1.20:8080 subnet-route grant doesn't
-        // work from the iPhone (see note on that grant).
-        {
-            "src": ["tag:mobile"],
-            "dst": ["100.81.37.72"],
-            "ip":  ["tcp:8080"],
-        },
+        // REMOVED 2026-08-01: tag:mobile -> 100.81.37.72 tcp:3000 and tcp:8080.
+        // These fronted the `grafana-proxy` nginx container on .15, which has been
+        // Exited(127) since ~2026-07-28 (its bind-mount source /home/andrei/grafana-proxy/
+        // nginx.conf became an empty DIRECTORY, so nginx never started). That dead proxy
+        // — not an ACL gap — is why Grafana stopped working from the phone.
+        //   - :3000 pointed at nothing at all.
+        //   - :8080 had been silently re-pointed at a DIFFERENT service: `trial-mirror`
+        //     (nginx:alpine on 0.0.0.0:8080, serving codenavi trial tarballs), which the
+        //     phone was never meant to reach.
+        // Both are superseded by the direct tag:mobile -> tag:vps grant above.
 
         // VPS <-> VPS
         {
@@ -82,6 +84,36 @@
             "dst": ["tag:vps"],
             "ip":  ["*"],
         },
+
+        // Anything in the tailnet -> VPS web + SSH. Deliberately unscoped src:
+        // any tag (workstation, mobile, router, kvm, future) reaches tag:vps on
+        // these three ports only. Everything else to tag:vps stays default-deny.
+        {
+            "src": ["*"],
+            "dst": ["tag:vps"],
+            "ip":  ["tcp:22", "tcp:80", "tcp:443"],
+        },
+
+        // Workstations -> SOC infra (.20). Full access, same as they had when .20 was
+        // tag:vps. Deliberately NOT extended to the `*` -> tag:vps 22/80/443 grant:
+        // routers/kvm/mobile have no business on the detection box's SSH.
+        {
+            "src": ["tag:workstation"],
+            "dst": ["tag:soc"],
+            "ip":  ["*"],
+        },
+
+        // Mobile -> Grafana + EveBox on SOC infra (.20 / 100.66.251.41). This is the
+        // live grant for phone dashboard access; the old tag:vps version is gone.
+        {
+            "src": ["tag:mobile"],
+            "dst": ["tag:soc"],
+            "ip":  ["tcp:3000", "tcp:8080"],
+        },
+
+        // No tag:soc -> anything grant: .20 initiates nothing over the tailnet.
+        // Verified 2026-08-01 — zero established conns to either VPS, and soc-contain's
+        // tailscale_cut actuator works through the public API, not a peer connection.
 
         // Workstations -> glkvm IP-KVM appliance only. No tag:kvm -> anything grant:
         // the device only needs to be reached, never to reach routers/VPS/workstations itself.
@@ -103,9 +135,14 @@
     ],
 
     // Workstations -> routers (bnp/xndrei) over Tailscale SSH, as root.
-    // bnp's port 22 on its Tailscale IP is intercepted by Tailscale SSH, so this is the
-    // only path to bnp now that its 192.168.1.0/24 subnet route is un-approved.
-    // Scoped to tag:workstation (not autogroup:member) so no untagged device gets root.
+    // bnp's port 22 on its Tailscale IP is intercepted by Tailscale SSH, so this rule
+    // is what makes `ssh bnp` work at all. Scoped to tag:workstation (not
+    // autogroup:member) so no untagged device gets root.
+    // This block governs TAILSCALE SSH only, which is enabled on bnp alone.
+    // Everywhere else RunSSH is false (verified on .20, 2026-08-01), so port 22 is
+    // handled by the host's own sshd and gated purely by the grants above.
+    // The old `action: "check"` rule was REMOVED 2026-08-01: `check` does not accept
+    // tag: sources and every device in this tailnet is tagged, so it matched nothing.
     "ssh": [
         {
             "action": "accept",
@@ -113,28 +150,25 @@
             "dst":    ["tag:router"],
             "users":  ["root", "autogroup:nonroot"],
         },
-        {
-            "action":      "check",
-            "src":         ["autogroup:member"],
-            "dst":         ["tag:router", "tag:vps", "tag:workstation"],
-            "users":       ["autogroup:nonroot"],
-            "checkPeriod": "12h",
-        },
     ],
 
+    // tag:router, NOT autogroup:admin — autogroup:admin only matches user-owned
+    // devices, and xndrei/bnp are tagged, so these approvers never fired. That is
+    // why every route re-advert needed manual console approval (2026-07-03, 07-07).
     "autoApprovers": {
-        "exitNode": ["autogroup:admin"],
+        "exitNode": ["tag:router"],
         "routes": {
-            "192.168.1.0/24": ["autogroup:admin"],
-            "192.168.2.0/24": ["autogroup:admin"],
-            "10.0.0.0/24":    ["autogroup:admin"],
+            "192.168.1.0/24": ["tag:router"],
+            "192.168.2.0/24": ["tag:router"],
+            "10.0.0.0/24":    ["tag:router"],
         },
     },
 
     "tests": [
         {
             "src":    "tag:workstation",
-            "accept": ["tag:router:22", "tag:vps:22", "tag:kvm:80", "1.1.1.1:443"],
+            "accept": ["tag:router:22", "tag:vps:22", "tag:kvm:80", "1.1.1.1:443",
+                       "tag:soc:22", "tag:soc:3000", "tag:soc:8080"],
         },
         {
             "src":  "tag:vps",
@@ -146,15 +180,49 @@
         },
         {
             "src":    "tag:mobile",
-            "accept": ["192.168.1.20:3000", "100.81.37.72:80", "100.81.37.72:443", "100.81.37.72:3000", "100.81.37.72:8080"],
+            "accept": [
+                "100.66.251.41:3000",
+                "100.66.251.41:8080",
+                "100.81.37.72:80",
+                "100.81.37.72:443",
+                "tag:vps:22",
+                "tag:vps:80",
+                "tag:vps:443",
+            ],
             "deny": [
                 "tag:workstation:22",
                 "tag:router:22",
-                "tag:vps:22",
                 "192.168.1.20:22",
+                // regression guard: the removed subnet-route grant must stay dead
+                "192.168.1.20:3000",
                 "192.168.1.21:3000",
                 "100.81.37.72:22",
+                // retired .15 proxy ports — mobile keeps only Nextcloud 80/443 on .15
+                "100.81.37.72:3000",
+                "100.81.37.72:8080",
+                // .20 is tag:soc now: dashboards yes, shell no. And the dashboard
+                // ports must NOT have followed .20 out to the internet-facing VPSes.
+                "tag:soc:22",
+                "tag:vps:3000",
+                "tag:vps:8080",
             ],
+        },
+        {
+            "src":    "tag:router",
+            "accept": ["tag:vps:22", "tag:vps:80", "tag:vps:443"],
+            "deny":   ["tag:soc:22", "tag:soc:3000"],
+        },
+        {
+            "src":    "tag:kvm",
+            "accept": ["tag:vps:443"],
+            "deny":   ["tag:vps:3000", "tag:workstation:22", "tag:soc:22", "tag:soc:3000"],
+        },
+        {
+            "src": "tag:soc",
+            // tag:vps:22 is ACCEPTed, not denied: the `*` -> tag:vps grant has an
+            // unscoped src, so tag:soc is inside it like every other tag. Intentional.
+            "accept": ["tag:vps:22", "tag:vps:443"],
+            "deny":   ["tag:workstation:22", "tag:router:22", "tag:kvm:80"],
         },
         {
             "src":  "tag:router",
@@ -166,4 +234,28 @@
         },
     ],
     "nodeAttrs": [{"target": ["*"], "app": {"tailscale.com/app-connectors": []}}],
+
+    // ── RESOLVED 2026-08-01: .20 moved tag:vps -> tag:soc ────────────────────────
+    // .20 (suricata, 100.66.251.41) had been tagged tag:vps, which put the SOC
+    // detection box inside the `tag:vps <-> tag:vps` all-ports grant alongside the two
+    // internet-facing exit-node VPSes (139-144-25-74, p5) — an unrestricted lateral
+    // path from the least-trusted nodes in the tailnet into Suricata/Zeek/Grafana/
+    // EveBox/soc-contain. Same failure class as the .15 dual-tag incident of
+    // 2026-07-03 and the glkvm tag:vps slip of 2026-07-14.
+    //
+    // Done entirely through the API (device tags are writable via
+    // POST /api/v2/device/{id}/tags — no console click needed, contrary to an earlier
+    // note here). Sequence, which matters:
+    //   1. policy: add tag:soc to tagOwners + its two grants, KEEPING the old tag:vps
+    //      grants, so nothing breaks while both tags are in play
+    //   2. retag device 7104461905787272 (suricata): {"tags":["tag:soc"]} — REPLACES
+    //   3. policy: drop the transitional tag:mobile -> tag:vps 3000/8080 grant,
+    //      add deny tests so those ports can never drift back to the VPSes
+    // Doing 3 before 2 would fail validation: tests reference 100.66.251.41 by IP,
+    // which resolves through whatever tag the device holds at that moment.
+    //
+    // Checked before the move: .20 initiates NOTHING over the tailnet (no established
+    // conns to either VPS; soc-contain's tailscale_cut actuator uses the public API,
+    // and policy.yml's `remote:` map is a containment target list, not a peer path).
+    // Hence no tag:soc -> * grant.
 }
