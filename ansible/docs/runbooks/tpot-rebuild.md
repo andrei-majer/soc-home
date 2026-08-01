@@ -22,6 +22,8 @@ Install path on both: `/home/andrei/tpotce/`. User: `andrei`.
 | SSH port | 64295 |
 | NIC | virtio-net, MAC `08:00:27:7b:64:01` |
 | Interface pin | `/etc/systemd/network/10-enp0s3.link` (match by MAC, name `enp0s3`) |
+| VM sizing | 8192 MB RAM / 2 vCPU (raised from 4096 MB on 2026-08-01 — T-Pot's documented sensor minimum is 8 GB) |
+| Auto-start | **none** — absent from `.15`'s `soc-wake.sh` `SOC_VMS` map and VBox `autostart-enabled=off`. After any `.15` reboot start it by hand: `VBoxManage startvm "T-Pot Sensor" --type headless` |
 
 The NIC pin is required — without it Debian may name the interface `ens3` or similar on reboot and Docker bridges fail.
 
@@ -84,15 +86,50 @@ Without step 3 the rule is lost on reboot and backups silently fail.
 
 - **Remove conpot containers** (4 × ~438 MB each). Edit `docker-compose.yml` and delete the `conpot_*` service blocks. Reduces image pull + RAM footprint.
 - **Docker log rotation**: daily, 7 days retention, 100 MB max per file, compressed. Configure in `/etc/docker/daemon.json`.
-- **Sensor Logstash** — cap heap to avoid OOM:
-  ```yaml
-  environment:
-    LS_JAVA_OPTS: "-Xms512m -Xmx512m"
-  mem_limit: 1g
-  ```
+- **Sensor Logstash heap — do NOT lower this.** T-Pot ships the sensor at
+  `LS_JAVA_OPTS: "-Xms512m -Xmx512m"` / `mem_limit: 1g`, and that is *too small* for the stock
+  pipeline: `http_output.conf` loads `/etc/listbot/iprep.yaml` (~20 MB, ~620k entries) into a
+  `translate` dictionary, which OOM-kills logstash during pipeline converge — before a single
+  event is processed — in an endless restart loop. The HIVE survives the same file only because
+  it runs `1024m` / `mem_limit: 2g`. Either give the sensor the HIVE's numbers, or disable the
+  iprep lookup (what we do — see "Sensor logstash OOM loop" under Known Issues).
 - **HIVE Elasticsearch ILM**: 14-day retention. ES listens on port **64298**.
 
 ## Known Issues
+
+### Sensor silently ships nothing after an IP renumber (found 2026-08-01)
+Three independent faults, each one masking the next. The sensor looked "up" throughout — all
+honeypot containers healthy — while delivering **zero** events to the HIVE. Check all three:
+
+1. **Stale HIVE IP.** `grep TPOT_HIVE_IP /home/andrei/tpotce/.env` must match the live HIVE.
+   Verify the credential separately:
+   `curl -sk -o /dev/null -w '%{http_code}\n' -H "Authorization: Basic $TPOT_HIVE_USER" https://<hive>:64294`
+   → expect `200` (`401` = bad credential, no response = wrong IP).
+2. **Sensor logstash OOM loop.** Symptom: the sensor VM pins ~100% of one core on `.15` and
+   `docker inspect logstash --format '{{.RestartCount}}'` climbs. Log shows
+   `java.lang.OutOfMemoryError` with `org.jruby.ext.psych.PsychParser` in the trace — that is the
+   iprep YAML, not a network fault. Fixed by the `tpot` Ansible role, which installs a patched
+   `http_output.conf` at `/home/andrei/tpotce/etc/logstash/http_output.conf` with the iprep
+   `translate` block commented out, plus the `docker-compose.yml` bind-mount line that exposes it.
+   Both are re-asserted on every converge, because a T-Pot upgrade that rewrites
+   `docker-compose.yml` drops the mount and the loop returns. Cost: sensor events lose the
+   `ip_rep` src_ip reputation field.
+3. **Stale HIVE cert.** The HIVE's nginx cert is pinned by IP in its SAN, so an IP renumber
+   invalidates every sensor's copy. Symptom once logstash stops crashing: it stays healthy but
+   `out=0`, logging `certificate_unknown` / `PKIX path building failed`. Compare:
+   ```bash
+   openssl x509 -in /home/andrei/tpotce/data/hive.crt -noout -ext subjectAltName   # on the sensor
+   openssl x509 -in /home/andrei/tpotce/data/nginx/cert/nginx.crt -noout -ext subjectAltName  # on the HIVE
+   ```
+   Fix by copying the HIVE's `nginx.crt` to the sensor's `data/hive.crt` and restarting logstash.
+
+Confirm the whole chain end-to-end from the HIVE rather than trusting container health:
+```bash
+curl -s "http://127.0.0.1:64298/logstash-*/_search?size=0" -H 'Content-Type: application/json' \
+  -d '{"query":{"range":{"@timestamp":{"gte":"now-5m"}}},
+       "aggs":{"by_host":{"terms":{"field":"t-pot_hostname.keyword","size":10}}}}'
+```
+Both `t-pot-hive-23` and `t-pot-sensor-25` must appear with non-zero counts.
 
 ### Phantom Docker containers
 Symptom: `docker ps` shows containers that cannot be stopped; networking broken.
@@ -158,10 +195,11 @@ systemctl enable --now wazuh-agent
 Then converge the IaC to restore the localfile blockinfile:
 
 ```bash
-ssh -i ~/.ssh/openwrt root@192.168.1.20 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-23|tpot-sensor-125>'
+ssh -i ~/.ssh/openwrt root@192.168.1.20 'cd /opt/soc-ansible && ansible-playbook playbooks/site.yml --limit <tpot-hive-23|tpot-sensor-25>'
 ```
 
-Verify agent enrolled (count should return to 8):
+Verify agent enrolled (`agent_control -l` should list 8 lines — 7 enrolled agents plus the
+`elk (server)` entry; the health-check playbook asserts the enrolled count is 7):
 
 ```bash
 ssh -i ~/.ssh/openwrt root@192.168.1.20 'cd /opt/soc-ansible && ansible-playbook playbooks/ops/health-check.yml'

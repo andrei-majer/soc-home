@@ -11,7 +11,7 @@ Ubuntu 24.04 VirtualBox host running the SOC lab VMs. **NOT managed by Ansible**
 | OS | Ubuntu 24.04.4 LTS (kernel 6.8.x) |
 | Admin user | `andrei` — sudoer (not passwordless), member of `vboxusers`, key-only SSH |
 | MAC (`eno1`) | `B4:2E:99:34:9C:6B` |
-| Hardware | Intel i7-9700K (8c/8t), 64 GB RAM, NVIDIA RTX 2080 Ti |
+| Hardware | Intel i7-9700K (8c/8t), 80 GB RAM (78.5 GiB usable), NVIDIA RTX 2080 Ti |
 | VirtualBox | 7.2.8 (Oracle apt repo) |
 | Secure Boot | enabled — VBox kernel modules MOK-signed |
 | Role | VirtualBox host for all SOC lab VMs |
@@ -39,17 +39,28 @@ VBoxManage list runningvms   # currently running
 
 ## VM Inventory
 
-| VM | IP | Role | Default state |
-|---|---|---|---|
-| Suricata | 192.168.1.20 | IDS + Ansible control node | on (24/7) |
-| ELK | 192.168.1.21 | Elastic + Wazuh + MISP + Kibana | on |
-| T-Pot Hive | 192.168.1.23 | Honeypot aggregator | on |
-| OpenCanary | 192.168.1.24 | Internal canary (`fs1`) | on |
-| OpenCTi | 192.168.1.22 | CTI platform | off — on-demand savestate (woken via `opencti-wake.ps1` on `.13`) |
-| OpenClaw | — | non-SOC | off |
-| T-Pot Sensor | 192.168.1.25 | retired 2026-06-07 | off |
+| VM | IP | RAM | Role | Default state |
+|---|---|---|---|---|
+| Suricata | 192.168.1.20 | 10240 MB | IDS + Ansible control node | on (24/7) |
+| ELK | 192.168.1.21 | 17000 MB | Elastic + Wazuh + MISP + Kibana | on |
+| T-Pot Hive | 192.168.1.23 | 10272 MB | Honeypot aggregator | on |
+| OpenCanary | 192.168.1.24 | 1024 MB | Internal canary (`fs1`) | on |
+| T-Pot Sensor | 192.168.1.25 | 8192 MB | Honeypot sensor, ships to HIVE | on — **but never auto-starts**, see below |
+| OpenCTi | 192.168.1.22 | 12084 MB | CTI platform | off — on-demand savestate (woken via `opencti-wake.ps1` on `.13`) |
+| OpenClaw | — | 2048 MB | non-SOC | off |
 
-The **4 SOC VMs** (Suricata, ELK, T-Pot Hive, OpenCanary) are the ones the nightly timers manage.
+Configured total for the running set is ~57.4 GB of 78.5 GiB — check headroom with `free -h`
+before raising any VM's memory (`VBoxManage modifyvm "<name>" --memory <MB>`, VM must be
+**powered off**, not saved).
+
+Only **3 VMs** are managed by the nightly timers — ELK, T-Pot Hive and OpenCanary (the `SOC_VMS`
+map in `/usr/local/bin/soc-wake.sh` and `soc-sleep.sh`). Suricata was deliberately excluded on
+2026-07-16 because it hosts Grafana and is kept up 24/7 for Tailscale mobile access.
+
+⚠️ **T-Pot Sensor has no auto-start path at all** — it is in neither timer script and its VBox
+`autostart-enabled` is `off`, so it stays down after any `.15` reboot until started by hand:
+`VBoxManage startvm "T-Pot Sensor" --type headless`. It has gone silently dark twice this way
+(it was powered off through the entire 2026-07-15 IP renumber, and so missed it).
 
 ## Storage
 
