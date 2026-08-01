@@ -1,3 +1,5 @@
 ---
 tpot_install_path: /home/andrei/tpotce
 tpot_backup_dir: "{{ backup_dir }}/tpot"
+tpot_owner: andrei
+tpot_iprep_tmp: /tmp/http_output.conf.image

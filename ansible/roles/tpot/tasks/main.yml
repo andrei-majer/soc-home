@@ -1,6 +1,7 @@
 ---
-# This role ONLY fetches configs for version control.
-# It NEVER pushes changes to T-Pot hosts — T-Pot self-manages.
+# Mostly a fetch-for-version-control role - T-Pot self-manages its own configs.
+# Two deliberate exceptions DO push to the hosts: the Wazuh localfile block and
+# the SENSOR logstash iprep override - both documented at their task blocks below.
 # Missing source files are tolerated via failed_when: false.
 
 - name: Create local backup directory
@@ -94,7 +95,126 @@
         <log_format>json</log_format>
       </localfile>
       <localfile>
+        <location>{{ tpot_install_path }}/data/tanner/log/tanner_report.json</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
         <location>{{ tpot_install_path }}/data/elasticpot/log/elasticpot.json</location>
         <log_format>json</log_format>
       </localfile>
   notify: Restart wazuh-agent
+
+# ============================================================================
+# SENSOR logstash: disable the listbot iprep dictionary (added 2026-08-01).
+#
+# WHY: http_output.conf loads /etc/listbot/iprep.yaml (~20 MB, ~620k entries)
+# into a `translate` filter dictionary. That does not fit the sensor's
+# LS_JAVA_OPTS=-Xms512m -Xmx512m, so logstash OOM-killed itself during pipeline
+# converge — before processing a single event — in an endless restart loop
+# (RestartCount reached 47), pinning a full core on the .15 hypervisor and
+# shipping zero honeypot telemetry to the HIVE. The HIVE runs the same file
+# fine only because it is provisioned 1024m heap / 2g mem_limit.
+#
+# http_output.conf lives INSIDE the logstash image, so the fix is a patched
+# copy on the host, bind-mounted read-only over the image's path. A T-Pot
+# upgrade that rewrites docker-compose.yml drops that mount and the OOM loop
+# returns — hence Ansible re-asserts both halves on every run.
+#
+# The patch is applied to a copy extracted from the CURRENT image on each run,
+# never to a file vendored in this repo, so an upstream change to the pipeline
+# is picked up instead of being silently overridden by a stale copy.
+#
+# Permanent alternative if the sensor VM is ever grown to T-Pot's documented
+# 8 GB minimum: drop all of this and match the HIVE's 1024m/2g instead.
+# ============================================================================
+
+- name: Resolve the sensor logstash image reference
+  ansible.builtin.command: docker inspect --format={{ '{{' }}.Config.Image{{ '}}' }} logstash
+  register: tpot_logstash_present
+  changed_when: false
+  failed_when: false
+  check_mode: false          # read-only probe; must run in --check or the block below misfires
+  when: tpot_type == "SENSOR"
+
+- name: Manage the sensor logstash iprep override
+  when:
+    - tpot_type == "SENSOR"
+    - tpot_logstash_present.rc | default(1) == 0
+  block:
+
+    - name: Ensure the logstash override directory exists
+      ansible.builtin.file:
+        path: "{{ tpot_install_path }}/etc/logstash"
+        state: directory
+        owner: "{{ tpot_owner }}"
+        group: "{{ tpot_owner }}"
+        mode: "0755"
+
+    # The next three tasks only ever touch a scratch file under /tmp, so they run
+    # even under --check — otherwise the diff shown for the real override below
+    # would be computed against a file that does not exist.
+    # Read from the IMAGE, not the running container: the override below is
+    # bind-mounted over /etc/logstash/http_output.conf, so `docker cp` from the
+    # container would hand back our own patched copy and the role could never
+    # re-derive from upstream. A throwaway container sees the pristine file.
+    - name: Extract the pristine http_output.conf from the logstash image
+      ansible.builtin.shell:
+        cmd: >-
+          docker run --rm --entrypoint cat {{ tpot_logstash_present.stdout }}
+          /etc/logstash/http_output.conf > {{ tpot_iprep_tmp }}
+      changed_when: false
+      check_mode: false
+
+    - name: Comment out the iprep translate filter in the extracted copy
+      ansible.builtin.replace:
+        path: "{{ tpot_iprep_tmp }}"
+        regexp: '(?m)^    translate \{\n(?:      [^\n]*\n)*?      dictionary_path => "/etc/listbot/iprep\.yaml"\n    \}$'
+        replace: |-
+          # DISABLED by Ansible (roles/tpot): the listbot iprep dictionary is ~20 MB /
+          # ~620k entries and does not fit this sensor's 512 MB logstash heap. Loading it
+          # OOM-killed the pipeline during converge, in an endless restart loop. The HIVE
+          # keeps iprep because it runs a 1024m heap. Cost: sensor events lose the
+          # ip_rep src_ip reputation field. See roles/tpot/tasks/main.yml for the detail.
+          #    translate {
+          #      refresh_interval => 86400
+          #      source => "src_ip"
+          #      target => "ip_rep"
+          #      dictionary_path => "/etc/listbot/iprep.yaml"
+          #    }
+      changed_when: false
+      check_mode: false
+
+    - name: Fail if the iprep filter was not found where expected
+      ansible.builtin.lineinfile:
+        path: "{{ tpot_iprep_tmp }}"
+        line: '      dictionary_path => "/etc/listbot/iprep.yaml"'
+        state: absent
+      check_mode: true
+      register: tpot_iprep_leftover
+      failed_when: tpot_iprep_leftover.found | default(0) > 0
+      changed_when: false
+
+    - name: Install the patched http_output.conf override
+      ansible.builtin.copy:
+        src: "{{ tpot_iprep_tmp }}"
+        dest: "{{ tpot_install_path }}/etc/logstash/http_output.conf"
+        remote_src: true
+        owner: "{{ tpot_owner }}"
+        group: "{{ tpot_owner }}"
+        mode: "0644"
+      notify: Restart tpot
+
+    - name: Remove the extracted copy
+      ansible.builtin.file:
+        path: "{{ tpot_iprep_tmp }}"
+        state: absent
+      changed_when: false
+      check_mode: false
+
+    - name: Bind-mount the override into the logstash service
+      ansible.builtin.replace:
+        path: "{{ tpot_install_path }}/docker-compose.yml"
+        regexp: '(?s)(\n  logstash:(?:(?!\n  \w).)*?\n    volumes:\n     - \$\{TPOT_DATA_PATH\}:/data\n)(?!     - \./etc/logstash/http_output\.conf)'
+        replace: '\1     - ./etc/logstash/http_output.conf:/etc/logstash/http_output.conf:ro\n'
+        backup: true
+      notify: Restart tpot

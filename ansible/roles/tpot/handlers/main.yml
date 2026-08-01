@@ -3,3 +3,10 @@
   ansible.builtin.systemd:
     name: wazuh-agent
     state: restarted
+
+# Recreates the containers so a docker-compose.yml volume change takes effect.
+# Only fires when drift is detected; costs ~2 min of honeypot downtime.
+- name: Restart tpot
+  ansible.builtin.systemd:
+    name: tpot.service
+    state: restarted
