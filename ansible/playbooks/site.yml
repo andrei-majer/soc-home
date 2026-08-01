@@ -78,10 +78,18 @@
   roles:
     - openwrt
 
-# Play 7 removed: the .15 hypervisor was migrated Windows 11 -> Ubuntu 24.04
-# (2026-06-08), so the old `w32tm` raw command failed on every full converge.
-# .15 is runbook-only (not Ansible-managed) per README; its NTP is now a
-# systemd-timesyncd drop-in documented in docs/runbooks/hypervisor-15.md.
+# Play 7: Hypervisor host stack (.15)
+# The original Play 7 was a `w32tm` raw command that broke when .15 was migrated
+# Windows 11 -> Ubuntu 24.04 (2026-06-08); NTP is now a systemd-timesyncd drop-in
+# documented in docs/runbooks/hypervisor-15.md. The host stayed runbook-only until
+# the 2026-07-02 encrypted-RAID1 reinstall silently dropped the ups-loki collector
+# — roles/hypervisor exists so those units survive a rebuild, and it needs a play
+# here to actually converge (it had none until 2026-08-01).
+- name: Hypervisor host
+  hosts: hypervisor
+  become: true
+  roles:
+    - hypervisor
 
 # Play 8: Canary host (.24 fs1) — internal trip-wire
 - name: Canary host
