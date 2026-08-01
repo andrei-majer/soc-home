@@ -1,6 +1,6 @@
 # bootstrap/vagrant/modes/dr.rb
 # DR mode: bridged adapters on 192.168.1.x. Drop-in replacement for broken .15.
-# Optional second bridged adapter for .120 SPAN/IDS ingestion.
+# Optional second bridged adapter for .20 SPAN/IDS ingestion.
 
 module SocLabMode
   module_function

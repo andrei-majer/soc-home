@@ -35,7 +35,7 @@ The image phase only requires the Phase 1B secrets (vault_pass.txt + ssh keypair
 
 ## Generating a fresh ssh keypair
 
-If you don't want to reuse the .120 control-node key:
+If you don't want to reuse the .20 control-node key:
 
 ```powershell
 ssh-keygen -t ed25519 -f bootstrap\secrets\id_ed25519 -N '""' -C 'soc-bootstrap-<date>'

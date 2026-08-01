@@ -101,12 +101,13 @@ flowchart TD
 
     subgraph LAN["LAN — 192.168.1.0/24  (trusted)"]
         WS[".13 Workstation · 147K (Win11)\nWazuh agent · Sysmon · UniFi ctrl · WOL/Ansible jump"]
-        subgraph HV[".15 Hypervisor — Ubuntu 24.04  (i7-9700K · 64GB · RTX 2080 Ti · VBox 7.2.8)\n.120/.133/.130 sleep 23:00 → cold-boot 06:00 (systemd) · .140 24/7 · .135 on-demand"]
-            IDS[".120 Suricata IDS\nSuricata · Snort · Zeek · Arkime\nGrafana · Loki · EveBox\nVelociraptor · soc-contain · ntfy"]
-            SIEM[".133 ELK / SIEM\nES · Kibana · Logstash\nWazuh Manager · MISP"]
-            HP1[".130 T-Pot HIVE\n24 honeypot containers"]
-            CAN[".140 Canary  (24/7)\nOpenCanary + sinkhole"]
-            CTI[".135 OpenCTI\nthreat-intel — on-demand savestate"]
+        subgraph HV[".15 Hypervisor — Ubuntu 24.04  (i7-9700K · 64GB · RTX 2080 Ti · VBox 7.2.8)\n.20/.21/.23 sleep 23:00 → cold-boot 06:00 (systemd) · .24 24/7 · .22 on-demand"]
+            IDS[".20 Suricata IDS\nSuricata · Snort · Zeek · Arkime\nGrafana · Loki · EveBox\nVelociraptor · soc-contain"]
+            SIEM[".21 ELK / SIEM\nES · Kibana · Logstash\nWazuh Manager · MISP"]
+            HP1[".23 T-Pot HIVE\n24 honeypot containers"]
+            HP2[".25 T-Pot Sensor\nships to HIVE — no auto-start"]
+            CAN[".24 Canary  (24/7)\nOpenCanary + sinkhole"]
+            CTI[".22 OpenCTI\nthreat-intel — on-demand savestate"]
         end
     end
 
@@ -131,12 +132,14 @@ flowchart TD
     style IDS fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
     style SIEM fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
     style HP1 fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
+    style HP2 fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
+    HP2 -.->|ships events| HP1
     style CAN fill:#0d2137,stroke:#bc8cff,color:#c9d1d9
     style CTI fill:#161b22,stroke:#6e7681,color:#8b949e,stroke-dasharray: 5 4
     style WS fill:#0d2137,stroke:#58a6ff,color:#c9d1d9
     style WAN fill:#21262d,stroke:#8b949e,color:#c9d1d9
   </div>
-  <p class="legend"><b>Changed since last revision:</b> .15 migrated Windows 11 → Ubuntu 24.04 (VBox 7.2.8, RTX 2080 Ti); .140 internal canary added (24/7); Zeek + soc-contain + ntfy now on .120; .135 OpenCTI now on-demand savestate (dashed); .125 T-Pot Sensor retired; nightly cold-boot 23:00 / 06:00 via systemd.</p>
+  <p class="legend"><b>Changed since last revision:</b> LAN renumbered 2026-07-15 — physical hosts to .10–.19, SOC VMs to .20–.25; T-Pot Sensor re-activated as .25 (2026-07-31); alerting migrated from self-hosted ntfy to Telegram (2026-06-29); .15 migrated Windows 11 → Ubuntu 24.04 (VBox 7.2.8, RTX 2080 Ti); .24 internal canary added (24/7); Zeek + soc-contain on .20; .22 OpenCTI on-demand savestate (dashed); nightly cold-boot 23:00 / 06:00 via systemd.</p>
 </div>
 
 <!-- 2. Detection Pipeline -->
@@ -146,7 +149,7 @@ flowchart TD
 flowchart LR
     SPAN["SPAN mirror\nUniFi .187 → .15 enp4s0\n→ Suricata VM enp0s8 (promisc)"]
 
-    subgraph IDS_HOST[".120 — IDS Host"]
+    subgraph IDS_HOST[".20 — IDS Host"]
         SUR["Suricata 7.0.10\nEVE JSON"]
         SNO["Snort 3.3.7\nalert_json"]
         ZEK["Zeek 8.0.6\nconn/dns/ssl/http/notice"]
@@ -163,7 +166,7 @@ flowchart LR
         EVB["EveBox :8080"]
     end
 
-    subgraph DEEP[".133 — Historical / SIEM"]
+    subgraph DEEP[".21 — Historical / SIEM"]
         LS["Logstash\nGeoIP · ASN · CVE · iprep"]
         ES["Elasticsearch 8.19.12\nsuricata-* · zeek-*"]
         KIB["Kibana :5601"]
@@ -213,11 +216,11 @@ flowchart TD
         MBz["MalwareBazaar\n(disabled)"]
     end
 
-    subgraph CTI[".135 — OpenCTI 6.9.28  (on-demand)"]
+    subgraph CTI[".22 — OpenCTI 6.9.28  (on-demand)"]
         OC["IOC correlation\nTTP mapping · actor attribution"]
     end
 
-    subgraph MISP_BOX[".133 — MISP 2.5.32"]
+    subgraph MISP_BOX[".21 — MISP 2.5.32"]
         MISP_DB["IOC database\n8 native feeds · sightings"]
     end
 
@@ -227,9 +230,9 @@ flowchart TD
     end
 
     subgraph ENDPOINTS["Wazuh Endpoints"]
-        EP1[".133 elk"]
+        EP1[".21 elk"]
         EP2[".13 workstation"]
-        EP3[".120 suricata"]
+        EP3[".20 suricata"]
     end
 
     TF & UH & CK & MA --> OC
@@ -246,7 +249,7 @@ flowchart TD
     style ENDPOINTS fill:#1a0d1a,stroke:#bc8cff,color:#c9d1d9
     style MBz fill:#161b22,stroke:#6e7681,color:#6e7681,stroke-dasharray: 3 3
   </div>
-  <p class="legend"><b>Note:</b> OpenCTI (.135) is on-demand — the MISP↔Suricata loop keeps running while it sleeps because MISP's 8 native feeds are independent. Connector cadences widened 2026-06 (MISP 30 min; ThreatFox/URLhaus 60 min). MalwareBazaar connector is currently disabled.</p>
+  <p class="legend"><b>Note:</b> OpenCTI (.22) is on-demand — the MISP↔Suricata loop keeps running while it sleeps because MISP's 8 native feeds are independent. Connector cadences widened 2026-06 (MISP 30 min; ThreatFox/URLhaus 60 min). MalwareBazaar connector is currently disabled.</p>
 </div>
 
 <!-- 4. Automated Containment -->
@@ -255,13 +258,13 @@ flowchart TD
   <div class="mermaid">
 flowchart TD
     subgraph TRIG["Triggers — Wazuh rules tagged soc-contain"]
-        T_CAN["Canary hit .140\n→ T0 auto"]
+        T_CAN["Canary hit .24\n→ T0 auto"]
         T_IOC["Confirmed-C2 IOC\n→ T0 auto"]
         T_EXF["Zeek LargeTransfer\nrule 100202 → T1"]
     end
 
-    AR["notify-contain AR\n(.133 Wazuh manager)"]
-    RCV["Receiver  .120:8765\nBearer-auth  POST /v1/dispatch"]
+    AR["notify-contain AR\n(.21 Wazuh manager)"]
+    RCV["Receiver  .20:8765\nBearer-auth  POST /v1/dispatch"]
     POL["resolve target → policy.yml"]
     GUARD["🛡 guardrail\nassert_not_infra"]
     TIER{"tier?"}
@@ -275,7 +278,7 @@ flowchart TD
     end
 
     AUD["SQLite audit · state.db"]
-    NTFY["ntfy .120:8090\nsoc-contain topic"]
+    NTFY["Telegram bot\nsoc-contain alerts"]
     REAP["reaper — TTL auto-release\n(host-isolation = manual)"]
     KILL["🛑 kill-switch\n/etc/soc-contain/DISABLED"]
 

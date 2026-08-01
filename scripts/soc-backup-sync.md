@@ -7,9 +7,9 @@ monthly config tarballs produced on each managed host into two independent copie
 
 ```
 producers (monthly cron on each host)          .13 (Task Scheduler, monthly)
-  .133  /backup/{misp,wazuh,kibana}/  ─┐
-  .135  /backup/opencti/              ─┼─►  pull  ─►  OneDrive\Claude\backup\soc-data\   (cloud-replicated)
-  .120  /backup/{velociraptor,        ─┘                     │
+  .21  /backup/{misp,wazuh,kibana}/  ─┐
+  .22  /backup/opencti/              ─┼─►  pull  ─►  OneDrive\Claude\backup\soc-data\   (cloud-replicated)
+  .20  /backup/{velociraptor,        ─┘                     │
         grafana,evebox}/                                     └─►  push  ─►  .15:/mnt/backup/soc-data/   (encrypted, on-prem)
 ```
 
@@ -34,7 +34,7 @@ Landing dir `/mnt/backup/soc-data/` is owned by the sync user.
   reachable, so it can never break the OneDrive run.
 - **Backfill.** Tarballs already in OneDrive are mirrored on first sight, so a freshly
   provisioned disk fills from existing history.
-- **`.135` (OpenCTI)** is normally in on-demand savestate — an SSH timeout there is an
+- **`.22` (OpenCTI)** is normally in on-demand savestate — an SSH timeout there is an
   expected `WARN`, not a failure; it mirrors on a run when the VM is awake.
 - **Retention.** OneDrive copy pruned locally after 28 days (cloud copy persists).
 

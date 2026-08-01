@@ -9,3 +9,7 @@ bootstrap/vagrant/.vagrant/
 bootstrap/.deploy-config.local
 bootstrap/logs/
 bootstrap/packer/packer_cache/
+
+# Python bytecode
+__pycache__/
+*.pyc

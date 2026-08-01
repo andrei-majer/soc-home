@@ -6,13 +6,13 @@ The UPS is a Cypress 0665:5161 (Megatec/Q1), same chip as .15/.1, but on Windows
 its firmware can only be driven via raw USB control+interrupt transfers -- the
 Windows HID stack can't issue those. So the device is bound to **WinUSB** (one-time,
 via Zadig) and this collector talks to it with libusb (pyusb), replicating NUT
-nutdrv_qx's 'cypress' subdriver framing. One logfmt line per run, same schema as
-the .15/.1 collectors, pushed to Loki.
+nutdrv_qx's 'cypress' subdriver framing. Two logfmt lines per run (t=0, t=+30s),
+same schema as the .15/.1 collectors, pushed to Loki.
 
 Deps (global C:\Python):  pip install pyusb libusb-package
-Run:  python ups-loki-push.py            # push one sample to Loki
+Run:  python ups-loki-push.py            # push two samples to Loki (30s apart)
       python ups-loki-push.py --print    # also print parsed values (no errors swallowed)
-Scheduled every minute as SYSTEM (see install-task.ps1).
+Scheduled every minute as SYSTEM (see install-task.ps1); two pushes/run -> ~30s spacing.
 """
 import os, sys, json, time, urllib.request, traceback
 
@@ -104,19 +104,23 @@ def sample():
 
 def main():
     do_print = "--print" in sys.argv
-    try:
-        d, raw = sample()
-        if do_print:
-            print("raw:", raw); print("parsed:", d); print("logfmt:", logfmt(d))
-        push(logfmt(d))
-        if do_print:
-            print("pushed to Loki host=%s" % HOST)
-    except Exception as e:
-        log("ERROR: %s" % e)
-        if do_print:
-            traceback.print_exc()
-        return 1
-    return 0
+    rc = 0
+    for i in range(2):                 # two samples 30s apart -> ~30s spacing under the 60s task (matches .15)
+        if i:
+            time.sleep(30)
+        try:
+            d, raw = sample()
+            if do_print:
+                print("raw:", raw); print("parsed:", d); print("logfmt:", logfmt(d))
+            push(logfmt(d))
+            if do_print:
+                print("pushed to Loki host=%s" % HOST)
+        except Exception as e:
+            log("ERROR: %s" % e)
+            if do_print:
+                traceback.print_exc()
+            rc = 1
+    return rc
 
 if __name__ == "__main__":
     sys.exit(main())

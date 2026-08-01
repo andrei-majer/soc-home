@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# backup-elk-e.sh — Run on .133 (ssh e) to collect all config + state
+# backup-elk-e.sh — Run on .21 (ssh e) to collect all config + state
 # Usage: bash backup-elk-e.sh
 # Output: /root/soc-e-backup-$(date).tar.gz  (then fetch it off)
 #

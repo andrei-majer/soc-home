@@ -12,7 +12,7 @@ RAM** instead of shutting down; the router and workstation are monitor-only.
         │                                                            │
    hypervisor-15  NUT nutdrv_qx + resilience loop (suspend)          │
    router-1       NUT nutdrv_qx (monitor-only)            ──> per-host collector ──> Loki
-   workstation-13 WinUSB + pyusb (monitor-only)                 (.120:3100)    │
+   workstation-13 WinUSB + pyusb (monitor-only)                 (.20:3100)    │
                                                                           Grafana dashboards
 ```
 

@@ -14,7 +14,7 @@ RETENTION_DAYS=180
 CONFIG_DIR=/etc/velociraptor
 DATASTORE=/opt/velociraptor
 
-# Verified live on .120 — actual layout differs from plan:
+# Verified live on .20 — actual layout differs from plan:
 # - Configs in /etc/velociraptor/ (server.config.yaml, client.config.yaml,
 #   automation_api.yaml)
 # - Datastore root at /opt/velociraptor/ (FileBaseDataStore, NOT a 'datastore'

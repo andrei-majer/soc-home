@@ -13,7 +13,7 @@
 | VirtualBox Extension Pack | matching version | https://www.virtualbox.org/wiki/Downloads |
 | Packer | >= 1.10 | `winget install Hashicorp.Packer` |
 | Vagrant | >= 2.4 | `winget install Hashicorp.Vagrant` |
-| Ansible Core | >= 2.15 | `pip install ansible-core>=2.15` (or run convergence from .120 after VMs are up) |
+| Ansible Core | >= 2.15 | `pip install ansible-core>=2.15` (or run convergence from .20 after VMs are up) |
 | Git for Windows | any recent | `winget install Git.Git` |
 
 ## Hardware

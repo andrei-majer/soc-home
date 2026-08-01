@@ -2,8 +2,8 @@
 
 | Host | IP | SSH | Script |
 |---|---|---|---|
-| Suricata + Snort 3 | 192.168.1.120 | `ssh s` | `backup-suricata-s.sh` / `restore-suricata-s.sh` |
-| ELK + Wazuh + MISP | 192.168.1.133 | `ssh e` | `backup-elk-e.sh` |
+| Suricata + Snort 3 | 192.168.1.20 | `ssh s` | `backup-suricata-s.sh` / `restore-suricata-s.sh` |
+| ELK + Wazuh + MISP | 192.168.1.21 | `ssh e` | `backup-elk-e.sh` |
 
 Both target fresh **Debian 12 (bookworm)** installs. Backups are config-only — no ES data, no MISP MySQL event data.
 
@@ -13,18 +13,18 @@ Both target fresh **Debian 12 (bookworm)** installs. Backups are config-only —
 
 | File | Purpose |
 |---|---|
-| `backup-suricata-s.sh` | Run on .120 — collects all configs into a `.tar.gz` |
-| `restore-suricata-s.sh` | Run on fresh .120 — installs packages and restores all configs |
-| `backup-elk-e.sh` | Run on .133 — collects all configs + Kibana saved objects into a `.tar.gz` |
+| `backup-suricata-s.sh` | Run on .20 — collects all configs into a `.tar.gz` |
+| `restore-suricata-s.sh` | Run on fresh .20 — installs packages and restores all configs |
+| `backup-elk-e.sh` | Run on .21 — collects all configs + Kibana saved objects into a `.tar.gz` |
 
 ---
 
 ## Backup
 
-### 1. Copy the script to .120 and run it
+### 1. Copy the script to .20 and run it
 
 ```bash
-scp backup-suricata-s.sh root@192.168.1.120:/root/
+scp backup-suricata-s.sh root@192.168.1.20:/root/
 ```
 
 **With Snort 3 (default):**
@@ -37,12 +37,12 @@ ssh s "bash /root/backup-suricata-s.sh"
 ssh s "bash /root/backup-suricata-s.sh --no-snort"
 ```
 
-Output: `/root/soc-s-backup-YYYYMMDD-HHMMSS.tar.gz` on .120.
+Output: `/root/soc-s-backup-YYYYMMDD-HHMMSS.tar.gz` on .20.
 
 ### 2. Fetch the archive
 
 ```bash
-scp root@192.168.1.120:/root/soc-s-backup-*.tar.gz .
+scp root@192.168.1.20:/root/soc-s-backup-*.tar.gz .
 ```
 
 Store the `.tar.gz` somewhere safe (e.g. this `soc-lab/` folder or external storage).
@@ -53,17 +53,17 @@ Store the `.tar.gz` somewhere safe (e.g. this `soc-lab/` folder or external stor
 
 ### Prerequisites
 
-- Fresh Debian 12 install at `192.168.1.120`
+- Fresh Debian 12 install at `192.168.1.20`
 - Same network interface: `enp0s8` (SPAN port, promiscuous)
 - Root SSH access
-- ELK/MISP host still reachable at `192.168.1.133`
+- ELK/MISP host still reachable at `192.168.1.21`
 - Router still at `192.168.1.1`
 
 ### 1. Copy files to the new machine
 
 ```bash
-scp soc-s-backup-YYYYMMDD-HHMMSS.tar.gz root@192.168.1.120:/root/
-scp restore-suricata-s.sh root@192.168.1.120:/root/
+scp soc-s-backup-YYYYMMDD-HHMMSS.tar.gz root@192.168.1.20:/root/
+scp restore-suricata-s.sh root@192.168.1.20:/root/
 ```
 
 ### 2. Run the restore script
@@ -121,10 +121,10 @@ tail -f /var/log/snort/alert_fast.txt
 
 | Service | URL | Credentials |
 |---|---|---|
-| Grafana | http://192.168.1.120:3000 | admin / CHANGEME |
-| EveBox | http://192.168.1.120:8080 | — |
-| Velociraptor | http://192.168.1.120:8889 | admin / CHANGEME |
-| Arkime | http://192.168.1.120:8005 | admin / CHANGEME |
+| Grafana | http://192.168.1.20:3000 | admin / CHANGEME |
+| EveBox | http://192.168.1.20:8080 | — |
+| Velociraptor | http://192.168.1.20:8889 | admin / CHANGEME |
+| Arkime | http://192.168.1.20:8005 | admin / CHANGEME |
 
 ---
 
@@ -136,7 +136,7 @@ These require manual intervention and are **not** handled by the restore script:
 2. **Loki/Promtail binaries** — if not in backup, download matching versions from [github.com/grafana/loki/releases](https://github.com/grafana/loki/releases)
 3. **EveBox/Velociraptor binaries** — if not in backup, download from their release pages
 4. **GeoIP** — edit `/etc/GeoIP.conf` if AccountID/LicenseKey changed, then run `geoipupdate`
-5. **Wazuh enrollment** — confirm agent is enrolled to `192.168.1.133:1514`
+5. **Wazuh enrollment** — confirm agent is enrolled to `192.168.1.21:1514`
 6. **Arkime** — capture is disabled by default; start manually via UI if needed
 7. **suricata-enforcer** — installed but inactive; to activate (replaces fail2ban):
    ```bash
@@ -202,20 +202,20 @@ These require manual intervention and are **not** handled by the restore script:
 
 ---
 
-# ELK + Wazuh + MISP (.133) — Backup
+# ELK + Wazuh + MISP (.21) — Backup
 
 > No restore script yet — ELK restore is more involved (package order matters, index seeding required).
 
 ## Backup
 
-### 1. Copy the script to .133 and run it
+### 1. Copy the script to .21 and run it
 
 ```bash
 ssh e "cat > /root/backup-elk-e.sh" < backup-elk-e.sh
 ssh e "bash /root/backup-elk-e.sh"
 ```
 
-Output: `/root/soc-e-backup-YYYYMMDD-HHMMSS.tar.gz` on .133.
+Output: `/root/soc-e-backup-YYYYMMDD-HHMMSS.tar.gz` on .21.
 
 ### 2. Fetch the archive
 
@@ -255,7 +255,7 @@ Archive is small (~900 KB) — configs only, no ES indices or MISP event data.
 
 ## Manual Restore Order (ELK)
 
-If rebuilding .133 from scratch, install and restore in this order to avoid dependency issues:
+If rebuilding .21 from scratch, install and restore in this order to avoid dependency issues:
 
 1. **MariaDB** — restore first; MISP and Wazuh both need it running
 2. **Redis** — restore `/etc/redis/redis.conf`, start service
@@ -281,4 +281,4 @@ If rebuilding .133 from scratch, install and restore in this order to avoid depe
 - **Wazuh Dashboard file permissions** — after editing `opensearch_dashboards.yml`: `chown root:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.yml && chmod 640 ...`
 - **Wazuh vendor patches** — `statistics-template.json` and `monitoring-template.js` get overwritten on package upgrade; restore from backup after every Wazuh Dashboard upgrade
 - **MISP workers crash-loop** — if `misp-workers` fails, check `/var/www/MISP/app/Vendor/iglocska/php-resque-ex/lib/Redisent/Redisent.php` ~line 73 for PHP 8 `implode()` arg order bug
-- **Disk** — .133 has a 39 GB disk; ES + Logstash logs fill it fast. Logrotate configs for both are in the backup. Disk alert cron at `/etc/cron.d/disk-alert` (warns at >85%)
+- **Disk** — .21 has a 39 GB disk; ES + Logstash logs fill it fast. Logrotate configs for both are in the backup. Disk alert cron at `/etc/cron.d/disk-alert` (warns at >85%)

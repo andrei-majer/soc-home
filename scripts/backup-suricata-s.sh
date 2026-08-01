@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# backup-suricata-s.sh — Run on .120 (ssh s) to collect all config + state
+# backup-suricata-s.sh — Run on .20 (ssh s) to collect all config + state
 # Usage: bash backup-suricata-s.sh [--no-snort] [--no-binaries]
 # Output: /root/soc-s-backup-$(date).tar.gz  (then scp it off)
 #
@@ -240,4 +240,4 @@ SIZE=$(du -h "${OUT}" | cut -f1)
 echo "[+] Done. Archive: ${OUT} (${SIZE})"
 echo ""
 echo "    Fetch with:"
-echo "      scp root@192.168.1.120:${OUT} ."
+echo "      scp root@192.168.1.20:${OUT} ."

@@ -11,47 +11,46 @@
 #       Select-String -Pattern '^(memory|cpus)=' | ForEach-Object { "[$vm] $_" }
 #   }
 
-suricata-120:
-  ip: 192.168.1.120
+suricata-20:
+  ip: 192.168.1.20
   ram: 8192        # MB
   cpu: 4
   disk: 60         # GB (Vagrant attaches second disk if >20)
   monitoring_nic: true   # Adds second adapter, promiscuous "Allow All" for SPAN/IDS
 
-elk-133:
-  ip: 192.168.1.133
+elk-21:
+  ip: 192.168.1.21
   ram: 16384
   cpu: 4
   disk: 80
   monitoring_nic: false
 
-opencti-135:
-  ip: 192.168.1.135
+opencti-22:
+  ip: 192.168.1.22
   ram: 8192
   cpu: 4
   disk: 60
   monitoring_nic: false
 
-tpot-hive-130:
-  ip: 192.168.1.130
+tpot-hive-23:
+  ip: 192.168.1.23
   ram: 12288
   cpu: 4
   disk: 100
   monitoring_nic: false
 
-# tpot-sensor-125 RETIRED from the live inventory - the T-Pot sensor VM is no
-# longer part of the lab. Left commented (not deleted) so the historical spec is
-# recoverable if the sensor is ever reinstated. Do NOT provision it.
-# tpot-sensor-125:
-#   ip: 192.168.1.125
-#   ram: 8192
-#   cpu: 2
-#   disk: 60
-#   monitoring_nic: false
-
-fileserver-140:
-  ip: 192.168.1.140
+fileserver-24:
+  ip: 192.168.1.24
   ram: 2048
   cpu: 2
   disk: 20
+  monitoring_nic: false
+
+# Retired 2026-06-07, re-activated 2026-07-31 on the renumbered .25 (was .125).
+# RAM raised 4096 -> 8192 after the sensor OOM-looped its logstash heap.
+tpot-sensor-25:
+  ip: 192.168.1.25
+  ram: 8192
+  cpu: 2
+  disk: 60
   monitoring_nic: false

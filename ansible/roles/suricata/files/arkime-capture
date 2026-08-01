@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# arkime-capture - on-demand Arkime full-packet capture on the .120 SPAN sensor.
+# arkime-capture - on-demand Arkime full-packet capture on the .20 SPAN sensor.
 #
 # Arkime is NOT run continuously here: continuous capture filled /opt. Use this
 # to capture a window during an investigation, then stop.

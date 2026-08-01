@@ -18,7 +18,7 @@ notepad docs\secrets-checklist.md
 For testing on a constrained host (e.g. alongside the live lab):
 
 ```powershell
-.\deploy.ps1 -Mode dr -Hosts suricata-120,elk-133 -Profile minimal
+.\deploy.ps1 -Mode dr -Hosts suricata-20,elk-21 -Profile minimal
 ```
 
 ## Phases

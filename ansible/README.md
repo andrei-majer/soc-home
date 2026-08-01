@@ -1,6 +1,6 @@
 # SOC Lab Ansible
 
-Infrastructure as Code for a home SOC lab — 6 managed hosts (5 Debian + 1 OpenWrt router) plus 2 runbook-only hosts (`.13` Windows workstation, `.15` Ubuntu hypervisor).
+Infrastructure as Code for a home SOC lab — 8 hosts: 4 Debian VMs, 2 T-Pot honeypots, the OpenWrt router, and the Ubuntu hypervisor. The `.13` Windows workstation is runbook-only.
 
 See the [top-level README](../README.md) for the full project overview, architecture diagram, and feature list.
 
@@ -8,16 +8,18 @@ See the [top-level README](../README.md) for the full project overview, architec
 
 | Host | IP | Role | Mode |
 |---|---|---|---|
-| suricata-20 | 192.168.1.120 | IDS / NSM (Suricata + Zeek + Snort 3 + Grafana/Loki/Promtail + EveBox + Arkime + Velociraptor + fail2ban + ntfy) + control node + `soc-contain` | Full convergence (control node, `local`) |
-| elk-21 | 192.168.1.133 | SIEM (Elasticsearch + Kibana + Logstash + Wazuh Manager + MISP) | Full convergence |
-| opencti-22 | 192.168.1.135 | Threat intel (OpenCTI Docker Compose stack) | Full convergence |
-| fileserver-24 | 192.168.1.140 | Internal canary `fs1` (OpenCanary + Samba decoys + sinkhole.py) | Full convergence |
-| tpot-hive-23 | 192.168.1.130 | Honeypot HIVE (combined collector+sensor) | Backup/pull-only (SSH :64295) |
+| suricata-20 | 192.168.1.20 | IDS / NSM (Suricata + Zeek + Snort 3 + Grafana/Loki/Promtail + EveBox + Arkime + Velociraptor + fail2ban) + control node + `soc-contain` | Full convergence (control node, `local`) |
+| elk-21 | 192.168.1.21 | SIEM (Elasticsearch + Kibana + Logstash + Wazuh Manager + MISP) | Full convergence |
+| opencti-22 | 192.168.1.22 | Threat intel (OpenCTI Docker Compose stack) | Full convergence |
+| tpot-hive-23 | 192.168.1.23 | Honeypot HIVE (combined collector+sensor) | Backup/pull-only (SSH :64295) |
+| fileserver-24 | 192.168.1.24 | Internal canary `fs1` (OpenCanary + Samba decoys + sinkhole.py) | Full convergence |
+| tpot-sensor-25 | 192.168.1.25 | Honeypot sensor, ships to HIVE | Backup/pull-only (SSH :64295) |
 | router-1 | 192.168.1.1 | OpenWrt edge router (AdGuard Home + Unbound + BanIP + soc-watchdog) | Backup/pull-only (`raw` + `scp`, no Python) |
+| hypervisor-15 | 192.168.1.15 | Ubuntu 24.04 VirtualBox host — host-side units only (see `roles/hypervisor`) | Full convergence (`become`, SSH as `andrei`) |
 
-The `tpot-sensor-25` (192.168.1.25) was retired 2026-06-07 then re-activated 2026-07-31 with a fresh IP (was .125) to join the SOC role band alongside HIVE (.23) and Canary (.24).
+LAN addresses were renumbered on 2026-07-15: physical hosts live in `.10–.19`, SOC VMs in `.20–.25`. The `tpot-sensor-25` host was retired 2026-06-07 and re-activated 2026-07-31 on a fresh IP (was `.125`) to join that band.
 
-The `.13` Windows workstation and `.15` Ubuntu hypervisor (migrated from Windows 11 to Ubuntu 24.04 on 2026-06-08) are documented in runbooks, **not** managed by Ansible.
+The `.13` Windows workstation is documented in runbooks, **not** managed by Ansible. The `.15` hypervisor (migrated from Windows 11 to Ubuntu 24.04 on 2026-06-08) was runbook-only until `roles/hypervisor` gained a `site.yml` play on 2026-08-01; its OS-level rebuild is still runbook territory.
 
 ## Layout
 
@@ -26,7 +28,7 @@ The `.13` Windows workstation and `.15` Ubuntu hypervisor (migrated from Windows
 ├── ansible.cfg
 ├── .ansible-lint           # production profile + documented skip_list
 ├── inventory/
-│   ├── hosts.yml           # 6 active hosts in 5 groups (debian, canary, tpot, openwrt, hypervisor)
+│   ├── hosts.yml           # 8 active hosts in 5 groups (debian, canary, tpot, openwrt, hypervisor)
 │   ├── group_vars/
 │   │   ├── all/{main.yml, vault.yml}
 │   │   ├── debian.yml
@@ -35,15 +37,16 @@ The `.13` Windows workstation and `.15` Ubuntu hypervisor (migrated from Windows
 │   └── host_vars/<host>/{vars.yml|main.yml, vault.yml}
 ├── roles/
 │   ├── common/          # base packages, disk-alert (self-remediating), SSH keys, timezone, journald cap
-│   ├── suricata/        # Suricata + Zeek + Snort 3 + fail2ban + Filebeat + iprep + MISP scripts + Arkime + Velociraptor + ntfy + Grafana/Loki/Promtail + EveBox
+│   ├── suricata/        # Suricata + Zeek + Snort 3 + fail2ban + Filebeat + iprep + MISP scripts + Arkime + Velociraptor + Grafana/Loki/Promtail + EveBox
 │   ├── elk/             # Elasticsearch, Kibana, Logstash, Filebeat, index cleanup
-│   ├── wazuh-manager/   # ossec.conf, rules, ntfy integration, TAXII, Wazuh dashboard + vendor patches
+│   ├── wazuh-manager/   # ossec.conf, rules, Telegram integration, TAXII, Wazuh dashboard + vendor patches
 │   ├── misp/            # Apache vhost, PHP config, logrotate (config-only)
 │   ├── opencti/         # Docker Compose stack, .env, backup, on-demand savestate
 │   ├── canary/          # OpenCanary + Samba decoys + sinkhole.py + rsyslog routing
-│   ├── soc-contain/     # SOAR-lite containment receiver (dry-run-default) on 192.168.1.120:8765
-│   ├── backups/         # service-native backup wrappers (.120/.133/.135)
-│   ├── tpot/            # Backup/pull-only from T-Pot host
+│   ├── soc-contain/     # SOAR-lite containment receiver (dry-run-default) on 192.168.1.20:8765
+│   ├── hypervisor/      # .15 host stack — docker-prune, disk-alert, soc-sleep/wake, ups-loki, NIC hang fix, PXE
+│   ├── backups/         # service-native backup wrappers (.20/.21/.22)
+│   ├── tpot/            # Backup/pull-only from T-Pot hosts
 │   └── openwrt/         # Backup/pull-only via raw + scp; soc-watchdog deploy
 └── playbooks/
     ├── site.yml         # Full convergence playbook
@@ -52,7 +55,7 @@ The `.13` Windows workstation and `.15` Ubuntu hypervisor (migrated from Windows
 
 ## Usage
 
-All commands run on the control node (192.168.1.120) from `/opt/soc-ansible/`.
+All commands run on the control node (192.168.1.20) from `/opt/soc-ansible/`.
 
 ```bash
 # Full convergence (all hosts)
@@ -95,9 +98,11 @@ Vault files are scoped per host plus a shared `group_vars/all/vault.yml` — see
 | suricata-20 | common, suricata, backups, soc-contain (+ canary cutover) |
 | elk-21 | common, elk, wazuh-manager, misp, backups |
 | opencti-22 | common, opencti, backups |
-| fileserver-24 | common, canary |
 | tpot-hive-23 | tpot |
+| fileserver-24 | common, canary |
+| tpot-sensor-25 | tpot |
 | router-1 | openwrt |
+| hypervisor-15 | hypervisor |
 
 T-Pot and OpenWrt hosts skip `common` by design — T-Pot self-manages its base OS (fighting it causes drift) and the OpenWrt router has no Python.
 
@@ -105,6 +110,6 @@ T-Pot and OpenWrt hosts skip `common` by design — T-Pot self-manages its base 
 
 - **Phase 1 (done):** Foundation + core roles + `site.yml`
 - **Phase 2 (done):** OpenWrt router role (`.1`) via `raw` + `scp`
-- **Phase 3 (done):** Operational playbooks (health-check, ti-health, rule-update, es-cleanup, cert-renew, backup, restart-services, state-collect) + runbooks (`.13`, `.15`, T-Pot rebuild, MISP rebuild, canary `.140` rebuild, OpenWrt restore)
+- **Phase 3 (done):** Operational playbooks (health-check, ti-health, rule-update, es-cleanup, cert-renew, backup, restart-services, state-collect) + runbooks (`.13`, `.15`, T-Pot rebuild, MISP rebuild, canary rebuild, OpenWrt restore)
 
-Subsequent work added the `canary`, `soc-contain`, and `backups` roles. The `tpot-sensor-125` host was retired 2026-06-07 and later re-activated as `tpot-sensor-25` on 2026-07-31.
+Subsequent work added the `canary`, `soc-contain`, `backups`, and `hypervisor` roles. The `tpot-sensor-125` host was retired 2026-06-07 and later re-activated as `tpot-sensor-25` on 2026-07-31.

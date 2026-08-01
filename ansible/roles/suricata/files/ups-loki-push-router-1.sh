@@ -1,5 +1,5 @@
 #!/bin/sh
-# Read router UPS, push to Loki (.120). Best-effort (Loki may be asleep).
+# Read router UPS, push to Loki (.20). Best-effort (Loki may be asleep).
 # Pushes twice per invocation (t=0 and t=+30s); with the every-minute cron this
 # yields ~30s sample spacing to match .15 (smoother Grafana graphs).
 LOKI="http://192.168.1.20:3100/loki/api/v1/push"

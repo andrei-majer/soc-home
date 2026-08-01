@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 r"""
-.13 (Windows workstation) Richcomm UPS collector  ->  Loki on .120 (host="13").
+.13 (Windows workstation) Richcomm UPS collector  ->  Loki on .20 (host="13").
 
 The UPS is a Cypress 0665:5161 (Megatec/Q1), same chip as .15/.1, but on Windows
 its firmware can only be driven via raw USB control+interrupt transfers -- the

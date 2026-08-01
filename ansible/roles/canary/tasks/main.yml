@@ -1,6 +1,6 @@
 ---
 # ============================================================================
-# OpenCanary install + config (.140 / fs1)
+# OpenCanary install + config (.24 / fs1)
 # Tasks gated on inventory_hostname in groups['canary'] so the .120 cutover
 # block (added in Phase 6) can share the same role file. See spec
 # docs/specs/2026-06-01-canary-design.md.
@@ -191,12 +191,12 @@
   when: inventory_hostname in groups['canary']
 
 # ============================================================================
-# Wazuh agent localfile inputs (.140) — same blockinfile idiom as Zeek/.120.
+# Wazuh agent localfile inputs (.24) — same blockinfile idiom as Zeek/.20.
 # Agent ossec.conf is not otherwise Ansible-managed; only canary inputs come
 # from IaC. Notifies Restart wazuh-agent.
 # ============================================================================
 
-- name: Add canary log inputs to Wazuh agent (.140)
+- name: Add canary log inputs to Wazuh agent (.24)
   ansible.builtin.blockinfile:
     path: /var/ossec/etc/ossec.conf
     marker: '<!-- {mark} ANSIBLE MANAGED: canary localfiles -->'

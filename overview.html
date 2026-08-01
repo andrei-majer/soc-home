@@ -359,7 +359,7 @@
         <div class="desc">
           3 tier-matched Suricata alerts in 5 min → <b>fail2ban</b> → SSH → router's
           <b>BanIP</b> set → packets dropped at the edge within 5 minutes end-to-end.
-          Alerts fan out to <b>ntfy</b> push (self-hosted) with per-(rule, source)
+          Alerts fan out to <b>Telegram</b> push with per-(rule, source)
           hourly dedup.
         </div>
         <div class="badge">ACTION</div>
@@ -391,7 +391,7 @@
       </div>
 
       <div class="card">
-        <h3>Detection — IDS host (.120)</h3>
+        <h3>Detection — IDS host (.20)</h3>
         <ul>
           <li><b>Suricata 7.0.10</b> · 320k rules · AF_PACKET workers</li>
           <li><b>Zeek 8.0.6</b> · protocol logs · 38-panel Grafana dashboard</li>
@@ -403,7 +403,7 @@
       </div>
 
       <div class="card">
-        <h3>SIEM &amp; storage — ELK host (.133)</h3>
+        <h3>SIEM &amp; storage — ELK host (.21)</h3>
         <ul>
           <li><b>Elasticsearch 8.x + Kibana</b> · Cyber Defense Center + SIEM Workbench</li>
           <li><b>Logstash</b> · GeoIP enrich, CVE flatten, iprep normalise</li>
@@ -414,7 +414,7 @@
       </div>
 
       <div class="card">
-        <h3>Threat Intelligence — OpenCTI host (.135)</h3>
+        <h3>Threat Intelligence — OpenCTI host (.22)</h3>
         <ul>
           <li><b>OpenCTI 6.9.28</b> · TIP above MISP · on-demand savestate</li>
           <li><b>MISP connector</b> · 5-min sync</li>
@@ -427,8 +427,9 @@
       <div class="card">
         <h3>Deception</h3>
         <ul>
-          <li><b>T-Pot HIVE (.130)</b> · combined collector+sensor · 11 keep-list honeypots, ~39 containers</li>
-          <li><b>Internal canary (.140 / <code>fs1</code>)</b> · OpenCanary + fake SMB + sinkhole</li>
+          <li><b>T-Pot HIVE (.23)</b> · combined collector+sensor · 11 keep-list honeypots, ~39 containers</li>
+          <li><b>T-Pot Sensor (.25)</b> · re-activated 2026-07-31 · ships events to HIVE</li>
+          <li><b>Internal canary (.24 / <code>fs1</code>)</b> · OpenCanary + fake SMB + sinkhole</li>
           <li>Wazuh rules 1003xx · per-source dedup</li>
         </ul>
       </div>
@@ -440,7 +441,7 @@
           <li><b>Grafana</b> · Suricata + Snort + Zeek dashboards</li>
           <li><b>Loki + Promtail</b> · real-time log tailing</li>
           <li><b>alert-review CLI</b> · one-shot terminal context for any alert</li>
-          <li><b>Self-hosted ntfy</b> · mobile push with dedup</li>
+          <li><b>Telegram bot</b> · mobile push with dedup</li>
         </ul>
       </div>
 
@@ -472,7 +473,7 @@
                    <span class="h">Zeek</span>       ──▶ logs/*    ──▶ Filebeat ──▶ Logstash ──▶ ES
                                                           └──▶ Promtail ──▶ Loki
 
-  Hosts        ──▶  <span class="h">Wazuh agents</span>  ──▶ Wazuh manager ──▶ ES + custom-ntfy
+  Hosts        ──▶  <span class="h">Wazuh agents</span>  ──▶ Wazuh manager ──▶ ES + custom-telegram
   Honeypots    ──▶  T-Pot ES cluster
   Canary       ──▶  OpenCanary + sinkhole logs ──▶ Wazuh ──▶ rules 1003xx
 
@@ -490,7 +491,7 @@
 
 <span class="d">┌─ RESPONSE ────────────────────────────────────────────────────────────┐</span>
 
-  Alert lvl ≥ 10        ──▶  <span class="a">ntfy push</span> (dedup)
+  Alert lvl ≥ 10        ──▶  <span class="a">Telegram push</span> (dedup)
   3-strike trigger      ──▶  <span class="w">fail2ban</span> ──▶ SSH ──▶ router BanIP set
                                                           └──▶ packet drop at edge
                                                               <span class="d">[&lt; 5 min e2e]</span>
@@ -511,7 +512,7 @@
       <div class="card">
         <h3>IaC repository</h3>
         <ul>
-          <li><code>/opt/soc-ansible/</code> on .120 · public mirror <code>andrei-majer/soc-home</code></li>
+          <li><code>/opt/soc-ansible/</code> on .20 · private repo <code>andrei-majer/soc-home</code></li>
           <li><b>8 roles</b> (common, suricata, elk, wazuh-manager, misp, opencti, canary, tpot, openwrt)</li>
           <li><b>7 ops playbooks</b> (health-check, ti-health, rule-update, es-cleanup, cert-renew, backup, restart-services)</li>
           <li><b>Vault-encrypted</b> per-host secrets</li>
@@ -535,7 +536,7 @@
       <div class="card">
         <h3>Disaster recovery</h3>
         <ul>
-          <li><b>Self-remediating disk-alert</b> — vacuum + gzip at 92%, ntfy push</li>
+          <li><b>Self-remediating disk-alert</b> — vacuum + gzip at 92%, Telegram push</li>
           <li><code>journald</code> capped at 200 MB cluster-wide</li>
           <li><b>Router-side <code>soc-watchdog</code></b> — independent monitor that survives full hypervisor loss</li>
           <li><b>Monthly backups</b> — Ansible role + Windows OneDrive sync</li>
@@ -597,7 +598,7 @@
         <div class="t">Independent watchdog</div>
         <div class="b">
           Alerting that depends on the alerting host is not alerting. The router runs a
-          5-min cron that pings the hypervisor and IDS host and pushes ntfy on outage —
+          5-min cron that pings the hypervisor and IDS host and alerts on outage —
           the only path that survives a full VM-stack loss.
         </div>
       </div>

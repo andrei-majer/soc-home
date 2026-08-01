@@ -1,5 +1,5 @@
 #!/bin/sh
-# Read SATA SSD SMART on .15, push one logfmt line per device to Loki (.120),
+# Read SATA SSD SMART on .15, push one logfmt line per device to Loki (.20),
 # plus one line per md RAID array. Best-effort (Loki may be asleep).
 # Requires root (smartctl + sysfs). Run from systemd ssd-smart-loki.timer (10 min).
 #

@@ -3,7 +3,7 @@
 import json, urllib.request, sys, re
 
 # Skip silently if OpenCTI host is in on-demand savestate mode (added 2026-06-07).
-# Avoids the 30-min cron emitting "Connection refused" log lines while .135 is asleep.
+# Avoids the 30-min cron emitting "Connection refused" log lines while .22 is asleep.
 import socket as _s
 def _opencti_reachable(host="{{ opencti_host }}", port=8080, timeout=2):
     try:

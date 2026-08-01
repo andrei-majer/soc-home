@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install SSD + RAID health monitoring on the .15 hypervisor:
-#   - Loki collector (systemd timer, every 10 min) -> Grafana on .120
+#   - Loki collector (systemd timer, every 10 min) -> Grafana on .20
 #       * per-disk SMART (Crucial MX300 + ADATA SU800 pair; per-model attr maps)
 #       * md RAID array state (md126/md127 degraded / sync)
 #   - smartd weekly SHORT self-test + temperature watch -> Telegram alerts
@@ -42,7 +42,7 @@ fi
 echo "==> systemd timer (collector every 10 min)"
 cat > /etc/systemd/system/ssd-smart-loki.service <<'EOF'
 [Unit]
-Description=Push SSD SMART + RAID metrics to Loki (.120)
+Description=Push SSD SMART + RAID metrics to Loki (.20)
 After=network-online.target
 Wants=network-online.target
 [Service]

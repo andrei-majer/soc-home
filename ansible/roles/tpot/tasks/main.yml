@@ -67,7 +67,7 @@
 # Wazuh agent localfile inputs — JSON honeypot logs (added 2026-06-01).
 # Agent install is manual (matches existing convention; see docs/runbooks/
 # tpot-rebuild.md Wazuh agent section). Only the localfile block is
-# Ansible-managed via blockinfile — matches the Zeek-on-.120 idiom.
+# Ansible-managed via blockinfile — matches the Zeek-on-.20 idiom.
 # JSON-emitting honeypots only — Heralding (CSV), RDPY/Mailoney/Citrixhoneypot
 # (text) deferred until decoders exist.
 # ============================================================================

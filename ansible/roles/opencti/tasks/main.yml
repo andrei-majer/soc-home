@@ -1,6 +1,6 @@
 ---
 # ============================================================================
-# OpenCTI role — Docker Compose stack, connectors, backup (host .135)
+# OpenCTI role — Docker Compose stack, connectors, backup (host .22)
 # ============================================================================
 
 - name: Ensure OpenCTI install dir exists

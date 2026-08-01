@@ -47,8 +47,8 @@
   Builds the Packer .box only. Safe to run on any host with VBox.
 
 .EXAMPLE
-  .\deploy.ps1 -Mode dr -Hosts suricata-120 -Profile minimal
-  Brings up only .120 with reduced specs (testing).
+  .\deploy.ps1 -Mode dr -Hosts suricata-20 -Profile minimal
+  Brings up only .20 with reduced specs (testing).
 #>
 [CmdletBinding()]
 param(
@@ -292,7 +292,7 @@ function Invoke-PhaseConverge {
   Write-Step "phase converge: ansible-playbook site.yml"
 
   if (-not (Get-Command ansible-playbook -ErrorAction SilentlyContinue)) {
-    Write-Fail "ansible-playbook not in PATH. Install via 'pip install ansible-core>=2.15' or run convergence remotely from the new .120 control node."
+    Write-Fail "ansible-playbook not in PATH. Install via 'pip install ansible-core>=2.15' or run convergence remotely from the new .20 control node."
   }
 
   $repoRoot     = Split-Path -Parent $script:BootstrapRoot

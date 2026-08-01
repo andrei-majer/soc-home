@@ -1,7 +1,7 @@
 ---
 # ============================================================================
 # ELK role - manages Elasticsearch, Kibana, Logstash, Filebeat, and index
-# cleanup on the .133 host.
+# cleanup on the .21 host.
 # ============================================================================
 
 # ---------- Elasticsearch ----------

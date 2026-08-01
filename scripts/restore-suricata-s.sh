@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# restore-suricata-s.sh — Restore .120 from a backup archive on a fresh Debian 12 machine
+# restore-suricata-s.sh — Restore .20 from a backup archive on a fresh Debian 12 machine
 #
 # Prerequisites:
-#   - Fresh Debian 12 (bookworm) install, same IP (192.168.1.120), same interface (enp0s8)
+#   - Fresh Debian 12 (bookworm) install, same IP (192.168.1.20), same interface (enp0s8)
 #   - Copy backup archive here first:
-#       scp soc-s-backup-*.tar.gz root@192.168.1.120:/root/
+#       scp soc-s-backup-*.tar.gz root@192.168.1.20:/root/
 #   - Run as root: bash restore-suricata-s.sh [--snort] [--snort-build] soc-s-backup-YYYYMMDD-HHMMSS.tar.gz
 #
 # Flags:
@@ -39,7 +39,7 @@ if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
     exit 1
 fi
 
-MISP_URL="http://192.168.1.133"
+MISP_URL="http://192.168.1.21"
 MISP_KEY="REDACTED"   # set to your MISP automation key before running
 
 SURICATA_VERSION="1:7.0.10-1"   # adjust if OBS repo has moved on
@@ -153,10 +153,10 @@ apt-get update -qq
 WAZUH_AGENT_VERSION=$(apt-cache show wazuh-agent 2>/dev/null \
     | grep "^Version:" | grep "${WAZUH_VERSION}" | head -1 | awk '{print $2}')
 if [ -n "$WAZUH_AGENT_VERSION" ]; then
-    WAZUH_MANAGER="192.168.1.133" apt-get install -y "wazuh-agent=${WAZUH_AGENT_VERSION}"
+    WAZUH_MANAGER="192.168.1.21" apt-get install -y "wazuh-agent=${WAZUH_AGENT_VERSION}"
 else
     warn "  Exact Wazuh version ${WAZUH_VERSION} not found — installing latest 4.x"
-    WAZUH_MANAGER="192.168.1.133" apt-get install -y wazuh-agent
+    WAZUH_MANAGER="192.168.1.21" apt-get install -y wazuh-agent
 fi
 
 # ── EveBox ────────────────────────────────────────────────────
@@ -462,9 +462,9 @@ echo "    systemctl status suricata fail2ban grafana-server filebeat"
 echo "    tail -f /var/log/suricata/eve.json | python3 -m json.tool | head -40"
 echo ""
 echo "  Dashboards:"
-echo "    Grafana:      http://192.168.1.120:3000  (admin / CHANGEME)"
-echo "    EveBox:       http://192.168.1.120:8080"
-echo "    Velociraptor: http://192.168.1.120:8889"
+echo "    Grafana:      http://192.168.1.20:3000  (admin / CHANGEME)"
+echo "    EveBox:       http://192.168.1.20:8080"
+echo "    Velociraptor: http://192.168.1.20:8889"
 echo ""
 if [ "$RESTORE_SNORT" = "true" ]; then
     echo "  Snort:"
@@ -477,7 +477,7 @@ warn "  Manual steps if needed:"
 echo "    1. Verify enp0s8 is promiscuous (check /etc/network/interfaces.d/enp0s8-promisc)"
 echo "    2. suricata-enforcer: systemctl enable --now suricata-enforcer (disable fail2ban first)"
 echo "    3. Arkime: manual capture start via UI at :8005"
-echo "    4. Wazuh: confirm agent enrolled to 192.168.1.133:1514"
+echo "    4. Wazuh: confirm agent enrolled to 192.168.1.21:1514"
 if [ "$RESTORE_SNORT" = "true" ]; then
     echo "    5. Snort rules: run /usr/local/bin/snort3-update-rules.sh to pull latest"
     echo "    6. If Snort won't start: journalctl -u snort3 -n 30 — do NOT use --tweaks balanced"

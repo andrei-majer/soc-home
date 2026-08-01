@@ -1,7 +1,7 @@
 ---
 # ============================================================================
 # wazuh-manager role — ossec.conf, rules, ntfy, TAXII, dashboard
-# Targets the .133 host (elk-21)
+# Targets the .21 host (elk-21)
 # ============================================================================
 
 # ---------- Wazuh apt repository ----------

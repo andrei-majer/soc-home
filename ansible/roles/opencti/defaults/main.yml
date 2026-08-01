@@ -1,5 +1,5 @@
 ---
-# OpenCTI Docker Compose stack (host .135)
+# OpenCTI Docker Compose stack (host .22)
 
 opencti_install_dir: /opt/opencti
 opencti_config_dir: /opt/opencti/config

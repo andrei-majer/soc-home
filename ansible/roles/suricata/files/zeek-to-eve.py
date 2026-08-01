@@ -7,7 +7,7 @@ service tails Zeek's already-JSON logs, remaps them to the EVE schema, and
 appends them to a STANDALONE file that EveBox reads as a second input.
 
 It deliberately writes its own file, never Suricata's /var/log/suricata/eve.json:
-the .120 Wazuh agent reads that file directly and Zeek's wide records would
+the .20 Wazuh agent reads that file directly and Zeek's wide records would
 overflow its JSON decoder (the field-explosion fixed in commit 8f9270b).
 
 conn/ssl/http records that belong to one connection share Zeek's `uid`; we hash

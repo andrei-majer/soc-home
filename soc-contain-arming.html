@@ -92,7 +92,7 @@
 
 <h1>soc-contain — Arming Guide</h1>
 <p class="subtitle">Taking the SOAR-lite containment fabric (and the new <code>vr_quarantine</code> L2 lockdown) live — safely, observed, reversibly</p>
-<p class="stamp">Operator reference · .120 · updated 2026-06-26 · local-only (not in public soc-home)</p>
+<p class="stamp">Operator reference · .20 · updated 2026-08-01 · soc-home is private since 2026-07-11</p>
 <div class="badges">
   <span class="badge b-live">base fabric: ARMED &amp; LIVE</span>
   <span class="badge b-staged">vr_quarantine: BUILT · STAGED</span>
@@ -129,7 +129,7 @@
     <li><code>vr_quarantine</code> — schedules Velociraptor's <code>Windows.Remediation.Quarantine</code> (a <b>Windows local IPsec policy</b> named <code>VelociraptorQuarantine</code>) on the host's <b>pinned</b> VR client. This is the <span class="blue-t">L2 lockdown</span> the gateway drop can't do on a flat /24 — it stops same-subnet lateral movement.</li>
   </ul>
   <div class="callout c-ok">
-    <b>Fail-safe by design.</b> vr_quarantine <b>confirms enforcement</b> (polls <code>flows()</code> to <code>FINISHED</code>) before recording containment. If it can't confirm, the result is <code>pending</code> → a loud <span class="warn-t">L2 UNCONFIRMED</span> ntfy and <b>no containment row is written</b> (never a false "contained"). DNS is permitted only to <code>192.168.1.1</code>; the artifact also auto-keeps the VR-server path and self-removes if it would cut itself off.
+    <b>Fail-safe by design.</b> vr_quarantine <b>confirms enforcement</b> (polls <code>flows()</code> to <code>FINISHED</code>) before recording containment. If it can't confirm, the result is <code>pending</code> → a loud <span class="warn-t">L2 UNCONFIRMED</span> Telegram alert and <b>no containment row is written</b> (never a false "contained"). DNS is permitted only to <code>192.168.1.1</code>; the artifact also auto-keeps the VR-server path and self-removes if it would cut itself off.
   </div>
 </div>
 
@@ -137,7 +137,7 @@
 <div class="section">
   <h2>3 · Arm it — the observed round-trip</h2>
   <div class="callout c-danger">
-    <b class="danger-t">⚠ This makes the SOC able to cut <code>.13</code> (your workstation) off the LAN.</b> Do the first fire <b>observed</b>, from a session that survives the cutoff (the <code>.120</code> console or Tailscale, not a LAN SSH from <code>.13</code>), with the break-glass (§7) ready. The <code>release-host</code> command and the kill-switch are your undo.
+    <b class="danger-t">⚠ This makes the SOC able to cut <code>.13</code> (your workstation) off the LAN.</b> Do the first fire <b>observed</b>, from a session that survives the cutoff (the <code>.20</code> console or Tailscale, not a LAN SSH from <code>.13</code>), with the break-glass (§7) ready. The <code>release-host</code> command and the kill-switch are your undo.
   </div>
 
   <div class="step">
@@ -151,7 +151,7 @@
   <div class="step">
     <div class="num">2</div>
     <h3>Fire it for real — watch <code>.13</code></h3>
-    <p>From the <code>.120</code> console (config is already <code>dry_run: false</code>):</p>
+    <p>From the <code>.20</code> console (config is already <code>dry_run: false</code>):</p>
     <pre><code>soc-contain dispatch --rule-id 100307 --src-ip 192.168.1.13 --category canary
 soc-contain status
 <span class="out"># status should show host=192.168.1.13 with BOTH vr_quarantine and router_isolate</span></code></pre>
@@ -195,7 +195,7 @@ systemctl is-active soc-contain-receiver   <span class="out"># → active</span>
   <h2>4 · What fires once armed (policy.yml)</h2>
   <table>
     <tr><th>Tier</th><th>Trigger</th><th>Actuators</th></tr>
-    <tr><td><span class="tier-t0">T0 · auto</span></td><td><code>category: canary</code> (anyone touches the <code>.140</code> decoys)</td><td><code>vr_collect</code> + <b>isolate</b> → managed: <code>vr_quarantine</code> + <code>router_isolate</code></td></tr>
+    <tr><td><span class="tier-t0">T0 · auto</span></td><td><code>category: canary</code> (anyone touches the <code>.24</code> decoys)</td><td><code>vr_collect</code> + <b>isolate</b> → managed: <code>vr_quarantine</code> + <code>router_isolate</code></td></tr>
     <tr><td><span class="tier-t0">T0 · auto</span></td><td>rule <code>100030 / 100031 / 100040</code> (confirmed-C2 IOC)</td><td><code>router_ban_dest</code> + <code>vr_collect</code></td></tr>
     <tr><td><span class="tier-t0">T0 · auto</span></td><td>rule <code>100041</code> (DNS IOC, Sysmon EID 22)</td><td><code>adguard_sinkhole</code> + <code>vr_collect</code></td></tr>
     <tr><td><span class="tier-t1">T1 · approve</span></td><td><code>category: exfil_volume</code> (Zeek LargeTransfer, rule 100202)</td><td><code>router_ban_dest</code> — one-click <code>soc-contain approve &lt;id&gt;</code></td></tr>
@@ -209,11 +209,11 @@ systemctl is-active soc-contain-receiver   <span class="out"># → active</span>
   <h2>5 · Guardrails (enforced in code, not just config)</h2>
   <table>
     <tr><th>Guardrail</th><th>Behaviour</th></tr>
-    <tr><td>Infra hard-protect</td><td>The 8 SOC IPs (<code>.1 .15 .120 .133 .135 .130 .125 .140</code>) are refused as an action target <i>and</i> as a ban destination → audited <code>refused_infra</code>. It cannot isolate the router, hypervisor, or SOC hosts.</td></tr>
-    <tr><td class="warn-t">.13 caveat</td><td><code>.13</code> is <b>managed</b>, NOT infra — a T0 canary/IOC trip <b>can</b> isolate + quarantine your workstation. Release is manual. Tailscale still reaches it; the kill-switch lives on <code>.120</code>.</td></tr>
+    <tr><td>Infra hard-protect</td><td>The 8 SOC IPs (<code>.1 .15 .20 .21 .22 .23 .25 .24</code>) are refused as an action target <i>and</i> as a ban destination → audited <code>refused_infra</code>. It cannot isolate the router, hypervisor, or SOC hosts.</td></tr>
+    <tr><td class="warn-t">.13 caveat</td><td><code>.13</code> is <b>managed</b>, NOT infra — a T0 canary/IOC trip <b>can</b> isolate + quarantine your workstation. Release is manual. Tailscale still reaches it; the kill-switch lives on <code>.20</code>.</td></tr>
     <tr><td>Dedup</td><td><code>dedup_window: 3600 s</code> suppresses repeat (rule, target).</td></tr>
     <tr><td>Release model</td><td>Channel/DNS/router bans auto-release at the 1 h TTL via the reaper. <b>Host-isolation</b> (<code>router_isolate</code>, <code>tailscale_cut</code>, <code>vr_quarantine</code>) is <b>manual-release only</b> (TTL = null — the reaper never auto-lifts it).</td></tr>
-    <tr><td>Confirm-or-pending</td><td>vr_quarantine writes a containment row only when <code>flows()</code> reaches <code>FINISHED</code>. Unconfirmed → <code>pending</code> + loud ntfy + <b>no row</b>.</td></tr>
+    <tr><td>Confirm-or-pending</td><td>vr_quarantine writes a containment row only when <code>flows()</code> reaches <code>FINISHED</code>. Unconfirmed → <code>pending</code> + loud Telegram alert + <b>no row</b>.</td></tr>
     <tr><td>Kill-switch in loop</td><td>The dispatch action loop re-checks the kill-switch before <i>each</i> actuator — a mid-incident brake halts the remaining actions.</td></tr>
   </table>
 </div>
@@ -227,7 +227,7 @@ systemctl is-active soc-contain-receiver   <span class="out"># → active</span>
     <tr><td>Resume</td><td><code>rm /etc/soc-contain/DISABLED</code> &nbsp;or&nbsp; <code>soc-contain enable</code></td></tr>
     <tr><td>Release one host (all its rows)</td><td><code>soc-contain release-host &lt;src_ip&gt;</code></td></tr>
     <tr><td>Release one containment by id</td><td><code>soc-contain release --id &lt;n&gt;</code></td></tr>
-    <tr><td>Full disarm (back to log-only)</td><td>set <code>soc_contain_dry_run: true</code> in soc-ansible host_vars → <code>ansible-playbook playbooks/site.yml --limit suricata-120</code></td></tr>
+    <tr><td>Full disarm (back to log-only)</td><td>set <code>soc_contain_dry_run: true</code> in soc-ansible host_vars → <code>ansible-playbook playbooks/site.yml --limit suricata-20</code></td></tr>
   </table>
   <div class="callout c-warn">
     The kill-switch stops <b>new</b> containment; it does <b>not</b> undo bans already in place. It persists across reboot (file on disk), so it's safe as a "don't act until I say so" hold.
@@ -240,7 +240,7 @@ systemctl is-active soc-contain-receiver   <span class="out"># → active</span>
   <p>If the operator is locked out or the VR channel is down. Full detail: <code>docs/runbooks/soc-contain-quarantine-breakglass.md</code>. In order of preference:</p>
   <table>
     <tr><th>#</th><th>Method</th><th>How</th></tr>
-    <tr><td>A</td><td>Normal (VR up)</td><td><code>soc-contain release-host 192.168.1.13</code> on <code>.120</code></td></tr>
+    <tr><td>A</td><td>Normal (VR up)</td><td><code>soc-contain release-host 192.168.1.13</code> on <code>.20</code></td></tr>
     <tr><td>B</td><td>VR server</td><td>Re-run <code>Windows.Remediation.Quarantine</code> on the client with <code>RemovePolicy</code> (GUI, or CLI — confirm the <code>--client_id</code> flag)</td></tr>
     <tr><td>C</td><td>Local VR binary on <code>.13</code></td><td><code>velociraptor.exe artifacts collect Windows.Remediation.Quarantine --args RemovePolicy=Y</code> (elevated)</td></tr>
     <tr><td>D</td><td class="danger-t">Raw, no VR</td><td>elevated on <code>.13</code> — see below</td></tr>
@@ -263,13 +263,13 @@ Test-NetConnection 192.168.1.1 ; Resolve-DnsName example.com</code></pre>
     <tr><th>Item</th><th>Value</th></tr>
     <tr><td>Service repo (live, local-only)</td><td><code>/opt/soc-contain</code> · HEAD <code>54e1972</code> · 186 tests</td></tr>
     <tr><td>Public mirror (sanitized)</td><td><a href="https://github.com/andrei-majer/soc-contain">github.com/andrei-majer/soc-contain</a></td></tr>
-    <tr><td>Receiver</td><td><code>192.168.1.120:8765</code> · systemd <code>soc-contain-receiver</code> (LAN-only, Bearer-auth)</td></tr>
+    <tr><td>Receiver</td><td><code>192.168.1.20:8765</code> · systemd <code>soc-contain-receiver</code> (LAN-only, Bearer-auth)</td></tr>
     <tr><td>Config / policy</td><td><code>/etc/soc-contain/config.yml</code> (vault-rendered) · <code>/etc/soc-contain/policy.yml</code></td></tr>
     <tr><td>Kill-switch</td><td><code>/etc/soc-contain/DISABLED</code></td></tr>
     <tr><td>Audit / state</td><td><code>/var/log/soc-contain/audit.log</code> · <code>/var/lib/soc-contain/state.db</code> · <code>soc-contain review</code></td></tr>
     <tr><td>Managed VR client</td><td><code>.13</code> → <code>C.0000000000000000</code> (Windows)</td></tr>
-    <tr><td>ntfy</td><td><code>192.168.1.120:8090</code>, topic <code>soc-contain-*</code></td></tr>
-    <tr><td>Deploy / arm config</td><td>soc-ansible <code>inventory/host_vars/suricata-120/vars.yml</code> → <code>soc_contain_dry_run</code></td></tr>
+    <tr><td>Telegram</td><td>Bot API via <code>telegram.bot_token</code> / <code>chat_id</code> in <code>config.yml</code> (vault-backed); per-tier priorities <code>priority_t0_armed</code> … <code>priority_reaper_failed</code>. Migrated off self-hosted ntfy on 2026-06-29.</td></tr>
+    <tr><td>Deploy / arm config</td><td>soc-ansible <code>inventory/host_vars/suricata-20/vars.yml</code> → <code>soc_contain_dry_run</code></td></tr>
   </table>
 </div>
 
