@@ -379,9 +379,9 @@ soc-home/
 │   └── docs/
 │       ├── plans/                      # historical implementation plans (pre-renumber IPs)
 │       ├── specs/                      # historical design specs (pre-renumber IPs)
+│       ├── archive/                    # superseded material — see its README before using
 │       └── runbooks/
 │           ├── windows-13.md           # .13 Windows workstation rebuild
-│           ├── windows-15.md           # .15 as Windows — superseded by the Ubuntu migration
 │           ├── hypervisor-15.md        # .15 Ubuntu hypervisor rebuild
 │           ├── tpot-rebuild.md         # T-Pot HIVE + Sensor rebuild
 │           ├── misp-rebuild.md         # MISP from-scratch rebuild

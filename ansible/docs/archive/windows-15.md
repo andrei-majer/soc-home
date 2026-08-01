@@ -1,4 +1,10 @@
-# Runbook: Windows Hypervisor (192.168.1.15)
+# Runbook: Windows Hypervisor (192.168.1.15) — ARCHIVED
+
+> **Superseded 2026-06-08.** `.15` was migrated from Windows 11 Pro to Ubuntu
+> 24.04; the live runbook is `../runbooks/hypervisor-15.md` and the host stack is
+> now Ansible-managed via `roles/hypervisor`. Nothing here describes the current
+> host — it is kept only so the Windows-era VM inventory, scheduled tasks, and
+> VBoxManage invocations remain recoverable. Do not follow it.
 
 Windows 11 Pro VirtualBox host running the SOC lab VMs. NOT managed by Ansible.
 
