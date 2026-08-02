@@ -60,3 +60,7 @@ openwrt_optional_files:
     dest: config-samba4
   - src: /etc/init.d/AdGuardHome
     dest: initd-AdGuardHome
+  - src: /etc/config/network
+    dest: config-network
+  - src: /etc/config/wireless
+    dest: config-wireless
