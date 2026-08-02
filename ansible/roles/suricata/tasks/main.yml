@@ -2,7 +2,7 @@
 # ============================================================================
 # Suricata role - manages Suricata IDS, Snort 3, fail2ban, Filebeat,
 # iprep feeds, MISP integration, Arkime, Velociraptor, and suricata-enforcer
-# on the .20 host.
+# on the .120 host.
 # ============================================================================
 
 # ---------- Wazuh apt repository ----------
@@ -472,21 +472,21 @@
     job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Sys.StartupItems"], timeout=1200) FROM scope()' >/dev/null 2>&1
   tags: velociraptor
 
-- name: Velociraptor | schedule Pslist on .20 (15 min)
+- name: Velociraptor | schedule Pslist on .120 (15 min)
   ansible.builtin.cron:
     name: velociraptor-pslist-lin
     minute: "*/15"
     job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Sys.Pslist"], timeout=1200) FROM scope()' >/dev/null 2>&1
   tags: velociraptor
 
-- name: Velociraptor | schedule Netstat on .20 (15 min)
+- name: Velociraptor | schedule Netstat on .120 (15 min)
   ansible.builtin.cron:
     name: velociraptor-netstat-lin
     minute: "*/15"
     job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Network.Netstat"], timeout=1200) FROM scope()' >/dev/null 2>&1
   tags: velociraptor
 
-- name: Velociraptor | schedule Services on .20 (30 min)
+- name: Velociraptor | schedule Services on .120 (30 min)
   ansible.builtin.cron:
     name: velociraptor-services-lin
     minute: "4-59/30"
@@ -783,7 +783,7 @@
   notify: Restart grafana-server
 
 # ---------- Zeek -> Wazuh agent (lean integration) ----------
-# The .20 agent ossec.conf is NOT fully templated by Ansible (set up manually),
+# The .120 agent ossec.conf is NOT fully templated by Ansible (set up manually),
 # so append only the Zeek localfiles via a marker-delimited block. Wazuh's
 # built-in JSON decoder parses these; manager local rules 1002xx do the alerting.
 - name: Add Zeek log inputs to Wazuh agent (notice + dns)
@@ -807,7 +807,7 @@
 # ---------- Zeek -> EveBox bridge ----------
 # Translates Zeek conn/ssl/http JSON to Suricata EVE so EveBox renders Zeek
 # flow/TLS/HTTP metadata next to alerts. Writes a STANDALONE /var/log/zeek-eve/
-# eve.json that EveBox reads as a 2nd input — never Suricata's eve.json (the .20
+# eve.json that EveBox reads as a 2nd input — never Suricata's eve.json (the .120
 # Wazuh agent reads that directly; Zeek's wide records would overflow its JSON
 # decoder). Runs as the evebox user (already in the zeek group → reads the logs).
 # NOTE: the matching EveBox input-path lives in hand-maintained evebox.yaml —
@@ -849,6 +849,31 @@
 - name: Enable and start zeek-to-eve
   ansible.builtin.systemd:
     name: zeek-to-eve
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# ── Canarytokens → Telegram relay (added 2026-08-02) ─────────────────────────
+# /etc/canary-relay.conf (TG_TOKEN/TG_CHAT/HOOK_SECRET, 0600) is manually
+# managed, like the router watchdog conf — Ansible ships only the secret-free
+# script + unit. Public path: nginx on .1 /canary-hook/<secret> → .20:8766.
+- name: Deploy canary-telegram-relay script
+  ansible.builtin.copy:
+    src: canary-telegram-relay.py
+    dest: /usr/local/bin/canary-telegram-relay.py
+    mode: "0755"
+  notify: Restart canary-telegram-relay
+
+- name: Deploy canary-telegram-relay unit
+  ansible.builtin.copy:
+    src: canary-telegram-relay.service
+    dest: /etc/systemd/system/canary-telegram-relay.service
+    mode: "0644"
+  notify: Restart canary-telegram-relay
+
+- name: Ensure canary-telegram-relay is enabled and running
+  ansible.builtin.systemd:
+    name: canary-telegram-relay
     enabled: true
     state: started
     daemon_reload: true

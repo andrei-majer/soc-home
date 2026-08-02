@@ -64,3 +64,23 @@ alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Phishing Sit
 
 alert ip $EXTERNAL_NET any -> $HOME_NET any (msg:"IPREP Inbound from Spam/Blacklisted Host"; iprep:src,spam,>,50; classtype:misc-activity; priority:3; sid:9000010; rev:1;)
 alert ip $HOME_NET any -> $EXTERNAL_NET any (msg:"IPREP Outbound to Spam/Blacklisted Host"; iprep:dst,spam,>,50; classtype:misc-activity; priority:3; sid:9000011; rev:1;)
+
+# ── Exfil / stealer endpoints (supply-chain incident class, added 2026-08-02) ─
+# Common credential-exfil + OAST endpoints. SIDs 9100001-9100024. Alert-only.
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query webhook.site"; dns.query; content:"webhook.site"; nocase; classtype:policy-violation; priority:2; sid:9100001; rev:1;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"EXFIL TLS SNI webhook.site"; tls.sni; content:"webhook.site"; nocase; classtype:policy-violation; priority:2; sid:9100002; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query transfer.sh"; dns.query; content:"transfer.sh"; nocase; classtype:policy-violation; priority:2; sid:9100003; rev:1;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"EXFIL TLS SNI transfer.sh"; tls.sni; content:"transfer.sh"; nocase; classtype:policy-violation; priority:2; sid:9100004; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query oastify.com (Burp Collaborator)"; dns.query; content:"oastify.com"; nocase; classtype:trojan-activity; priority:1; sid:9100005; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query burpcollaborator.net"; dns.query; content:"burpcollaborator.net"; nocase; classtype:trojan-activity; priority:1; sid:9100006; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query interact.sh OAST"; dns.query; content:"interact.sh"; nocase; classtype:trojan-activity; priority:1; sid:9100007; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query file.io"; dns.query; content:"file.io"; nocase; classtype:policy-violation; priority:2; sid:9100008; rev:1;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"EXFIL TLS SNI file.io"; tls.sni; content:"file.io"; endswith; nocase; classtype:policy-violation; priority:2; sid:9100009; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query gofile.io"; dns.query; content:"gofile.io"; nocase; classtype:policy-violation; priority:2; sid:9100010; rev:1;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"EXFIL TLS SNI gofile.io"; tls.sni; content:"gofile.io"; nocase; classtype:policy-violation; priority:2; sid:9100011; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query pastebin.com"; dns.query; content:"pastebin.com"; nocase; classtype:policy-violation; priority:3; sid:9100012; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query paste.ee"; dns.query; content:"paste.ee"; nocase; classtype:policy-violation; priority:2; sid:9100013; rev:1;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"EXFIL TLS SNI ngrok tunnel"; tls.sni; content:"ngrok"; nocase; classtype:policy-violation; priority:2; sid:9100014; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"EXFIL DNS query ngrok tunnel"; dns.query; content:"ngrok"; nocase; classtype:policy-violation; priority:2; sid:9100015; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"CANARY TOKEN triggered from LAN (canarytokens.com lookup)"; dns.query; content:"canarytokens.com"; nocase; classtype:trojan-activity; priority:1; sid:9100016; rev:1;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"CANARY TOKEN triggered from LAN (canarytokens.com TLS)"; tls.sni; content:"canarytokens.com"; nocase; classtype:trojan-activity; priority:1; sid:9100017; rev:1;)
