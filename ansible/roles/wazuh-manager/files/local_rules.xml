@@ -72,7 +72,7 @@
 
   <!-- Sysmon EID 3: outbound connection to OpenCTI IOC IP -->
   <rule id="100040" level="10">
-    <if_sid>61603</if_sid>
+    <if_sid>61605</if_sid>
     <list field="data.win.eventdata.destinationIp" lookup="match_key">etc/lists/opencti-ioc</list>
     <description>Sysmon: outbound connection to OpenCTI IOC $(data.win.eventdata.destinationIp)</description>
     <group>sysmon,opencti,threat_intel,soc-contain,</group>
@@ -288,6 +288,30 @@
     <field name="src_ip" type="pcre2">^192\.168\.1\.</field>
     <description>T-Pot Elasticpot lateral movement: $(src_ip) -> .23:9200 $(eventid)</description>
     <group>tpot,attack,</group>
+  </rule>
+
+</group>
+
+<!-- ================================================================
+     Supply-chain / package-install rules (100050-100059) - 2026-08-02
+     ================================================================ -->
+<group name="local,sysmon,supply_chain,">
+
+  <!-- Sysmon EID 1: shell/LOLBin spawned during a pip install (malicious setup.py) -->
+  <rule id="100050" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)pip(\.exe)?["']?\s+install|setup\.py|pip-script|pyproject_hooks|_in_process\.py</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|pwsh|wscript|cscript|mshta|rundll32|certutil|bitsadmin|curl)\.exe$</field>
+    <description>Sysmon: $(win.eventdata.image) spawned during package install - possible malicious setup.py</description>
+    <group>sysmon,supply_chain,attack,</group>
+  </rule>
+
+  <!-- Sysmon EID 3: pip.exe itself making an outbound connection (install moment) -->
+  <rule id="100051" level="7">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\pip(3(\.\d+)?)?\.exe$</field>
+    <description>Sysmon: pip outbound connection to $(win.eventdata.destinationIp):$(win.eventdata.destinationPort)</description>
+    <group>sysmon,supply_chain,</group>
   </rule>
 
 </group>
