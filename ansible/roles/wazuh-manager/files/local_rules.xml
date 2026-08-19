@@ -152,7 +152,7 @@
      ================================================================ -->
 <group name="canary,internal_tripwire,">
 
-  <!-- OpenCanary base: matches dst_host=.140 AND logtype present (sinkhole has
+  <!-- OpenCanary base: matches dst_host=.24 AND logtype present (sinkhole has
        no logtype field, only event=sinkhole_hit; this gate prevents 100300
        from firing on sinkhole events and letting 100306/307 chain instead). -->
   <rule id="100300" level="3">
