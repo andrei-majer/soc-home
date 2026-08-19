@@ -4,3 +4,27 @@
 # I219-V e1000e "Detected Hardware Unit Hang" (2026-07-06 LAN outage); pairs with
 # the eno1-disable-offload.service. Applies on next reboot.
 hypervisor_grub_cmdline_default: "pcie_aspm=off"
+
+# VM disks that must have TRIM passthrough (discard + nonrotational) enabled.
+# `medium` is the absolute VDI path; `controller` must match the VM's actual
+# storage controller name (VBoxManage showvminfo | grep storagecontrollername).
+# All six were set on 2026-08-20; this list keeps a rebuild from losing it.
+hypervisor_vm_trim:
+  - name: Suricata
+    controller: SCSI
+    medium: "/mnt/vms/Virtual Machines/Suricata/Debian 12.vdi"
+  - name: ELK
+    controller: SCSI
+    medium: "/mnt/vms/Virtual Machines/ELK/ELK.vdi"
+  - name: T-Pot Hive
+    controller: SCSI
+    medium: "/mnt/vms/Virtual Machines/T-Pot Hive/T-Pot Hive.vdi"
+  - name: T-Pot Sensor
+    controller: SATA
+    medium: "/mnt/vms/Virtual Machines/T-Pot Sensor/Honey.vdi"
+  - name: OpenCTi
+    controller: SCSI
+    medium: "/mnt/vms/Virtual Machines/OpenCTi/Debian13.vdi"
+  - name: OpenCanary
+    controller: SATA
+    medium: "/mnt/vms/Virtual Machines/OpenCanary/fileserver01.vdi"

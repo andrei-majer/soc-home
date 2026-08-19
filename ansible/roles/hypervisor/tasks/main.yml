@@ -293,3 +293,63 @@
     owner: root
     group: root
     mode: "0755"
+
+# ---------- VM disk TRIM (discard + nonrotational) ----------
+# 2026-08-20: audit found discard=off AND nonrotational=off on every substantial
+# VM (Suricata, ELK, T-Pot Hive, T-Pot Sensor, OpenCTi — only OpenCanary was
+# correct). With discard off a guest's deletes never release blocks: the VDI only
+# grows and the SSD FTL treats the entire ever-written footprint as live data, so
+# garbage collection and erase counts inflate. That is the leading explanation for
+# the SU800 pair dropping 100%->95% Remaining_Lifetime_Perc in ~6 weeks on only
+# ~0.7 TB of host writes (SM firmware derives that attribute from erase count,
+# not TBW). Host-side TRIM was already fine: fstrim.timer weekly, discard
+# advertised sdc/sdd -> md127 -> dm_crypt-0 -> vg0-lv--vms, lvm issue_discards=1.
+#
+# VBoxManage refuses --discard/--nonrotational while the VM is running (the .vbox
+# is locked), so this CANNOT converge a running VM. It therefore applies only to
+# powered-off VMs and merely REPORTS the rest — never stops a VM behind your back.
+# To fix a reported VM: ACPI-shutdown it, re-run, start it again.
+# Runs as andrei: VBoxManage under sudo addresses root's own VM registry, which is
+# empty (see memory feedback vboxmanage-runs-as-owner).
+- name: Query VM storage attributes
+  ansible.builtin.command:
+    cmd: "VBoxManage showvminfo {{ item.name | quote }} --machinereadable"
+  become: true
+  become_user: andrei
+  loop: "{{ hypervisor_vm_trim }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: hv_vminfo
+  changed_when: false
+  failed_when: false
+  check_mode: false   # read-only query; must run in --check or the TRIM logic below never evaluates
+
+- name: Enable discard + nonrotational on powered-off VM disks
+  ansible.builtin.command:
+    cmd: >-
+      VBoxManage storageattach {{ item.item.name | quote }}
+      --storagectl {{ item.item.controller }} --port 0 --device 0
+      --type hdd --medium {{ item.item.medium | quote }}
+      --nonrotational on --discard on
+  become: true
+  become_user: andrei
+  loop: "{{ hv_vminfo.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - item.rc == 0
+    - '"VMState=\"poweroff\"" in item.stdout'
+    - item.stdout is search(item.item.controller ~ '-(discard|nonrotational)-0-0"="off"')
+
+- name: Report running VMs that still need TRIM enabled
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.item.name }} is RUNNING with discard/nonrotational off —
+      ACPI-shutdown it and re-run this role, then start it again.
+  loop: "{{ hv_vminfo.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - item.rc == 0
+    - '"VMState=\"poweroff\"" not in item.stdout'
+    - item.stdout is search(item.item.controller ~ '-(discard|nonrotational)-0-0"="off"')

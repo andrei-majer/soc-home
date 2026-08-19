@@ -4,8 +4,10 @@
 # Requires root (smartctl + sysfs). Run from systemd ssd-smart-loki.timer (10 min).
 #
 # Topology since the 2026-07-02 encrypted-RAID1 reinstall:
-#   sdb + sdc = ADATA SU800 953GB  -> RAID1 (md126 root/home/vms, md127 /boot)
-#   sda       = Crucial MX300 525GB -> single-disk LUKS backup (/mnt/backup)
+#   2x ADATA SU800 953GB -> RAID1 (md126 root/home/vms, md127 /boot)
+#   Backup disk (Crucial MX300 525GB, /mnt/backup) REMOVED 2026-08-19.
+# Device letters shift whenever a disk is added/pulled, so enumerate /sys/block
+# instead of hardcoding sdX.
 # The two SSD families expose DIFFERENT SMART attribute IDs for life/writes, so
 # the awk below coalesces per-model: Crucial/Micron (202,246,197,198,187,173)
 # vs Silicon Motion / ADATA SU800 (169,241,160,199,167).
@@ -20,7 +22,9 @@ push() {  # $1 = stream-labels JSON fragment   $2 = logfmt line
 }
 
 # --- per-disk SMART ---
-for d in sda sdb sdc; do
+for p in /sys/block/sd*; do
+  d="${p##*/}"
+  [ -e "$p" ] || continue
   dev="/dev/$d"
   [ -b "$dev" ] || continue
   health=0
