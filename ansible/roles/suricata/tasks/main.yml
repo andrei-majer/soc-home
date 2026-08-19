@@ -108,13 +108,12 @@
     group: root
     mode: "0644"
 
-- name: Deploy suricata EVE logrotate config
-  ansible.builtin.copy:
-    src: suricata-eve.conf
-    dest: /etc/logrotate.d/suricata-eve
-    owner: root
-    group: root
-    mode: "0644"
+# NOTE: there was a "Deploy suricata EVE logrotate config" task here that copied
+# src: suricata-eve.conf (the fail2ban FILTER, [Definition]/failregex) into
+# /etc/logrotate.d/suricata-eve — a copy-paste of the filter's filename. logrotate
+# cannot parse that and would error on every run. Removed 2026-08-20; it had never
+# converged, so the file never existed live. EVE rotation is already covered by the
+# packaged /etc/logrotate.d/suricata (/var/log/suricata/*.json, daily, 200M, rotate 4).
 
 - name: Ensure suricata is enabled and running
   ansible.builtin.systemd:

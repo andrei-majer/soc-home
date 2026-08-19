@@ -2,7 +2,7 @@
 [Definition]
 # Bans an IP on the OpenWrt router by inserting it into the BanIP
 # blocklist.v4 nftables set (table inet banIP).
-# Requires SSH key auth from root@{{ fail2ban_router_ip }}20 → root@{{ fail2ban_router_ip }}.
+# Requires SSH key auth from root@{{ suricata_host }} → root@{{ fail2ban_router_ip }}.
 
 actionstart =
 actionstop  =
