@@ -11,9 +11,13 @@ User=andrei
 Group=vboxusers
 # Wait up to 60s for vboxdrv (matches soc-wake.sh cold-boot race handling)
 ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do [ -c /dev/vboxdrv ] && exit 0; sleep 1; done; echo "vboxdrv never appeared"; exit 1'
-ExecStart=/usr/bin/VBoxManage startvm Suricata --type headless
-ExecStop=/usr/bin/VBoxManage controlvm Suricata acpipowerbutton
+# Idempotent: if VM already running (e.g. needrestart-triggered systemctl restart
+# after a docker/qemu/vbox package upgrade), skip startvm to avoid session-lock race.
+# Root cause of 2026-08-11 06:00 outage: needrestart issued 'systemctl restart' after
+# unattended-upgrades; old ExecStop ACPI-shut the VM, then start raced the session lock.
+ExecStart=/bin/bash -c '/usr/bin/VBoxManage list runningvms | grep -q "\"Suricata\"" || /usr/bin/VBoxManage startvm Suricata --type headless'
 TimeoutStartSec=120
+# KillMode=process so systemctl stop only signals ExecStart (already exited); VBoxHeadless survives.
 KillMode=process
 
 [Install]

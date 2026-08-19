@@ -32,8 +32,22 @@ Installed 2026-04-03. Service name: **Sysmon64**.
 
 | Path | Purpose |
 |---|---|
-| `C:\tools\sysmon\sysmon-config.xml` | Active Sysmon configuration |
+| `C:\Program Files\Velociraptor\Tools\sysmonconfig-export.xml` | **ACTIVE configuration** (SwiftOnSecurity base, Velociraptor-deployed) — verified 2026-08-02 |
+| `C:\tools\sysmon\sysmon-config.xml` | Legacy config — **NOT loaded**; kept for reference only |
 | `C:\tools\sysmon\configure_wazuh_sysmon.ps1` | Setup/reload script — run elevated |
+
+> Confirm which config is live with `Sysmon64.exe -c` (prints "Config file" + hash). A Velociraptor
+> Sysmon flow can redeploy the stock SwiftOnSecurity file and silently revert local edits — re-check
+> after any VR-driven Sysmon change.
+
+**EID 3 is include-based** in this config (only a curated image list is logged, not everything).
+`python.exe`, `pythonw.exe`, `pip.exe` and `uv.exe` were added to that include list on 2026-08-02 to
+give install-time visibility for the malicious-package threat class (backup:
+`sysmonconfig-export.xml.bak-20260802`). Reload after editing:
+
+```powershell
+& 'C:\tools\sysmon\Sysmon64.exe' -c 'C:\Program Files\Velociraptor\Tools\sysmonconfig-export.xml'
+```
 
 ### Event types collected
 
@@ -49,7 +63,13 @@ Installed 2026-04-03. Service name: **Sysmon64**.
 
 ## Wazuh Agent
 
-Agent **008** (name `147_K`) reports to manager `192.168.1.21:1514`.
+Agent **003** (name `147_K`) reports to manager `192.168.1.21:1514`. (Earlier docs said 008 — that
+id predates the manager rebuild; `agent_control -l` on `.21` is authoritative.)
+
+File integrity monitoring for credential paths (`.aws`, `.ssh`, `soc-keys`, `.claude`, the PaperMill
+decoy `.env`) is pushed centrally from the manager via
+`/var/ossec/etc/shared/default/agent.conf` (`<agent_config os="Windows">`), **not** from this host's
+local `ossec.conf`. That shared file is currently hand-managed, not Ansible-templated.
 
 `C:\Program Files (x86)\ossec-agent\ossec.conf` contains a localfile block for the Sysmon channel:
 
@@ -66,8 +86,12 @@ Agent **008** (name `147_K`) reports to manager `192.168.1.21:1514`.
 |---|---|---|
 | 100030 | Suricata | IOC match (MISP-backed) |
 | 100031 | Suricata | IOC match (high confidence) |
-| 100040 | Sysmon | IOC match — network connect |
-| 100041 | Sysmon | IOC match — DNS query |
+| 100040 | Sysmon | IOC match — network connect (EID 3) |
+| 100041 | Sysmon | IOC match — DNS query (EID 22) |
+
+Rule 100040 chained on `if_sid 61603` (Sysmon **Event 1**) until 2026-08-02 and therefore could never
+fire; it now chains on `61605` (Event 3). Two alert-only supply-chain rules were added alongside it —
+see the `supply-chain-defenses` runbook.
 
 **Action:** `netsh.exe` adds a Windows Firewall block rule for the offending IP.
 **Timeout:** 3600 seconds (1 hour, auto-removed).

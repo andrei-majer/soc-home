@@ -134,6 +134,10 @@ chmod +x /usr/share/wol-relay/cgi-bin/wol
 /etc/init.d/nginx restart
 ```
 
+The backed-up vhost also contains a `location /canary-hook/` that proxies to the Canarytokens ->
+Telegram relay on `192.168.1.20:8766` (see the `supply-chain-defenses` runbook). It is inert until
+that service is running on `.20`; nothing extra is needed on the router.
+
 ---
 
 ## Phase 6 — Crontab
@@ -218,6 +222,9 @@ curl -sk https://xndrei.go.ro | head -5
 
 # WOL relay
 curl -sk "https://xndrei.go.ro/wol?token=<WOL_TOKEN>&mac=..." | head -5
+
+# Canarytokens webhook relay (expects: ok)
+curl -sk -X POST "https://xndrei.go.ro/canary-hook/<HOOK_SECRET>" -d '{"memo":"restore test"}'
 
 # Tailscale
 tailscale status

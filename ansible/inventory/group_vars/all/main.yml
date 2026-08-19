@@ -18,11 +18,7 @@ opencti_host: 192.168.1.22
 misp_host: 192.168.1.21
 router_host: 192.168.1.1
 
-ntfy_host: 192.168.1.20
-ntfy_port: 8090
-ntfy_base_url: "http://{{ ntfy_host }}:{{ ntfy_port }}"
-
-# ---------- Telegram alerting (migrating off ntfy 2026-06-29) ----------
+# ---------- Telegram alerting (ntfy removed 2026-08-01) ----------
 # Secrets in group_vars/all/vault.yml (vault_telegram_*). chat_id is also a
 # secret here so neither token nor chat leak to the public soc-home mirror.
 telegram_bot_token: "{{ vault_telegram_bot_token }}"
