@@ -85,15 +85,12 @@
   notify:
     - Restart wazuh-manager
 
-- name: Deploy custom-ntfy integration script (retired; left on disk for rollback)
-  ansible.builtin.copy:
-    src: custom-ntfy
-    dest: "{{ wazuh_ntfy_script }}"
-    owner: root
-    group: wazuh
-    mode: "0750"
-  notify:
-    - Restart wazuh-manager
+# The "Deploy custom-ntfy integration script" task was removed 2026-08-20. ntfy was
+# fully replaced by custom-telegram on 2026-06-29 and NOT kept for rollback: the
+# roles/wazuh-manager/files/custom-ntfy source file is gone and wazuh_ntfy_script is
+# no longer defined in defaults, so the task failed every converge of elk-21 with
+# "'wazuh_ntfy_script' is undefined". Nothing references the integration any more
+# (ossec.conf.j2 wires custom-telegram only).
 
 # ---------- soc-contain AR ----------
 

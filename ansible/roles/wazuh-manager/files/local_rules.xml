@@ -214,7 +214,7 @@
 </group>
 
 <!-- ================================================================
-     T-Pot internal lateral-movement rules (100400-100409)
+     T-Pot internal lateral-movement rules (100400-100419)
      Only LAN-source hits page - external internet noise stays in T-Pot
      Kibana on .23:64297, unchanged. Field paths confirmed empirically:
      Cowrie/Dionaea/Heralding/Honeytrap/Tanner all emit src_ip at TOP
@@ -261,18 +261,53 @@
     <group>tpot,attack,</group>
   </rule>
 
-  <!-- Tanner (HTTP). Decoded as peer.ip / peer.port nested. -->
-  <rule id="100404" level="3">
+  <!-- RETIRED 2026-08-20: rules 100404/100405 (Tanner HTTP) removed. Tanner is NOT
+       deployed in this T-Pot profile at all - tanner_report.json has been 0 bytes
+       since 2026-06-01 - so the rules could never fire. Its localfile was dropped
+       from roles/tpot at the same time. IDs 100404/100405 left retired, not reused.
+       Replaced by h0neytr4p below, which is the HTTP honeypot actually running. -->
+
+  <!-- h0neytr4p (HTTP/HTTPS). Field paths verified with wazuh-logtest against a real
+       event: src_ip / dest_port / request_method / request_uri / trapped are all TOP
+       level (no nesting). "trapped" is the distinguishing key - no other ingested
+       honeypot emits it. -->
+  <rule id="100408" level="3">
     <decoded_as>json</decoded_as>
-    <field name="peer.ip" type="pcre2">.+</field>
-    <field name="path" type="pcre2">.+</field>
-    <description>T-Pot Tanner HTTP hit (silent base)</description>
+    <field name="trapped" type="pcre2">^(true|false)$</field>
+    <field name="request_uri" type="pcre2">.+</field>
+    <description>T-Pot h0neytr4p HTTP hit (silent base)</description>
   </rule>
 
-  <rule id="100405" level="12">
-    <if_sid>100404</if_sid>
-    <field name="peer.ip" type="pcre2">^192\.168\.1\.</field>
-    <description>T-Pot Tanner lateral movement: $(peer.ip) -> .23 HTTP $(method) $(path)</description>
+  <!-- NOTE: browsing https://192.168.1.23 from a workstation trips this - 10 of the
+       13 historical events came from .13. That is intended (a trip-wire that ignores
+       your own hosts is useless), but expect the FP when inspecting the hive. -->
+  <rule id="100409" level="12">
+    <if_sid>100408</if_sid>
+    <field name="src_ip" type="pcre2">^192\.168\.1\.</field>
+    <description>T-Pot h0neytr4p lateral movement: $(src_ip) -> .23:$(dest_port) $(request_method) $(request_uri)</description>
+    <group>tpot,attack,</group>
+  </rule>
+
+  <!-- redishoneypot. Verified with wazuh-logtest: action / addr / level / time at TOP
+       level, and the source is a COMBINED "addr" field (ip:port) - there is NO src_ip,
+       so a copied src_ip rule would silently never match.
+       TRAP: "action" is a Wazuh STATIC field, so referencing it as a generic field
+       element is rejected outright - analysisd logs "Field 'action' is static" and
+       refuses to load the ENTIRE ruleset. The dedicated action element must be used
+       instead. Same applies to srcip/dstip/status/url/id/protocol/hostname/user. -->
+  <rule id="100410" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="addr" type="pcre2">^\d{1,3}(\.\d{1,3}){3}:\d+$</field>
+    <description>T-Pot redishoneypot hit (silent base)</description>
+  </rule>
+
+  <!-- Gated on NewConnect: each session emits NewConnect + info + Closed, so alerting
+       on the base rule would page three times per connection. -->
+  <rule id="100411" level="12">
+    <if_sid>100410</if_sid>
+    <action>NewConnect</action>
+    <field name="addr" type="pcre2">^192\.168\.1\.</field>
+    <description>T-Pot redishoneypot lateral movement: $(addr) -> .23:6379</description>
     <group>tpot,attack,</group>
   </rule>
 
