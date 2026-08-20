@@ -49,20 +49,26 @@ LOCAL="$(short "$BRANCH")"
 ok "local $BRANCH = $LOCAL (clean)"
 
 # --- 1. GitHub (canonical - hard fail) --------------------------------------
-if git push origin "$BRANCH" >/dev/null 2>&1; then
+# Show the output on failure: the pre-push hook rejects unparseable files, and a
+# bare "FAIL" with the reason swallowed would be useless.
+if out=$(git push origin "$BRANCH" 2>&1); then
     ok "pushed to origin (GitHub)"
 else
     fail "push to origin (GitHub) failed - stopping, nothing else was attempted"
+    printf '%s
+' "$out" | sed 's/^/        /'
     exit 1
 fi
 
 # --- 2. Forgejo mirror on .15 (soft) ----------------------------------------
 FORGEJO_OK=0
-if timeout 45 git push forgejo "$BRANCH" >/dev/null 2>&1; then
+if out=$(timeout 45 git push forgejo "$BRANCH" 2>&1); then
     ok "pushed to forgejo (.15)"
     FORGEJO_OK=1
 else
     warn "push to forgejo (.15) failed - is the hypervisor up? Will deploy to .20 directly."
+    printf '%s
+' "$out" | sed 's/^/        /' | head -4
 fi
 
 # --- 3. deploy to the control node ------------------------------------------
