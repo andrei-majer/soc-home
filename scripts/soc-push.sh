@@ -55,8 +55,7 @@ if out=$(git push origin "$BRANCH" 2>&1); then
     ok "pushed to origin (GitHub)"
 else
     fail "push to origin (GitHub) failed - stopping, nothing else was attempted"
-    printf '%s
-' "$out" | sed 's/^/        /'
+    echo "$out" | sed 's/^/        /'
     exit 1
 fi
 
@@ -67,8 +66,7 @@ if out=$(timeout 45 git push forgejo "$BRANCH" 2>&1); then
     FORGEJO_OK=1
 else
     warn "push to forgejo (.15) failed - is the hypervisor up? Will deploy to .20 directly."
-    printf '%s
-' "$out" | sed 's/^/        /' | head -4
+    echo "$out" | sed 's/^/        /' | head -4
 fi
 
 # --- 3. deploy to the control node ------------------------------------------
