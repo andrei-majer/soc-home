@@ -430,7 +430,11 @@
 
 - name: Velociraptor | ensure TrackProcesses in client monitoring
   ansible.builtin.script:
-    cmd: /opt/soc-ansible/roles/suricata/files/vr-ensure-trackprocesses.py
+    # role_path, not an absolute repo path: the control node moved from
+    # /opt/soc-ansible to /opt/soc-home/ansible on 2026-08-20 and this hardcoded
+    # path broke the converge. ansible.builtin.script also resolves bare names
+    # from the role files/ dir, but role_path is explicit and survives relocation.
+    cmd: "{{ role_path }}/files/vr-ensure-trackprocesses.py"
   register: track_result
   changed_when: "'changed' in track_result.stdout"
   notify: Restart velociraptor

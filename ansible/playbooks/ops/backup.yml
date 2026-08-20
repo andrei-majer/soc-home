@@ -4,7 +4,7 @@
   gather_facts: true
   vars:
     backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
-    backup_local_dir: "/opt/soc-ansible/backups/{{ inventory_hostname }}"
+    backup_local_dir: "/opt/soc-home/ansible/backups/{{ inventory_hostname }}"
   tasks:
     - name: Create local backup directory
       ansible.builtin.file:

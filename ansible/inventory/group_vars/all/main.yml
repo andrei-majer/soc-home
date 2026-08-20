@@ -25,6 +25,8 @@ telegram_bot_token: "{{ vault_telegram_bot_token }}"
 telegram_chat_id: "{{ vault_telegram_chat_id }}"
 telegram_api_url: "https://api.telegram.org/bot{{ telegram_bot_token }}"
 
-backup_dir: /opt/soc-ansible/backups
+# Lives on the control node only (gitignored - holds router configs, dropbear host
+# keys, .env files). Moved with the repo relocation on 2026-08-20.
+backup_dir: /opt/soc-home/ansible/backups
 
 ntp_server: "{{ router_host }}"
