@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# ============================================================================
+# pre-push: cheap syntax gate before anything reaches the control node.
+#
+# Enable once per clone (hooks are not cloned):
+#     git config core.hooksPath .githooks
+#
+# This deliberately does NOT run ansible-lint or a converge - it must stay fast
+# and must not need network or an Ansible install on the Windows workstation.
+# It only catches the class of error that is embarrassing to discover on .20:
+# a file that does not even parse.
+#
+# It would NOT have caught the 2026-08-20 runtime failures (an undefined var, a
+# Wazuh static-field misuse) - those are covered by the 4-hourly drift check on
+# .20, which now alerts to Telegram, and by the wazuh-analysisd -t gate.
+#
+# Skip in an emergency with: git push --no-verify
+# ============================================================================
+set -uo pipefail
+
+fails=0
+report() { printf '  \033[31mFAIL\033[0m %s\n  %s\n' "$1" "$2"; fails=$((fails+1)); }
+
+echo "pre-push: validating tracked files..."
+
+# --- YAML ---
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    err=$(python -c "
+import sys, yaml
+# Ansible Vault files carry a !vault tag that SafeLoader cannot construct, and
+# templates may use other custom tags. We only care that the YAML *parses*.
+class L(yaml.SafeLoader): pass
+L.add_multi_constructor('', lambda loader, suffix, node: None)
+try:
+    list(yaml.load_all(open(sys.argv[1], encoding='utf-8'), Loader=L))
+except Exception as e:
+    print(str(e).split(chr(10))[0]); sys.exit(1)
+" "$f" 2>&1) || report "$f" "$err"
+done < <(git ls-files '*.yml' '*.yaml')
+
+# --- shell (dispatch on the shebang: roles/suricata/files/suricata-iprep-update.sh
+#     is a PYTHON script wearing a .sh extension, and bash -n rightly chokes on it) ---
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    case "$(head -c 80 "$f" 2>/dev/null)" in
+        *python*) err=$(python -m py_compile "$f" 2>&1) || report "$f" "$err" ;;
+        *)        err=$(bash -n "$f" 2>&1)              || report "$f" "$err" ;;
+    esac
+done < <(git ls-files '*.sh')
+
+# --- python ---
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    err=$(python -m py_compile "$f" 2>&1) || report "$f" "$err"
+done < <(git ls-files '*.py')
+
+# --- XML (Wazuh rule files are fragments, so wrap before parsing) ---
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    err=$(python -c "
+import sys
+# Input here is our own tracked files, not hostile, but prefer the hardened parser
+# when it is installed rather than relying on that assumption.
+try:
+    from defusedxml.ElementTree import fromstring
+except ImportError:
+    from xml.etree.ElementTree import fromstring
+src = open(sys.argv[1], encoding='utf-8').read()
+try:
+    fromstring('<wrapper>' + src + '</wrapper>')
+except Exception as e:
+    print(str(e).split(chr(10))[0]); sys.exit(1)
+" "$f" 2>&1) || report "$f" "$err"
+done < <(git ls-files '*.xml')
+
+find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null
+
+if [ "$fails" -gt 0 ]; then
+    echo "pre-push: $fails file(s) failed to parse - push aborted (override with --no-verify)"
+    exit 1
+fi
+echo "pre-push: all tracked yml/sh/py/xml parse cleanly"
+exit 0
