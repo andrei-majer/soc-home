@@ -62,7 +62,14 @@
   loop: "{{ openwrt_file_exists.results }}"
   loop_control:
     label: "{{ item.item.dest }}"
-  when: "'yes' in item.stdout"
+  # item.stdout is absent when the probing raw task was SKIPPED, which is exactly
+  # what happens under --check (raw/command tasks do not run in check mode). Without
+  # the guard this task failed for every file, so the 4-hourly drift check reported
+  # router-1 failed=1 permanently and the check was never meaningful for this host.
+  # A real converge is unaffected. Fixed 2026-08-20.
+  when:
+    - item.stdout is defined
+    - "'yes' in item.stdout"
   delegate_to: localhost
   changed_when: false
 
