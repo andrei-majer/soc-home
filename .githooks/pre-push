@@ -28,10 +28,12 @@ while IFS= read -r f; do
     [ -f "$f" ] || continue
     err=$(python -c "
 import sys, yaml
-# Ansible Vault files carry a !vault tag that SafeLoader cannot construct, and
-# templates may use other custom tags. We only care that the YAML *parses*.
+# Ansible Vault files carry a !vault tag SafeLoader cannot construct. Allow exactly
+# that one (plus !unsafe, also legitimate Ansible) rather than blanket-ignoring every
+# unknown tag - a blanket rule would silently accept a genuine typo like '!inculde'.
 class L(yaml.SafeLoader): pass
-L.add_multi_constructor('', lambda loader, suffix, node: None)
+L.add_constructor('!vault',  lambda loader, node: None)
+L.add_constructor('!unsafe', lambda loader, node: None)
 try:
     list(yaml.load_all(open(sys.argv[1], encoding='utf-8'), Loader=L))
 except Exception as e:

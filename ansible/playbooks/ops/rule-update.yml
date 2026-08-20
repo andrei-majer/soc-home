@@ -21,7 +21,11 @@
       tags: [snort]
 
     - name: Update iprep feeds
-      ansible.builtin.command: /usr/local/bin/suricata-iprep-update.sh
+      # Literal path on purpose: this standalone ops playbook has no roles:
+      # section, so roles/suricata/defaults is NOT in scope and
+      # {{ iprep_update_script }} would fail as an undefined variable.
+      # Keep in step with that default if the path ever changes again.
+      ansible.builtin.command: /usr/local/bin/suricata-iprep-update.py
       changed_when: true
       tags: [iprep]
 

@@ -31,7 +31,10 @@ misp_api_key: "{{ vault_misp_api_key }}"
 misp_rules_file: /etc/suricata/rules/misp.rules
 
 # IP Reputation
-iprep_update_script: /usr/local/bin/suricata-iprep-update.sh
+# .py, not .sh: this is a Python script (shebang #!/usr/bin/env python3) that wore a
+# .sh extension until 2026-08-20. Renamed so tooling that dispatches on extension
+# (linters, the pre-push hook) does not have to special-case it.
+iprep_update_script: /usr/local/bin/suricata-iprep-update.py
 iprep_cron_hours: "*/6"
 
 # fail2ban

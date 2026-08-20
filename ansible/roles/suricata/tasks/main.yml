@@ -133,11 +133,19 @@
 
 - name: Deploy iprep update script
   ansible.builtin.copy:
-    src: suricata-iprep-update.sh
+    src: suricata-iprep-update.py
     dest: "{{ iprep_update_script }}"
     owner: root
     group: root
     mode: "0755"
+
+# The script was named .sh until 2026-08-20 despite being Python. Remove the stale
+# copy so the host does not keep an orphaned duplicate on disk. The cron entry keeps
+# its Ansible name, so the module rewrites that line rather than adding a second one.
+- name: Remove pre-rename iprep script
+  ansible.builtin.file:
+    path: /usr/local/bin/suricata-iprep-update.sh
+    state: absent
 
 - name: Configure iprep update cron
   ansible.builtin.cron:
