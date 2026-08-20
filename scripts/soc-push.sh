@@ -100,7 +100,13 @@ RC=0
 [ "$REMOTE_FJ" = "$LOCAL" ] || { warn "forgejo is not at $LOCAL"; }
 [ "$REMOTE_20" = "$LOCAL" ] || { warn ".20 is not at $LOCAL - converges would use stale code"; }
 
-if [ "$RC" -eq 0 ] && [ "$DEPLOYED" -eq 1 ] && [ "$REMOTE_20" = "$LOCAL" ]; then
-    echo "== all copies in sync =="
+# Only claim full sync when ALL FOUR agree. The first version omitted forgejo from
+# this check and cheerfully printed "all copies in sync" one line below a warning
+# that forgejo was unreachable - caught by deliberately pointing the remote at a
+# dead host on 2026-08-20.
+if [ "$RC" -eq 0 ] && [ "$REMOTE_FJ" = "$LOCAL" ] && [ "$REMOTE_20" = "$LOCAL" ]; then
+    echo "== all four copies in sync at $LOCAL =="
+elif [ "$RC" -eq 0 ]; then
+    echo "== PARTIAL: GitHub has $LOCAL, but see the warnings above - re-run when the missing target is back =="
 fi
 exit "$RC"
