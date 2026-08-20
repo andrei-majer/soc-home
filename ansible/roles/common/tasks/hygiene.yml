@@ -1,0 +1,48 @@
+---
+# Disk hygiene: journald cap + disk-alert. Split out of common/tasks/main.yml on
+# 2026-08-20 so hosts that must NOT get the rest of `common` can still have them.
+#
+# Why: the T-Pot hosts were never in `common` (it installs base packages, adds a
+# backports repo and overwrites SSH authorized_keys - all wrong for an opinionated
+# appliance), so they had NO journald cap and NO disk alerting. tpot-hive-23 was
+# found at 81% with a 1.5 GB uncapped journal and nothing watching it.
+#
+# Include from another role with:
+#   - name: Disk hygiene (journald cap + disk-alert)
+#     ansible.builtin.include_role:
+#       name: common
+#       tasks_from: hygiene.yml
+
+- name: Deploy disk-alert script
+  ansible.builtin.template:
+    src: disk-alert.sh.j2
+    dest: "{{ disk_alert_script }}"
+    mode: "0755"
+    owner: root
+    group: root
+  tags: disk-alert
+
+- name: Configure disk-alert cron (hourly)
+  ansible.builtin.cron:
+    name: "disk-alert"
+    minute: "0"
+    job: "{{ disk_alert_script }}"
+    user: root
+  tags: disk-alert
+
+- name: Create journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Cap journald disk usage (journald drop-in)
+  ansible.builtin.template:
+    src: journald-size.conf.j2
+    dest: /etc/systemd/journald.conf.d/00-size.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart journald

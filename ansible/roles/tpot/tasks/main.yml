@@ -4,6 +4,18 @@
 # the SENSOR logstash iprep override - both documented at their task blocks below.
 # Missing source files are tolerated via failed_when: false.
 
+# T-Pot hosts are deliberately NOT in the `common` role: it installs base packages,
+# adds a backports repo and overwrites SSH authorized_keys, none of which belong on
+# an appliance that self-manages. The consequence until 2026-08-20 was that they had
+# no journald cap and no disk alerting at all - tpot-hive-23 was found at 81% on a
+# 19 GB disk with a 1.5 GB uncapped journal and nothing watching it. Pull in just the
+# hygiene half.
+- name: Disk hygiene (journald cap + disk-alert)
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: hygiene.yml
+  tags: disk-alert
+
 - name: Create local backup directory
   ansible.builtin.file:
     path: "{{ tpot_backup_dir }}/{{ inventory_hostname }}"
