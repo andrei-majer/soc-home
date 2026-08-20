@@ -15,7 +15,22 @@ repository, tracking `origin` = the self-hosted Forgejo on `.15:2222`.
 > the other side's defaults, breaking every `elk-21` converge with an undefined variable. That repo is
 > retained read-only at `/opt/soc-ansible.retired-20260820`; do not edit it.
 
-**Deploy loop** — edit here, then:
+**One-time setup in a fresh clone** (hooks and this config are not cloned):
+
+```bash
+git config core.hooksPath .githooks   # pre-push gate: rejects yml/sh/py/xml that do not parse
+```
+
+**Deploy loop** — one command does all three legs and verifies them:
+
+```bash
+bash scripts/soc-push.sh              # GitHub (hard fail) + Forgejo (warn) + deploy to .20
+```
+
+It refuses a dirty tree, falls back to a direct push into `/opt/soc-home` when Forgejo is
+unreachable, and prints the SHA of all four copies so a partial deploy is visible rather than silent.
+
+Manual equivalent:
 
 ```bash
 git push origin main && git push forgejo main      # both remotes, always
