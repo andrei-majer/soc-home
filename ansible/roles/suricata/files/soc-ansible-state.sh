@@ -95,7 +95,13 @@ if [ "${1:-}" = "--drift" ]; then
     # converge would fail. Worth paging for. Drifted (changed) tasks are NOT: that is
     # the normal state of a lab. Unreachable is excluded too, because .22/.23/.25 are
     # on-demand VMs that are powered off by design most of the time.
-    failed_hosts=$(tr -s ' ' < "$DRIFT_TMP.failed" 2>/dev/null | sed 's/ $//')
+    # The file only exists if at least one host failed. 2>/dev/null does NOT
+    # suppress a redirection error (the shell fails before tr runs), so test first.
+    if [ -f "$DRIFT_TMP.failed" ]; then
+        failed_hosts=$(tr -s ' ' < "$DRIFT_TMP.failed" | sed 's/ $//')
+    else
+        failed_hosts=""
+    fi
     rm -f "$DRIFT_TMP.failed"
     notify_edge drift "$failed_hosts" \
         "SOC IaC: site.yml --check FAILS for: ${failed_hosts} - that role is broken, a real converge would fail" \
