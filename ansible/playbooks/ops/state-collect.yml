@@ -38,6 +38,9 @@
       failed_when: false
 
     - name: Set facts
+      # Guard: on an unreachable host the register holds the unreachable dict,
+      # which has no stdout_lines -> the whole play failed. See 2026-08-20.
+      when: disk_out.stdout_lines is defined
       ansible.builtin.set_fact:
         host_state:
           ts: "{{ ansible_date_time.iso8601 | default(lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ')) }}"
@@ -84,6 +87,9 @@
       changed_when: false
 
     - name: Set facts
+      # Guard: on an unreachable host the register holds the unreachable dict,
+      # which has no stdout_lines -> the whole play failed. See 2026-08-20.
+      when: disk_out.stdout_lines is defined
       ansible.builtin.set_fact:
         host_state:
           ts: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
@@ -122,6 +128,9 @@
       become: true
 
     - name: Set facts
+      # Guard: on an unreachable host the register holds the unreachable dict,
+      # which has no stdout_lines -> the whole play failed. See 2026-08-20.
+      when: disk_out.stdout_lines is defined
       ansible.builtin.set_fact:
         host_state:
           ts: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
@@ -133,6 +142,10 @@
 
 - name: Collect state from T-Pot hosts
   hosts: tpot
+  # On-demand VMs: hive/sensor are normally powered off, and an unreachable host
+  # makes ansible-playbook exit non-zero, which had the 15-minute collector cron
+  # logging "state-collect.yml failed" continuously. Matches opencti-22 below.
+  ignore_unreachable: true
   gather_facts: false
   vars:
     ansible_shell_executable: /bin/bash
@@ -154,6 +167,9 @@
       become: true
 
     - name: Set facts
+      # Guard: on an unreachable host the register holds the unreachable dict,
+      # which has no stdout_lines -> the whole play failed. See 2026-08-20.
+      when: disk_out.stdout_lines is defined
       ansible.builtin.set_fact:
         host_state:
           ts: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"

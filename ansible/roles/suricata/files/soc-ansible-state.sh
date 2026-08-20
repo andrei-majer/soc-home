@@ -8,7 +8,10 @@
 set -u
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-REPO=/opt/soc-ansible
+# 2026-08-20: the control node now runs from a FULL clone of the soc-home repo
+# (/opt/soc-home), not the old standalone /opt/soc-ansible repo which had no git
+# remote and drifted from GitHub. Ansible lives in its ansible/ subdirectory.
+REPO=/opt/soc-home/ansible
 LOG=/var/log/soc-ansible/state.jsonl
 PLAYBOOK="$REPO/playbooks/ops/state-collect.yml"
 SITE="$REPO/playbooks/site.yml"
