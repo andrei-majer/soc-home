@@ -39,6 +39,13 @@
 *.jpeg  binary
 *.gif   binary
 *.ico   binary
+# Canary share-decoys are random binary blobs that merely LOOK like office docs.
+# `file` reports them as "data". Treating them as text corrupts them: a plain
+# sed 's/$//' sweep on 2026-08-20 damaged two before git restore recovered them.
+*.docx  binary
+*.doc   binary
+*.xls   binary
+*.bak   binary
 *.pem   -text
 *.crt   -text
 *.key   -text
