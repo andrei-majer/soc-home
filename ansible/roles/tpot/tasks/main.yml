@@ -68,8 +68,20 @@
 # Agent install is manual (matches existing convention; see docs/runbooks/
 # tpot-rebuild.md Wazuh agent section). Only the localfile block is
 # Ansible-managed via blockinfile — matches the Zeek-on-.20 idiom.
-# JSON-emitting honeypots only — Heralding (CSV), RDPY/Mailoney/Citrixhoneypot
-# (text) deferred until decoders exist.
+# JSON-emitting honeypots only — RDPY/Mailoney/Citrixhoneypot (text) deferred
+# until decoders exist.
+#
+# 2026-08-20: list RE-DERIVED from the containers actually running on the HIVE.
+#   - DROPPED tanner: it is NOT deployed in this T-Pot profile at all
+#     (tanner_report.json 0 bytes, untouched since 2026-06-01), so rules
+#     100404/100405 were dead for lack of a honeypot, not a missing input.
+#   - ADDED h0neytr4p (log.json) and redishoneypot (redishoneypot.log — JSON
+#     content despite the .log extension; verified by sampling the archive).
+#   - SKIPPED adbhoney / ciscoasa / wordpot / honeyaml: they emit PLAIN TEXT
+#     only, no .json sibling, so the JSON decoder cannot read them.
+# NOTE: ingestion != alerting. The 1004xx rules cover cowrie/honeytrap/tanner/
+# elasticpot only, so h0neytr4p and redishoneypot events will land in Wazuh but
+# raise no alert until rules exist — field paths need wazuh-logtest first.
 # ============================================================================
 
 - name: Add T-Pot JSON honeypot inputs to Wazuh agent
@@ -95,7 +107,11 @@
         <log_format>json</log_format>
       </localfile>
       <localfile>
-        <location>{{ tpot_install_path }}/data/tanner/log/tanner_report.json</location>
+        <location>{{ tpot_install_path }}/data/h0neytr4p/log/log.json</location>
+        <log_format>json</log_format>
+      </localfile>
+      <localfile>
+        <location>{{ tpot_install_path }}/data/redishoneypot/log/redishoneypot.log</location>
         <log_format>json</log_format>
       </localfile>
       <localfile>
