@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # Install SSD + RAID health monitoring on the .15 hypervisor:
 #   - Loki collector (systemd timer, every 10 min) -> Grafana on .20
-#       * per-disk SMART (Crucial MX300 + ADATA SU800 pair; per-model attr maps)
-#       * md RAID array state (md126/md127 degraded / sync)
+#       * per-disk SMART (Crucial + ADATA SU800 families; per-model attr maps)
+#       * md RAID array state (degraded / sync), labelled by /dev/md/<name>
 #   - smartd weekly SHORT self-test + temperature watch -> Telegram alerts
 #   - mdadm --monitor PROGRAM hook -> Telegram on RAID array events
 #
-# Topology since the 2026-07-02 encrypted-RAID1 reinstall:
-#   sdb + sdc = ADATA SU800 953GB  -> RAID1 (md126 root/home/vms, md127 /boot)
-#   sda       = Crucial MX300 525GB -> single-disk LUKS backup (/mnt/backup)
+# Topology since 2026-08-19 (4 disks; the MX300 was pulled):
+#   2x ADATA SU800 953GB   -> RAID1 "md0-root" (LUKS+LVM / + /home + /mnt/vms)
+#                             and RAID1 "md0-boot" (/boot)
+#   2x Crucial 250GB       -> RAID1 "backup" -> LUKS -> /mnt/backup
+# Drive letters AND md numbers shuffle across reboots, so nothing here may
+# hardcode sdX/mdN -- the collector enumerates /sys/block and smartd uses
+# DEVICESCAN. Hardcoding is what left sdd unmonitored until 2026-08-22.
 #
 # Run as root. Pass Telegram creds via env on first install (kept out of the
 # tracked script; written to a root-only file):
@@ -61,14 +65,23 @@ EOF
 
 echo "==> smartd.conf"
 cat > /etc/smartmontools/smartd.conf <<'EOF'
-# SSD health — ADATA SU800 RAID1 pair (sdb+sdc) + Crucial MX300 backup (sda).
-# Managed via install-ssd-monitoring-15.sh (soc-ansible roles/suricata/files).
+# SSD health — all SMART-capable disks on .15 (2x ADATA SU800 main RAID1,
+# 2x Crucial 250GB backup RAID1 as of 2026-08-19).
+# Managed via install-ssd-monitoring-15.sh (soc-home ansible/roles/suricata/files).
+#
+# DEVICESCAN, not a hardcoded device list: this file used to name /dev/sd{a,b,c}
+# explicitly, so when the backup disk was swapped for a RAID1 pair on 2026-08-19
+# the fourth disk (an SU800 carrying / + /home + /mnt/vms) silently went
+# unmonitored -- no self-test, no temp alert, no Telegram -- until 2026-08-22.
+# DEVICESCAN applies the directives below to every disk it finds, so a disk
+# added or reshuffled later is covered automatically.
+# NOTE: smartd ignores all other device lines when DEVICESCAN is present; keep
+# it as the only device entry.
+#
 # Weekly SHORT self-test Sunday 12:00 (inside the 06:00-23:00 awake window; soc-sleep 23:00-06:00).
-# Temp: 4C delta tracking, info at 60C, critical at 70C (sda MX300 historically peaked 78C).
+# Temp: 4C delta tracking, info at 60C, critical at 70C.
 # Alerts via /usr/local/bin/smartd-telegram.sh (no MTA on this host; -m root is a placeholder).
-/dev/sda -a -o on -S on -s S/../../7/12 -W 4,60,70 -m root -M exec /usr/local/bin/smartd-telegram.sh
-/dev/sdb -a -o on -S on -s S/../../7/12 -W 4,60,70 -m root -M exec /usr/local/bin/smartd-telegram.sh
-/dev/sdc -a -o on -S on -s S/../../7/12 -W 4,60,70 -m root -M exec /usr/local/bin/smartd-telegram.sh
+DEVICESCAN -a -o on -S on -s S/../../7/12 -W 4,60,70 -m root -M exec /usr/local/bin/smartd-telegram.sh
 EOF
 if [ -f /etc/default/smartmontools ]; then
   sed -i 's/^#*start_smartd=.*/start_smartd=yes/' /etc/default/smartmontools || true
@@ -96,7 +109,7 @@ echo "==> verify"
 echo "-- collector test --"; /usr/local/bin/ssd-smart-loki-push.sh && echo "collector ran (pushed to Loki)"
 echo "-- smartd.conf check --"; smartd -q onecheck -c /etc/smartmontools/smartd.conf >/dev/null 2>&1 && echo "smartd.conf OK" || echo "smartd.conf check returned nonzero (review)"
 echo "-- telegram test (smartd) --"; SMARTD_DEVICESTRING="/dev/sdb" SMARTD_MESSAGE="install test — SSD monitoring active on .15" SMARTD_FAILTYPE="TEST" /usr/local/bin/smartd-telegram.sh && echo "telegram test sent"
-echo "-- telegram test (mdadm) --"; /usr/local/bin/md-telegram.sh TestMessage /dev/md126 && echo "mdadm telegram test sent"
+echo "-- telegram test (mdadm) --"; /usr/local/bin/md-telegram.sh TestMessage "$(readlink -f /dev/md/md0-root 2>/dev/null || echo /dev/md127)" && echo "mdadm telegram test sent"
 echo "-- service status --"
 echo "ssd-smart-loki.timer: $(systemctl is-active ssd-smart-loki.timer)"
 echo "smartd: $(systemctl is-active smartmontools.service 2>/dev/null || systemctl is-active smartd.service)"

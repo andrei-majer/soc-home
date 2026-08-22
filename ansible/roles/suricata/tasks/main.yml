@@ -647,7 +647,7 @@
     group: grafana
     mode: "0640"
 
-- name: Deploy UPS (NUT/Loki) Grafana dashboards
+- name: Deploy host-health (NUT/SMART -> Loki) Grafana dashboards
   ansible.builtin.copy:
     src: "{{ item }}"
     dest: "/etc/grafana/provisioning/dashboards/{{ item }}"
@@ -658,6 +658,7 @@
     - ups-15.json            # .15 hypervisor (resilient suspend)
     - ups-router-1.json      # .1 router (edge mains-loss signal)
     - ups-workstation-13.json  # .13 workstation (Richcomm, WinUSB+pyusb collector)
+    - ssd-15.json            # .15 SMART + mdraid (ssd-smart-loki-push.sh on .15)
   notify: Restart grafana-server
 
 - name: Schedule SOC Ansible state collection (every 15 min)
