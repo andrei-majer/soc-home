@@ -64,15 +64,22 @@ WantedBy=timers.target
 EOF
 
 echo "==> smartd.conf"
-cat > /etc/smartmontools/smartd.conf <<'EOF'
+# !! smartd reads /etc/smartd.conf -- NOT /etc/smartmontools/smartd.conf !!
+# This script wrote the latter from 2026-07-03 to 2026-08-22, so every directive
+# below (weekly self-test, temp thresholds, and the Telegram hook) was INERT for
+# seven weeks. Coverage was never lost -- Ubuntu's stock /etc/smartd.conf carries a
+# plain DEVICESCAN -- but its `-M exec` pointed at smartd-runner -> run.d/10mail ->
+# mail to root, and there is no MTA on this host, so alerts went nowhere.
+# smartd-telegram.sh had never once fired. Verify after ANY change with:
+#     journalctl -u smartmontools -b | grep 'Opened configuration file'
+SMARTD_CONF=/etc/smartd.conf
+cat > "$SMARTD_CONF" <<'EOF'
 # SSD health — all SMART-capable disks on .15 (2x ADATA SU800 main RAID1,
-# 2x Crucial 250GB backup RAID1 as of 2026-08-19).
+# 2x Crucial 250GB backup RAID1, + Crucial MX300 cold tier as of 2026-08-22).
 # Managed via install-ssd-monitoring-15.sh (soc-home ansible/roles/suricata/files).
 #
-# DEVICESCAN, not a hardcoded device list: this file used to name /dev/sd{a,b,c}
-# explicitly, so when the backup disk was swapped for a RAID1 pair on 2026-08-19
-# the fourth disk (an SU800 carrying / + /home + /mnt/vms) silently went
-# unmonitored -- no self-test, no temp alert, no Telegram -- until 2026-08-22.
+# DEVICESCAN, not a hardcoded device list: this used to name /dev/sd{a,b,c}
+# explicitly, and .15 drive letters shuffle whenever a disk is added or pulled.
 # DEVICESCAN applies the directives below to every disk it finds, so a disk
 # added or reshuffled later is covered automatically.
 # NOTE: smartd ignores all other device lines when DEVICESCAN is present; keep
@@ -83,6 +90,8 @@ cat > /etc/smartmontools/smartd.conf <<'EOF'
 # Alerts via /usr/local/bin/smartd-telegram.sh (no MTA on this host; -m root is a placeholder).
 DEVICESCAN -a -o on -S on -s S/../../7/12 -W 4,60,70 -m root -M exec /usr/local/bin/smartd-telegram.sh
 EOF
+# Keep the legacy path identical so the two can never silently disagree again.
+cp -a "$SMARTD_CONF" /etc/smartmontools/smartd.conf
 if [ -f /etc/default/smartmontools ]; then
   sed -i 's/^#*start_smartd=.*/start_smartd=yes/' /etc/default/smartmontools || true
   grep -q '^start_smartd=' /etc/default/smartmontools || echo 'start_smartd=yes' >> /etc/default/smartmontools
@@ -107,7 +116,12 @@ systemctl restart mdmonitor.service 2>/dev/null || systemctl restart mdadm.servi
 
 echo "==> verify"
 echo "-- collector test --"; /usr/local/bin/ssd-smart-loki-push.sh && echo "collector ran (pushed to Loki)"
-echo "-- smartd.conf check --"; smartd -q onecheck -c /etc/smartmontools/smartd.conf >/dev/null 2>&1 && echo "smartd.conf OK" || echo "smartd.conf check returned nonzero (review)"
+echo "-- smartd.conf check --"; smartd -q onecheck -c "$SMARTD_CONF" >/dev/null 2>&1 && echo "smartd.conf OK" || echo "smartd.conf check returned nonzero (review)"
+# Prove smartd loaded OUR file and not the distro default -- the exact failure that
+# hid for seven weeks. Parsing OK is NOT sufficient evidence.
+echo "-- which config did smartd actually open? --"
+journalctl -u smartmontools --since "1 min ago" --no-pager 2>/dev/null | grep -m1 'Opened configuration file' \
+  || echo "WARN: could not confirm from journal -- check manually"
 echo "-- telegram test (smartd) --"; SMARTD_DEVICESTRING="/dev/sdb" SMARTD_MESSAGE="install test — SSD monitoring active on .15" SMARTD_FAILTYPE="TEST" /usr/local/bin/smartd-telegram.sh && echo "telegram test sent"
 echo "-- telegram test (mdadm) --"; /usr/local/bin/md-telegram.sh TestMessage "$(readlink -f /dev/md/md0-root 2>/dev/null || echo /dev/md127)" && echo "mdadm telegram test sent"
 echo "-- service status --"
