@@ -3,11 +3,11 @@
 # plus one line per md RAID array. Best-effort (Loki may be asleep).
 # Requires root (smartctl + sysfs). Run from systemd ssd-smart-loki.timer (10 min).
 #
-# Topology since the 2026-07-02 encrypted-RAID1 reinstall:
-#   2x ADATA SU800 953GB -> RAID1 (md126 root/home/vms, md127 /boot)
-#   Backup disk (Crucial MX300 525GB, /mnt/backup) REMOVED 2026-08-19.
-# Device letters shift whenever a disk is added/pulled, so enumerate /sys/block
-# instead of hardcoding sdX.
+# Topology since 2026-08-19:
+#   2x ADATA SU800 953GB -> RAID1 pair (md0-root: LUKS+LVM root/home/vms, md0-boot: /boot)
+#   2x Crucial 250GB (MX500 + MX200) -> RAID1 "backup" -> LUKS -> /mnt/backup
+# Device letters AND md numbers shift across reboots, so enumerate /sys/block
+# instead of hardcoding sdX/mdN, and label arrays by /dev/md/<name> symlink.
 # The two SSD families expose DIFFERENT SMART attribute IDs for life/writes, so
 # the awk below coalesces per-model: Crucial/Micron (202,246,197,198,187,173)
 # vs Silicon Motion / ADATA SU800 (169,241,160,199,167).
@@ -76,6 +76,12 @@ done
 for mdp in /sys/block/md*; do
   [ -d "$mdp/md" ] || continue          # skip partitions (mdXpN have no md/ dir)
   md="$(basename "$mdp")"
+  # friendly name from /dev/md/* symlinks (md NUMBERS shuffle across reboots)
+  name="$md"
+  for l in /dev/md/*; do
+    [ -L "$l" ] || continue
+    if [ "$(readlink -f "$l")" = "/dev/$md" ]; then name="$(basename "$l" | tr ' ' '_')"; break; fi
+  done
   degraded="$(cat "$mdp/md/degraded" 2>/dev/null)";       degraded="${degraded:-0}"
   raid_disks="$(cat "$mdp/md/raid_disks" 2>/dev/null)";   raid_disks="${raid_disks:-0}"
   sync_action="$(cat "$mdp/md/sync_action" 2>/dev/null)"; sync_action="${sync_action:-idle}"
@@ -86,6 +92,6 @@ for mdp in /sys/block/md*; do
   # embedded double-quotes would break the payload (Loki 400). These fields never
   # contain spaces (idle/clean/active/raid1/...), so quotes aren't needed.
   line="healthy=$healthy degraded=$degraded raid_disks=$raid_disks sync_action=$sync_action array_state=$array_state level=$level"
-  push "\"job\":\"mdraid\",\"host\":\"$HOST\",\"array\":\"$md\"" "$line"
+  push "\"job\":\"mdraid\",\"host\":\"$HOST\",\"array\":\"$md\",\"name\":\"$name\"" "$line"
 done
 exit 0

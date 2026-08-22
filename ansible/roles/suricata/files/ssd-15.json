@@ -1,19 +1,33 @@
 {
   "uid": "ssd-health-15",
   "title": "SSD Health — Hypervisor .15",
-  "tags": ["ssd", "disk", "raid", "soc"],
+  "description": "SMART + mdraid health for .15. Source: ssd-smart-loki-push.sh on .15 (10-min timer) -> Loki on .20. Loki retention ~7 d. Topology since 2026-08-19: sda+sdb = 250 GB Crucial backup RAID1, sdc+sdd = SU800 main RAID1.",
+  "tags": [
+    "ssd",
+    "disk",
+    "raid",
+    "soc"
+  ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "5m",
-  "time": { "from": "now-30d", "to": "now" },
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "templating": {
     "list": [
       {
         "name": "DS_LOKI",
         "type": "datasource",
         "query": "loki",
-        "current": { "text": "Loki", "value": "${DS_LOKI}" },
+        "current": {
+          "text": "Loki",
+          "value": "${DS_LOKI}"
+        },
         "hide": 2,
         "refresh": 1,
         "regex": ""
@@ -22,191 +36,673 @@
   },
   "panels": [
     {
+      "id": 1,
       "type": "stat",
-      "title": "RAID md126 (root/home/vms)",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "title": "RAID arrays",
+      "description": "One box per md array, labeled by its /dev/md/<name> symlink (md NUMBERS shuffle across reboots - never trust mdN). backup = 2x250GB Crucial -> /mnt/backup; md0-root = 2xSU800 -> LUKS+LVM / + /home + /mnt/vms; md0-boot = /boot.",
+      "gridPos": {
+        "h": 4,
+        "w": 7,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-          "expr": "last_over_time({job=\"mdraid\", host=\"15\", array=\"md126\"} | logfmt healthy | unwrap healthy [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"mdraid\", host=\"15\", name=~\".+\"} | logfmt healthy | unwrap healthy [1h])",
+          "queryType": "instant",
+          "legendFormat": "{{name}}"
+        }
       ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0,
-        "mappings": [ { "type": "value", "options": { "0": { "text": "DEGRADED", "color": "red" }, "1": { "text": "OK", "color": "green" } } } ],
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] } }, "overrides": [] }
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "DEGRADED",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
+      "id": 2,
       "type": "stat",
-      "title": "RAID md127 (/boot)",
-      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "title": "Life remaining",
+      "description": "sda=MX500, sdb=MX200 (backup RAID) / sdc, sdd=SU800 (main RAID). Crucial: attr 202 normalized. SU800: attr 169 RAW is the percentage.",
+      "gridPos": {
+        "h": 4,
+        "w": 9,
+        "x": 7,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-          "expr": "last_over_time({job=\"mdraid\", host=\"15\", array=\"md127\"} | logfmt healthy | unwrap healthy [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [1h])",
+          "queryType": "instant",
+          "legendFormat": "{{dev}}"
+        }
       ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0,
-        "mappings": [ { "type": "value", "options": { "0": { "text": "DEGRADED", "color": "red" }, "1": { "text": "OK", "color": "green" } } } ],
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] } }, "overrides": [] }
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "green",
+                "value": 25
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
+      "id": 3,
       "type": "stat",
-      "title": "Life — sda (MX300 backup)",
-      "gridPos": { "h": 4, "w": 5, "x": 8, "y": 0 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "title": "Bad sectors — must stay 0",
+      "description": "Worst value across all four disks. Any non-zero -> check the Error sectors panel below for which disk. (CRC errors are tracked there, not here - sdc carries a historical benign CRC=1.)",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt reallocated | unwrap reallocated [1h]))",
+          "queryType": "instant",
+          "legendFormat": "reallocated"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt pending | unwrap pending [1h]))",
+          "queryType": "instant",
+          "legendFormat": "pending"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt uncorrectable | unwrap uncorrectable [1h]))",
+          "queryType": "instant",
+          "legendFormat": "uncorrectable"
+        }
       ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 0,
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 25 } ] } }, "overrides": [] }
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
-      "type": "stat",
-      "title": "Life — sdb (SU800 RAID)",
-      "gridPos": { "h": 4, "w": 5, "x": 13, "y": 0 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-      "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" }
-      ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 0,
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 25 } ] } }, "overrides": [] }
-    },
-    {
-      "type": "stat",
-      "title": "Life — sdc (SU800 RAID)",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-      "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" }
-      ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 0,
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 25 } ] } }, "overrides": [] }
-    },
-    {
-      "type": "stat",
-      "title": "Temperature (now)",
-      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-      "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" },
-        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" },
-        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" }
-      ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value_and_name" },
-      "fieldConfig": { "defaults": { "unit": "celsius", "decimals": 0,
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 55 }, { "color": "red", "value": 65 } ] } }, "overrides": [] }
-    },
-    {
-      "type": "stat",
-      "title": "Bad sectors — must stay 0 (realloc/pending/uncorrectable)",
-      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
-      "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt reallocated, pending, uncorrectable | unwrap reallocated [$__interval]) + last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt pending | unwrap pending [$__interval]) + last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" },
-        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt reallocated | unwrap reallocated [$__interval]) + last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt pending | unwrap pending [$__interval]) + last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" },
-        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt reallocated | unwrap reallocated [$__interval]) + last_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt pending | unwrap pending [$__interval]) + last_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" }
-      ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0,
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
-    },
-    {
+      "id": 4,
       "type": "timeseries",
-      "title": "Life Remaining %",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "title": "Life remaining %",
+      "description": "Auto-scaled axis so single-percent moves are visible (SU800s: 100->95 in Jul, 95->94 in Aug - under watch, see Erase count panel).",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda (MX300 backup)",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" },
-        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb (SU800 RAID)",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" },
-        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc (SU800 RAID)",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} · {{model}}"
+        }
       ],
-      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 } }, "overrides": [] }
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 7200000,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
+      "id": 5,
       "type": "timeseries",
       "title": "Temperature",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "description": "smartd alerts at 60 C (warn) / 70 C (crit) - dashed lines match.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda",
-          "expr": "avg_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" },
-        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb",
-          "expr": "avg_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" },
-        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc",
-          "expr": "avg_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt temp_c | unwrap temp_c [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "avg_over_time({job=\"ssd\", host=\"15\"} | logfmt temp_c | unwrap temp_c [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} · {{model}}"
+        }
       ],
-      "fieldConfig": { "defaults": { "unit": "celsius", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 } }, "overrides": [] }
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 7200000,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 70
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
+      "id": 6,
       "type": "timeseries",
-      "title": "Total Bytes Written (TB)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "title": "Erase count — SU800 wear-slope watch",
+      "description": "SU800 attr 167 (avg erase), Crucial attr 173. OPEN WATCH (re-measure ~2026-08-27): SU800 life% is derived from erase count, not host writes. Erase climbing while TBW (next panel) stays flat = write amplification - leading suspect was VirtualBox discard=off; still pending on Suricata + ELK VMs.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt tbw_tb | unwrap tbw_tb [$__interval])", "queryType": "range" },
-        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt tbw_tb | unwrap tbw_tb [$__interval])", "queryType": "range" },
-        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc",
-          "expr": "last_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt tbw_tb | unwrap tbw_tb [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\"} | logfmt erase_count | unwrap erase_count [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} · {{model}}"
+        }
       ],
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 1, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] }
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 7200000,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
+      "id": 7,
       "type": "timeseries",
-      "title": "Error sectors + CRC — must stay 0 (realloc / pending / uncorrectable / crc)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "title": "Host writes (TBW)",
+      "description": "Crucial: attr 246 (LBAs x512 B). SU800: attr 241 (x32 MiB). sdb MX200 arrives with 27+ TB of prior life - that is history, not current churn; watch the slope.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda reallocated",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt reallocated | unwrap reallocated [$__interval])", "queryType": "range" },
-        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sda uncorrectable",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sda\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" },
-        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb reallocated",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt reallocated | unwrap reallocated [$__interval])", "queryType": "range" },
-        { "refId": "D", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb uncorrectable",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" },
-        { "refId": "E", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdb crc",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdb\"} | logfmt crc_errors | unwrap crc_errors [$__interval])", "queryType": "range" },
-        { "refId": "F", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc reallocated",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt reallocated | unwrap reallocated [$__interval])", "queryType": "range" },
-        { "refId": "G", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc uncorrectable",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt uncorrectable | unwrap uncorrectable [$__interval])", "queryType": "range" },
-        { "refId": "H", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "sdc crc",
-          "expr": "max_over_time({job=\"ssd\", host=\"15\", dev=\"sdc\"} | logfmt crc_errors | unwrap crc_errors [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"ssd\", host=\"15\"} | logfmt tbw_tb | unwrap tbw_tb [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} · {{model}}"
+        }
       ],
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0, "spanNulls": true } },
-        "overrides": [] }
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: TB",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 7200000,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
+      "id": 8,
       "type": "timeseries",
-      "title": "RAID degraded state (0 = healthy)",
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
-      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "title": "Error sectors + CRC — must stay flat",
+      "description": "sdc (SU800) has a historical UDMA_CRC=1 - one SATA blip, benign while it stays at 1. Investigate any INCREASE (cable/backplane), and any non-zero realloc/pending/uncorr.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
       "targets": [
-        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "md126 degraded",
-          "expr": "max_over_time({job=\"mdraid\", host=\"15\", array=\"md126\"} | logfmt degraded | unwrap degraded [$__interval])", "queryType": "range" },
-        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "legendFormat": "md127 degraded",
-          "expr": "max_over_time({job=\"mdraid\", host=\"15\", array=\"md127\"} | logfmt degraded | unwrap degraded [$__interval])", "queryType": "range" }
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max_over_time({job=\"ssd\", host=\"15\"} | logfmt reallocated | unwrap reallocated [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} realloc"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max_over_time({job=\"ssd\", host=\"15\"} | logfmt pending | unwrap pending [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} pending"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max_over_time({job=\"ssd\", host=\"15\"} | logfmt uncorrectable | unwrap uncorrectable [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} uncorr"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max_over_time({job=\"ssd\", host=\"15\"} | logfmt crc_errors | unwrap crc_errors [15m])",
+          "queryType": "range",
+          "legendFormat": "{{dev}} crc"
+        }
       ],
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "min": 0, "max": 2, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "spanNulls": true },
-        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } },
-        "overrides": [] }
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 7200000,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "RAID degraded (0 = healthy)",
+      "description": "Per-array degraded flag, labeled by array NAME (md numbers shuffle across reboots). The monthly scrub (~00:36, sync_action=check) is routine and does NOT set degraded.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "max_over_time({job=\"mdraid\", host=\"15\", name=~\".+\"} | logfmt degraded | unwrap degraded [15m])",
+          "queryType": "range",
+          "legendFormat": "{{name}} ({{array}})"
+        }
+      ],
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 7200000,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
     }
   ]
 }
