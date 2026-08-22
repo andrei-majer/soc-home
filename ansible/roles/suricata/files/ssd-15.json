@@ -10,7 +10,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "refresh": "5m",
   "editable": true,
   "graphTooltip": 1,
@@ -50,6 +50,7 @@
         "type": "loki",
         "uid": "${DS_LOKI}"
       },
+      "timeFrom": "1h",
       "targets": [
         {
           "refId": "A",
@@ -57,8 +58,8 @@
             "type": "loki",
             "uid": "${DS_LOKI}"
           },
-          "expr": "last_over_time({job=\"mdraid\", host=\"15\", name=~\".+\"} | logfmt healthy | unwrap healthy [1h])",
-          "queryType": "instant",
+          "expr": "last_over_time({job=\"mdraid\", host=\"15\", name=~\".+\"} | logfmt healthy | unwrap healthy [15m])",
+          "queryType": "range",
           "legendFormat": "{{name}}"
         }
       ],
@@ -125,6 +126,7 @@
         "type": "loki",
         "uid": "${DS_LOKI}"
       },
+      "timeFrom": "1h",
       "targets": [
         {
           "refId": "A",
@@ -132,8 +134,8 @@
             "type": "loki",
             "uid": "${DS_LOKI}"
           },
-          "expr": "last_over_time({job=\"ssd\", host=\"15\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [1h])",
-          "queryType": "instant",
+          "expr": "last_over_time({job=\"ssd\", host=\"15\"} | logfmt life_remaining_pct | unwrap life_remaining_pct [15m])",
+          "queryType": "range",
           "legendFormat": "{{dev}}"
         }
       ],
@@ -191,6 +193,7 @@
         "type": "loki",
         "uid": "${DS_LOKI}"
       },
+      "timeFrom": "1h",
       "targets": [
         {
           "refId": "A",
@@ -198,8 +201,8 @@
             "type": "loki",
             "uid": "${DS_LOKI}"
           },
-          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt reallocated | unwrap reallocated [1h]))",
-          "queryType": "instant",
+          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt reallocated | unwrap reallocated [15m]))",
+          "queryType": "range",
           "legendFormat": "reallocated"
         },
         {
@@ -208,8 +211,8 @@
             "type": "loki",
             "uid": "${DS_LOKI}"
           },
-          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt pending | unwrap pending [1h]))",
-          "queryType": "instant",
+          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt pending | unwrap pending [15m]))",
+          "queryType": "range",
           "legendFormat": "pending"
         },
         {
@@ -218,8 +221,8 @@
             "type": "loki",
             "uid": "${DS_LOKI}"
           },
-          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt uncorrectable | unwrap uncorrectable [1h]))",
-          "queryType": "instant",
+          "expr": "max(last_over_time({job=\"ssd\", host=\"15\"} | logfmt uncorrectable | unwrap uncorrectable [15m]))",
+          "queryType": "range",
           "legendFormat": "uncorrectable"
         }
       ],
