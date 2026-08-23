@@ -1,0 +1,4 @@
+# Installed at /etc/sudoers.d/nut-shutdown (mode 0440, validate with visudo -cf).
+# Lets the unprivileged nut user start only the resilience service — nothing else.
+Defaults:nut !requiretty
+nut ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block ups-resilience.service

@@ -13,9 +13,13 @@
 # Added 2026-07-27: ups-loki (UPS reading -> Loki push, every 30s).
 # Idempotent — these are already deployed on .15; this just codifies them.
 #
-# Deliberately NOT managed here: the runtime /etc/nut/ARMED toggle (operator-
-# controlled), NUT itself (/etc/nut/*.conf — needs vault for upsd.users). Future
-# passes: ssd-smart-loki, lm-sensors.
+# Added 2026-08-23: soc-vm-shutdown, soc-vm-boot, soc-vm-watchdog, SPAN-NIC netplan,
+# and the full NUT/UPS power-loss chain (configs, ups-resilience, sudoers) — the last of
+# which is templated from vault for the two files holding the monuser password.
+#
+# Deliberately NOT managed here: the runtime /etc/nut/ARMED toggle — that is the
+# operator's arm/disarm switch and Ansible must never assert it either way.
+# Future passes: ssd-smart-loki, lm-sensors.
 # ============================================================================
 
 - name: Install .15 host guardrail scripts
@@ -401,6 +405,91 @@
   ansible.builtin.file:
     path: /home/andrei/suricata/suricata-watchdog.sh
     state: absent
+
+# ---------- NUT / UPS power-loss chain ----------
+# Codified 2026-08-23. This chain was previously NOT Ansible-managed, which is exactly how
+# the ups-loki collector was silently lost in the 2026-07-02 reinstall — and it is the
+# power-loss safety path, so losing it is worse than losing a dashboard.
+#
+# The 2026-08-23 11:11 outage ran the host on battery for 47 min, then cut power hard
+# because ups-resilience was still in DRY-RUN. It is now ARMED, which makes these files
+# load-bearing.
+#
+# ⚠ /etc/nut/ARMED is DELIBERATELY NOT MANAGED — it is the operator's arm/disarm toggle.
+# ⚠ upsd.users and upsmon.conf carry the monuser password, so they are TEMPLATES fed from
+#   vault_nut_monuser_password. The sanitised copies under scripts/ups-monitoring/ still say
+#   "CHANGEME"; copying those verbatim would break UPS monitoring outright.
+# ⚠ NO handler restarts nut-server/nut-monitor. A restart drops UPS monitoring for a moment,
+#   and is not worth automating for a comment-only change. After a FUNCTIONAL edit here run:
+#       sudo systemctl restart nut-server nut-monitor
+- name: Install NUT config files (no secrets)
+  ansible.builtin.copy:
+    src: "nut-{{ item }}"
+    dest: "/etc/nut/{{ item }}"
+    owner: root
+    group: nut
+    mode: "0640"
+  loop:
+    - nut.conf
+    - ups.conf
+    - upsd.conf
+    - upssched.conf
+
+- name: Install NUT upssched-cmd.sh
+  ansible.builtin.copy:
+    src: nut-upssched-cmd.sh
+    dest: /etc/nut/upssched-cmd.sh
+    owner: root
+    group: nut
+    mode: "0750"
+
+- name: Install NUT credential files from vault
+  ansible.builtin.template:
+    src: "nut-{{ item }}.j2"
+    dest: "/etc/nut/{{ item }}"
+    owner: root
+    group: nut
+    mode: "0640"
+  loop:
+    - upsd.users
+    - upsmon.conf
+  no_log: true
+
+- name: Install sudoers rule letting the nut user start ups-resilience
+  ansible.builtin.copy:
+    src: nut-shutdown.sudoers
+    dest: /etc/sudoers.d/nut-shutdown
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Install ups-resilience script
+  ansible.builtin.copy:
+    src: ups-resilience.sh
+    dest: /usr/local/bin/ups-resilience.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install ups-resilience unit
+  ansible.builtin.copy:
+    src: ups-resilience.service
+    dest: /etc/systemd/system/ups-resilience.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Ensure NUT services are enabled and running
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - nut-server
+    - nut-monitor
+  when: not ansible_check_mode
 
 # ---------- PXE / UEFI netboot server (on-demand; assets fetched manually) ----------
 # 2026-07-07: on-demand, Secure-Boot-capable UEFI netboot server (Clonezilla +
