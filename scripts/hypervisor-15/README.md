@@ -19,6 +19,47 @@ script/unit content the role copies from.
 | `soc-sleep.timer` | `/etc/systemd/system/` | `OnCalendar=*-*-* 23:00:00 Persistent=true` |
 | `soc-wake.service` | `/etc/systemd/system/` | Oneshot, `User=andrei`, runs `soc-wake.sh` |
 | `soc-wake.timer` | `/etc/systemd/system/` | `OnCalendar=*-*-* 06:00:00 Persistent=true` |
+| `soc-vm-shutdown.sh` | `/usr/local/bin/` (mode 755, root:root) | ACPI shutdown of **every** running VM; force-poweroff after 180s |
+| `soc-vm-shutdown.service` | `/etc/systemd/system/` | `ExecStop`-only unit; systemd runs it before `vboxdrv` on reboot/poweroff |
+| `99-span-nic.yaml` | `/etc/netplan/` (mode 600, root:root) | Keeps the SPAN NIC `enp4s0` address-less |
+
+## Clean guest shutdown on host reboot (`soc-vm-shutdown`)
+
+A plain `reboot` of `.15` kills the `VBoxHeadless` processes outright, so every guest
+lands in VBox state `aborted` — the equivalent of yanking its power. Confirmed
+2026-08-23: after an operator reboot, `soc-sleep` logged
+`skip ELK / T-Pot Hive / OpenCanary (state=aborted)`. Elasticsearch and T-Pot's 24
+containers both recovered that time, but it is an index-corruption path on every reboot.
+
+`soc-vm-shutdown.service` does nothing on start (`ExecStart=/bin/true`,
+`RemainAfterExit=yes`); it exists purely for its `ExecStop`. Because it declares
+`After=vboxdrv.service`, systemd stops it **before** `vboxdrv` on the way down, which is
+when the guests get their ACPI power button and up to 180s to flush.
+
+It covers **all** running VMs, not just the autostart-flagged ones — `T-Pot Hive` is
+started by `soc-wake`, not by `vboxautostart`, and needs a clean stop too.
+
+VirtualBox's own `SHUTDOWN_USERS` / `SHUTDOWN=acpibutton` hook in
+`/etc/default/virtualbox` was rejected for this: `stop_vms()` in `vboxdrv.sh` waits a
+hardcoded 30s before unloading the module, far too short for ELK or T-Pot Hive, so they
+would still be killed mid-shutdown — the failure would just move later.
+
+Ad-hoc clean stop of the whole fleet (e.g. before pulling power):
+
+```bash
+sudo systemctl stop soc-vm-shutdown.service     # runs the ExecStop
+sudo systemctl start soc-vm-shutdown.service    # re-arm afterwards
+```
+
+## Why `soc-sleep.sh` has a window guard
+
+Both timers carry `Persistent=true`, so a host boot outside 23:00–06:00 replays **both**
+missed schedules seconds apart. On 2026-08-23 `soc-sleep` and `soc-wake` both fired at
+08:12:59 — wake won only because it started one second later, and sleep no-op'd solely
+because the VMs happened to be `aborted`. On a clean boot, sleep would ACPI-down exactly
+what wake had just started.
+
+`soc-sleep.sh` therefore no-ops outside 23:00–06:00 unless passed `--force`.
 
 ## Install
 
@@ -42,21 +83,27 @@ image the default is UTC, which puts `23:00:00` at 02:00 local — set with
 
 **SPAN NIC at boot.** The Suricata VM bridges its 2nd adapter to `enp4s0`
 (the Realtek port carrying the switch's SPAN mirror). Without an explicit
-netplan entry, `enp4s0` stays DOWN at boot and Suricata sees nothing.
-Append to `/etc/netplan/99-static-ip.yaml`:
+netplan entry, `enp4s0` stays DOWN at boot and Suricata sees nothing — and
+with a half-explicit one it comes up but accepts router advertisements, so
+the host starts transmitting onto the mirror it is supposed to be passively
+watching.
 
-```yaml
-    enp4s0:
-      dhcp4: no
-      dhcp6: no
-      optional: true
-      link-local: []
-      accept-ra: false
+Ship `99-span-nic.yaml` to `/etc/netplan/` (mode 600 root:root), then:
+
+```bash
+sudo netplan generate && sudo netplan apply
+sudo ip -6 addr flush dev enp4s0 scope global   # drop addresses already learned via RA
 ```
 
-Then `sudo netplan apply`. The interface comes up admin-UP without an IP;
-VirtualBox bridges into it directly. (`optional: true` keeps boot from
-hanging if the cable is unplugged.)
+The interface comes up admin-UP without an IP; VirtualBox bridges into it
+directly. (`optional: true` keeps boot from hanging if the cable is unplugged.)
+
+⚠ The original of this file lived in `/etc/netplan/99-static-ip.yaml`, which did
+**not** survive the 2026-07-02 encrypted-RAID1 reinstall — only
+`50-cloud-init.yaml` came back, and by 2026-08-23 `enp4s0` was holding two global
+IPv6 addresses. It is a separate file now, and Ansible-managed, so a reinstall
+cannot silently lose it again. `eno1`'s static `192.168.1.15/24` still comes from
+`50-cloud-init.yaml` and is deliberately not mentioned here.
 
 ## VMs covered
 

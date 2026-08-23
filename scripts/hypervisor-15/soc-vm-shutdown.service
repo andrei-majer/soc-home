@@ -1,0 +1,23 @@
+[Unit]
+Description=ACPI-shutdown all running VBox VMs before host reboot/poweroff
+# After= vboxdrv means systemd stops THIS unit before vboxdrv on the way down, which is
+# the whole point: the guests get an ACPI power button and time to flush before the
+# kernel module (and with it every VBoxHeadless process) goes away.
+After=vboxdrv.service vboxautostart-service.service network-online.target
+Requires=vboxdrv.service
+
+[Service]
+Type=oneshot
+# Nothing to do on start — the unit exists purely for its ExecStop. RemainAfterExit keeps
+# it "active" so systemd actually has something to stop at shutdown.
+RemainAfterExit=yes
+User=andrei
+ExecStart=/bin/true
+ExecStop=/usr/local/bin/soc-vm-shutdown.sh
+# Must exceed the script's own 180s ACPI grace period.
+TimeoutStopSec=240
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

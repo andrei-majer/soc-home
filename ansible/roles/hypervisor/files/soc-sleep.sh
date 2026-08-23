@@ -3,6 +3,21 @@
 # Invoked by soc-sleep.service (timer @ 23:00 daily). Logs via journal.
 # Suricata (.20) excluded 2026-07-16: hosts Grafana, kept up 24/7 for Tailscale mobile access.
 set -u
+
+# Both soc-sleep.timer and soc-wake.timer carry Persistent=true, so a host boot outside
+# 23:00-06:00 replays BOTH missed schedules seconds apart. Seen 2026-08-23: after a
+# daytime reboot, soc-sleep and soc-wake both fired at 08:12:59 — wake won only because
+# it started one second later, and sleep no-op'd solely because the VMs happened to be in
+# state `aborted`. On a clean boot, sleep would ACPI-down exactly what wake just started.
+# Pass --force for an ad-hoc run (e.g. before a planned host reboot).
+if [ "${1:-}" != "--force" ]; then
+  hour=$(date +%-H)
+  if [ "$hour" -lt 23 ] && [ "$hour" -ge 6 ]; then
+    echo "[$(date +%T)] outside the 23:00-06:00 sleep window (hour=$hour) — no-op. Use --force to override."
+    exit 0
+  fi
+fi
+
 SOC_VMS=("ELK" "T-Pot Hive" "OpenCanary")
 TIMEOUT=300
 VBOX=/usr/bin/VBoxManage

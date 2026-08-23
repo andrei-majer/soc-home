@@ -1,0 +1,23 @@
+# /etc/netplan/99-span-nic.yaml  (mode 0600 root:root)
+#
+# enp4s0 is the SPAN/mirror NIC, bridged into the Suricata VM in promiscuous mode. It must
+# carry NO host addresses: anything the host transmits on it is injected straight into the
+# traffic the sensor is monitoring.
+#
+# The pre-reinstall /etc/netplan/99-static-ip.yaml pinned this down, but it did not survive
+# the 2026-07-02 encrypted-RAID1 reinstall — only 50-cloud-init.yaml remains. As of
+# 2026-08-23 enp4s0 was accepting router advertisements and holding two global IPv6
+# addresses plus ULAs, and had transmitted ~306 packets onto the mirror.
+#
+# eno1 is deliberately not mentioned here — its static 192.168.1.15/24 comes from
+# 50-cloud-init.yaml and must not be disturbed.
+network:
+  version: 2
+  ethernets:
+    enp4s0:
+      dhcp4: no
+      dhcp6: no
+      accept-ra: false
+      link-local: []
+      # Keeps boot from hanging if the SPAN cable is unplugged.
+      optional: true

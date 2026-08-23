@@ -92,6 +92,61 @@
     - soc-sleep.timer
     - soc-wake.timer
 
+# ---------- soc-vm-shutdown: clean guest stop on host reboot/poweroff ----------
+# 2026-08-23: an operator reboot of .15 left every guest in VBox state `aborted` —
+# systemd killed the VBoxHeadless processes with no ACPI shutdown, i.e. the equivalent
+# of yanking their power. ELK's Elasticsearch and T-Pot's 24 containers both recovered
+# that time, but taking that risk on every reboot is not worth it.
+#
+# Ordered After=vboxdrv.service so systemd stops it BEFORE vboxdrv on the way down; the
+# unit does nothing on start and exists purely for its ExecStop.
+#
+# Not using VirtualBox's own SHUTDOWN_USERS/SHUTDOWN=acpibutton hook in
+# /etc/default/virtualbox: stop_vms() in vboxdrv.sh waits a hardcoded 30s before
+# unloading the module, far too short for ELK or T-Pot Hive.
+- name: Install soc-vm-shutdown script
+  ansible.builtin.copy:
+    src: soc-vm-shutdown.sh
+    dest: /usr/local/bin/soc-vm-shutdown.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install soc-vm-shutdown unit
+  ansible.builtin.copy:
+    src: soc-vm-shutdown.service
+    dest: /etc/systemd/system/soc-vm-shutdown.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start soc-vm-shutdown (ExecStart is /bin/true — arms the ExecStop)
+  ansible.builtin.systemd:
+    name: soc-vm-shutdown.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# ---------- SPAN NIC: keep enp4s0 address-less ----------
+# enp4s0 carries the switch's SPAN mirror and is bridged into the Suricata VM in
+# promiscuous mode, so anything the HOST transmits on it is injected into the very
+# traffic the sensor is monitoring. The pre-reinstall /etc/netplan/99-static-ip.yaml
+# pinned this down but did not survive the 2026-07-02 reinstall — by 2026-08-23 enp4s0
+# was accepting router advertisements, holding two global IPv6 addresses, and had put
+# ~306 packets onto the mirror.
+#
+# Deliberately no `netplan apply` handler: applying is an operator step, so a mistake
+# here cannot take .15 off the LAN unattended. The file otherwise takes effect at the
+# next reboot.
+- name: Install netplan drop-in keeping the SPAN NIC address-less
+  ansible.builtin.copy:
+    src: 99-span-nic.yaml
+    dest: /etc/netplan/99-span-nic.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
 # ---------- ups-loki: push UPS readings to Loki every 30s ----------
 # 2026-07-27: this was the "future pass" flagged in the role header above. Root-caused
 # the same day — the script still pointed at the pre-renumber 192.168.1.120 Loki address
