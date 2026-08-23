@@ -4,6 +4,10 @@ Description=ACPI-shutdown all running VBox VMs before host reboot/poweroff
 # the whole point: the guests get an ACPI power button and time to flush before the
 # kernel module (and with it every VBoxHeadless process) goes away.
 After=vboxdrv.service vboxautostart-service.service network-online.target
+# VBoxSVC caches machine accessibility at startup, and two archived VMs live on /mnt/cold
+# (a late-unlocking LUKS volume). Any unit that can spawn VBoxSVC must therefore wait for
+# both VM stores, or VBoxSVC comes up with those machines permanently inaccessible.
+RequiresMountsFor=/mnt/vms /mnt/cold
 Requires=vboxdrv.service
 
 [Service]

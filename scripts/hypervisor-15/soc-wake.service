@@ -1,6 +1,10 @@
 [Unit]
 Description=Cold-boot all SOC VMs in the morning
 After=network.target vboxdrv.service systemd-modules-load.service
+# VBoxSVC caches machine accessibility at startup, and two archived VMs live on /mnt/cold
+# (a late-unlocking LUKS volume). Any unit that can spawn VBoxSVC must therefore wait for
+# both VM stores, or VBoxSVC comes up with those machines permanently inaccessible.
+RequiresMountsFor=/mnt/vms /mnt/cold
 
 [Service]
 Type=oneshot

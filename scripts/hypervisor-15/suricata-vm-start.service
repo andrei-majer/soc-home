@@ -1,6 +1,10 @@
 [Unit]
 Description=Auto-start Suricata VM on host boot
 After=vboxdrv.service systemd-modules-load.service network-online.target
+# VBoxSVC caches machine accessibility at startup, and two archived VMs live on /mnt/cold
+# (a late-unlocking LUKS volume). Any unit that can spawn VBoxSVC must therefore wait for
+# both VM stores, or VBoxSVC comes up with those machines permanently inaccessible.
+RequiresMountsFor=/mnt/vms /mnt/cold
 Wants=network-online.target
 ConditionPathExists=/dev/vboxdrv
 
