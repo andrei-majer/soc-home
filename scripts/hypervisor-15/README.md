@@ -200,3 +200,33 @@ process dead" nor "SPAN NIC carrier lost." Adding that would need SSH
 - [`hypervisor-15` memory](https://github.com/andrei-majer/soc-home) — full migration history
 - The old Windows scripts are gone with the OS; this directory is the
   equivalent in Linux idiom
+
+## VM registry and the `/mnt/cold` ordering
+
+`VBoxSVC` caches each machine's accessibility **once, at startup**. If a registered VM's config
+lives on a volume that is not mounted yet, that VM is inaccessible for the life of that VBoxSVC —
+and `VBoxAutostart`, which enumerates **all** registered machines, aborts the entire run with
+`E_ACCESSDENIED` (component `MachineWrap`, interface `IMachine`), starting **nothing** while still
+exiting `0`. Silent SOC outage.
+
+That is exactly what happened on 2026-08-23: `OpenClaw` and `T-Pot Sensor` had been archived to
+`/mnt/cold` (a late-unlocking LUKS volume) on Aug 22, and every boot after that came back with only
+Suricata running.
+
+Two independent defences are now in place, and both should stay:
+
+1. **Mount ordering** on every unit that can spawn VBoxSVC — `vboxautostart-service` (drop-in),
+   `suricata-vm-start`, `soc-wake`, `soc-vm-shutdown`:
+   `RequiresMountsFor=/mnt/vms` plus a plain `After=mnt-cold.mount`.
+   `/mnt/cold` is **ordering-only on purpose** — making it a hard requirement would turn an archive
+   volume into a single point of failure for the live fleet.
+2. **The archived VMs are unregistered** (`unregistervm`, no `--delete` — files intact on
+   `/mnt/cold/vm-archive/`). Registry holds 5 VMs: ELK, OpenCanary, OpenCTi, Suricata, T-Pot Hive.
+
+⚠ **Registering a VM whose files live on `/mnt/cold` re-arms this failure mode.** Defence 1 is what
+then keeps it safe. If you ever add one, verify a cold boot before trusting it.
+
+⚠ Diagnosing it again: an inaccessible VM has no usable name, so `VBoxManage showvminfo "<name>"`
+returns `VBOX_E_OBJECT_NOT_FOUND` while `VBoxManage list vms` still lists it. That mismatch is the
+tell — query by UUID to inspect it. Note also that `vboxautostart.log` is only written by
+`--background` runs; interactive runs log to stdout and leave the file stale.
