@@ -121,12 +121,17 @@
     mode: "0644"
   notify: Reload systemd
 
+# when: guard is load-bearing. In --check the copy above does not actually write the unit
+# file, so systemd cannot find it and the task fails — which aborts the play and hides
+# every remaining hunk. That matters here because soc-ansible-state.sh runs a --check
+# drift scan every 4h; without this guard a rebuilt host would fail that scan forever.
 - name: Enable and start soc-vm-shutdown (ExecStart is /bin/true — arms the ExecStop)
   ansible.builtin.systemd:
     name: soc-vm-shutdown.service
     enabled: true
     state: started
     daemon_reload: true
+  when: not ansible_check_mode
 
 # ---------- SPAN NIC: keep enp4s0 address-less ----------
 # enp4s0 carries the switch's SPAN mirror and is bridged into the Suricata VM in
