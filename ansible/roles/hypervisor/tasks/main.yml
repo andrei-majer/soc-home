@@ -133,16 +133,70 @@
     daemon_reload: true
   when: not ansible_check_mode
 
-# ---------- vboxautostart: stop it racing its own VBoxSVC at cold boot ----------
-# 2026-08-23: two consecutive boots of .15 came back with ELK and OpenCanary down — no SIEM,
-# no canary — and nothing said so. vboxautostart-service had run and exited 0.
+# ---------- soc-vm-boot: replaces VirtualBox's vboxautostart ----------
+# vboxautostart is FAIL-FAST — a single per-VM error aborts the whole run, and it still
+# exits 0 so nothing reports it. It broke two boots on 2026-08-23 for unrelated reasons:
+# first the E_ACCESSDENIED enumeration failure (VMs archived on the late-unlocking
+# /mnt/cold), then "already locked by a session" on Suricata — started microseconds earlier
+# by suricata-vm-start.service — which made it abandon OpenCanary and ELK while both were
+# down and flagged. Proven by hand: with Suricata up and the other two stopped,
+# VBoxAutostart started neither.
 #
-# VBoxAutostart is normally the first VBox client after boot, so it spawns VBoxSVC itself and
-# then immediately calls IVirtualBox::machines. VBoxSVC answers E_ACCESSDENIED until it has
-# finished initialising, VBoxAutostart treats that as fatal ("Enumerating virtual machines
-# failed with E_ACCESSDENIED"), starts nothing, and STILL EXITS 0. VBoxSVC's log opened at
-# 09:28:59.150 and VBoxAutostart gave up at 09:28:59.270 — a 120ms gap. The identical
-# invocation run by hand against a warm VBoxSVC succeeds, which is what makes it a race.
+# soc-vm-boot.sh starts each VM independently, so one failure never blocks the rest, and
+# logs every outcome to the journal. It is also schedule-aware, which fixes the separate
+# "a mid-day reboot leaves T-Pot Hive down" gap: vboxautostart never started Hive (flag off)
+# and soc-wake had already run for the day, so nothing did.
+- name: Install SOC VM boot start-up script
+  ansible.builtin.copy:
+    src: soc-vm-boot.sh
+    dest: /usr/local/bin/soc-vm-boot.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install soc-vm-boot unit
+  ansible.builtin.copy:
+    src: soc-vm-boot.service
+    dest: /etc/systemd/system/soc-vm-boot.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable soc-vm-boot (do NOT start — the fleet is already up)
+  ansible.builtin.systemd:
+    name: soc-vm-boot.service
+    enabled: true
+    daemon_reload: true
+  when: not ansible_check_mode
+
+# Retire the two mechanisms soc-vm-boot replaces. enabled:false ONLY — deliberately no
+# state:stopped, because stopping suricata-vm-start.service runs its ExecStop, which ACPI
+# shuts down the running Suricata VM. Disabling only affects the next boot, which is what
+# we want.
+- name: Disable vboxautostart-service (superseded by soc-vm-boot; fail-fast by design)
+  ansible.builtin.systemd:
+    name: vboxautostart-service.service
+    enabled: false
+  when: not ansible_check_mode
+
+# ---------- vboxautostart: mount ordering (now vestigial) ----------
+# vboxautostart-service is DISABLED as of 2026-08-23 (see soc-vm-boot above), so this
+# drop-in no longer runs. It is kept, and kept correct, because it is the thing that makes
+# vboxautostart safe if anyone ever re-enables it.
+#
+# The bug it addresses: VBoxSVC caches each machine's accessibility ONCE, at startup. Two
+# VMs were archived onto /mnt/cold, a LUKS volume that unlocks late in boot. When VBoxSVC
+# started first they were inaccessible to it for the life of that process, VBoxAutostart's
+# enumeration of ALL machines died with E_ACCESSDENIED (component MachineWrap, interface
+# IMachine), and it started nothing while still exiting 0. Measured on the 10:10 boot:
+# cryptcold began at 10:10:01, VBoxSVC spawned 10:10:06, /mnt/cold mounted 10:10:08.
+#
+# An earlier theory — that VBoxAutostart raced its own VBoxSVC spawn — was WRONG; see the
+# header of vboxautostart-warmup.sh, which documents it so nobody re-treads it.
+#
+# Those two VMs have since been unregistered, so this is now belt-and-braces on top of
+# belt-and-braces.
 - name: Install vboxautostart warm-up script
   ansible.builtin.copy:
     src: vboxautostart-warmup.sh
@@ -276,10 +330,16 @@
     mode: "0644"
   notify: Reload systemd
 
-- name: Enable Suricata VM boot-start (do NOT start — VM is already running)
+# DISABLED 2026-08-23: superseded by soc-vm-boot.service, which starts Suricata along with
+# the rest of the fleet. Keeping both enabled is actively harmful — this unit started
+# Suricata in the same second as vboxautostart, and the resulting "already locked by a
+# session" made vboxautostart abandon OpenCanary and ELK. The unit file is left installed so
+# it can be re-enabled by hand if soc-vm-boot ever needs to be backed out.
+# enabled:false ONLY — state:stopped would run its ExecStop and ACPI-shutdown a live Suricata.
+- name: Disable Suricata VM boot-start (superseded by soc-vm-boot)
   ansible.builtin.systemd:
     name: suricata-vm-start.service
-    enabled: true
+    enabled: false
     daemon_reload: true
 
 - name: Ensure /home/andrei/suricata directory exists

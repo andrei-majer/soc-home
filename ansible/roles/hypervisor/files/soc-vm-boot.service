@@ -1,0 +1,26 @@
+[Unit]
+Description=Start the SOC VM fleet on host boot
+After=vboxdrv.service systemd-modules-load.service network-online.target
+Wants=network-online.target
+# VBoxSVC caches machine accessibility at startup, so nothing may touch VBox before the VM
+# stores are mounted. /mnt/cold is ordering-only on purpose — it holds archived VMs, and a
+# cryptcold that fails to unlock must not stop the live fleet from starting.
+RequiresMountsFor=/mnt/vms
+After=mnt-cold.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=andrei
+Group=vboxusers
+ExecStart=/usr/local/bin/soc-vm-boot.sh
+# Generous: four VMs started serially, each waiting for VBox to report power-on.
+TimeoutStartSec=600
+# Without this systemd kills the whole cgroup when the oneshot exits, taking the
+# VBoxHeadless children with it — the exact trap documented for soc-wake.service.
+KillMode=process
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
