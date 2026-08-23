@@ -4,7 +4,10 @@ After=network.target vboxdrv.service systemd-modules-load.service
 # VBoxSVC caches machine accessibility at startup, and two archived VMs live on /mnt/cold
 # (a late-unlocking LUKS volume). Any unit that can spawn VBoxSVC must therefore wait for
 # both VM stores, or VBoxSVC comes up with those machines permanently inaccessible.
-RequiresMountsFor=/mnt/vms /mnt/cold
+RequiresMountsFor=/mnt/vms
+# /mnt/cold is ordering-only, deliberately NOT RequiresMountsFor: it holds only archived
+# VMs, so a cryptcold that fails to unlock must not stop the live SOC fleet from starting.
+After=mnt-cold.mount
 
 [Service]
 Type=oneshot
