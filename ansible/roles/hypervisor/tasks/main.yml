@@ -264,13 +264,9 @@
 #      polls /dev/vboxdrv up to 60s to survive the vboxdrv-udev race that
 #      already bit soc-wake.sh, KillMode=process so VBoxHeadless survives the
 #      oneshot exit).
-#   2. suricata-watchdog.sh — andrei crontab */5 min, checks VBoxManage
-#      runningvms, sends one Telegram alert + re-alerts every 3h while broken,
-#      recovery message on return. Reuses ~/teslamate/.telegram.env creds
-#      (TG_TOKEN / TG_CHAT — NOT TELEGRAM_BOT_TOKEN/CHAT_ID as generic naming
-#      would suggest).
-# Coverage gap (deliberate): neither catches "VM up but suricata process dead"
-# nor "SPAN NIC carrier lost" — that would need SSH .15->.20 which isn't set up.
+#   2. soc-vm-watchdog.sh — andrei crontab */5 min (see below; superseded
+#      suricata-watchdog.sh on 2026-08-23).
+# Coverage gap (deliberate): neither catches "SPAN NIC carrier lost".
 - name: Install Suricata VM boot-start unit
   ansible.builtin.copy:
     src: suricata-vm-start.service
@@ -294,20 +290,57 @@
     group: andrei
     mode: "0755"
 
-- name: Install Suricata watchdog script
-  ansible.builtin.copy:
-    src: suricata-watchdog.sh
-    dest: /home/andrei/suricata/suricata-watchdog.sh
+# ---------- soc-vm-watchdog: watch the whole fleet, not just Suricata ----------
+# 2026-08-23: two consecutive reboots of .15 came back with ELK and OpenCanary down — no
+# SIEM ingest, no canary — and nothing reported it (vboxautostart raced its own VBoxSVC,
+# started nothing, exited 0). suricata-watchdog.sh stayed silent throughout because
+# suricata-vm-start.service had correctly brought up the one VM it watched.
+#
+# The replacement checks every VM that is supposed to be running, and adds a TCP probe of
+# each guest's key service port from .15 over the LAN — which finally closes the old "VM up
+# but the guest is dead" gap without needing SSH from .15 to the guests.
+#
+# Schedule-aware: ELK / T-Pot Hive / OpenCanary follow the soc-sleep/soc-wake cycle and are
+# only expected inside a 06:15-22:45 window, so the nightly ACPI shutdown never pages.
+# Also stays quiet for 10 min after a host boot while the fleet comes up.
+#
+# Telegram creds come from ~/teslamate/.telegram.env, which uses TG_TOKEN / TG_CHAT — NOT
+# TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID as the generic naming would suggest.
+- name: Ensure /home/andrei/soc-watchdog directory exists
+  ansible.builtin.file:
+    path: /home/andrei/soc-watchdog
+    state: directory
     owner: andrei
     group: andrei
     mode: "0755"
 
-- name: Install andrei cron entry for Suricata watchdog (every 5 min)
+- name: Install SOC VM fleet watchdog script
+  ansible.builtin.copy:
+    src: soc-vm-watchdog.sh
+    dest: /home/andrei/soc-watchdog/soc-vm-watchdog.sh
+    owner: andrei
+    group: andrei
+    mode: "0755"
+
+- name: Install andrei cron entry for the SOC VM fleet watchdog (every 5 min)
+  ansible.builtin.cron:
+    name: soc-vm-watchdog
+    user: andrei
+    minute: "*/5"
+    job: /home/andrei/soc-watchdog/soc-vm-watchdog.sh
+
+# Retire the single-VM predecessor. Its log at /home/andrei/suricata/watchdog.log is left in
+# place for history; only the script and its cron entry go.
+- name: Remove superseded suricata-watchdog cron entry
   ansible.builtin.cron:
     name: suricata-watchdog
     user: andrei
-    minute: "*/5"
-    job: /home/andrei/suricata/suricata-watchdog.sh
+    state: absent
+
+- name: Remove superseded suricata-watchdog script
+  ansible.builtin.file:
+    path: /home/andrei/suricata/suricata-watchdog.sh
+    state: absent
 
 # ---------- PXE / UEFI netboot server (on-demand; assets fetched manually) ----------
 # 2026-07-07: on-demand, Secure-Boot-capable UEFI netboot server (Clonezilla +
