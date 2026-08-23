@@ -28,11 +28,18 @@ while true; do
     *" LB "*)
       log "LOW BATTERY (status='$s', vbatt=$(vb)) — clean shutdown"
       if armed; then
-        timeout 180 systemctl start soc-sleep.service \
-          || log "soc-sleep start failed/timed out; proceeding to poweroff anyway"
+        # soc-vm-shutdown, NOT soc-sleep. Two reasons, both discovered 2026-08-23:
+        #  1. soc-sleep.sh gained a window guard and no-ops outside 23:00-06:00, so on a
+        #     DAYTIME outage this call would silently do nothing at all.
+        #  2. soc-sleep only ever covered ELK / T-Pot Hive / OpenCanary — never Suricata.
+        # Stopping soc-vm-shutdown.service runs its ExecStop, which ACPI-stops EVERY
+        # running VM regardless of the time of day. (systemctl poweroff below would also
+        # trigger it, but doing it explicitly keeps the timeout and the logging here.)
+        timeout 200 systemctl stop soc-vm-shutdown.service \
+          || log "soc-vm-shutdown failed/timed out; proceeding to poweroff anyway"
         systemctl poweroff
       else
-        log "DRY-RUN: would soc-sleep + poweroff now"
+        log "DRY-RUN: would soc-vm-shutdown + poweroff now"
       fi
       exit 0 ;;
   esac
