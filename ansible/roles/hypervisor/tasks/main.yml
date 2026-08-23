@@ -133,6 +133,41 @@
     daemon_reload: true
   when: not ansible_check_mode
 
+# ---------- vboxautostart: stop it racing its own VBoxSVC at cold boot ----------
+# 2026-08-23: two consecutive boots of .15 came back with ELK and OpenCanary down — no SIEM,
+# no canary — and nothing said so. vboxautostart-service had run and exited 0.
+#
+# VBoxAutostart is normally the first VBox client after boot, so it spawns VBoxSVC itself and
+# then immediately calls IVirtualBox::machines. VBoxSVC answers E_ACCESSDENIED until it has
+# finished initialising, VBoxAutostart treats that as fatal ("Enumerating virtual machines
+# failed with E_ACCESSDENIED"), starts nothing, and STILL EXITS 0. VBoxSVC's log opened at
+# 09:28:59.150 and VBoxAutostart gave up at 09:28:59.270 — a 120ms gap. The identical
+# invocation run by hand against a warm VBoxSVC succeeds, which is what makes it a race.
+- name: Install vboxautostart warm-up script
+  ansible.builtin.copy:
+    src: vboxautostart-warmup.sh
+    dest: /usr/local/bin/vboxautostart-warmup.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure vboxautostart drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/vboxautostart-service.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install vboxautostart warm-up drop-in
+  ansible.builtin.copy:
+    src: vboxautostart-warmup.conf
+    dest: /etc/systemd/system/vboxautostart-service.service.d/10-warmup.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
 # ---------- SPAN NIC: keep enp4s0 address-less ----------
 # enp4s0 carries the switch's SPAN mirror and is bridged into the Suricata VM in
 # promiscuous mode, so anything the HOST transmits on it is injected into the very
