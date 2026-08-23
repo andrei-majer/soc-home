@@ -109,14 +109,19 @@ cannot silently lose it again. `eno1`'s static `192.168.1.15/24` still comes fro
 
 `ELK` (.21), `T-Pot Hive` (.23), `OpenCanary` (.24).
 
-`Suricata` (.20) is **deliberately excluded since 2026-07-16** — it now hosts
-Grafana (reverse-proxied over Tailscale for mobile access, see the
-`grafana-proxy` container and memory `soc-lab/tailscale.md`), so it stays up
-24/7 instead of cycling nightly.
+`Suricata` (.20) is **deliberately excluded since 2026-07-16** — it hosts Grafana
+and stays up 24/7 instead of cycling nightly. (Mobile access to that Grafana went
+via a `grafana-proxy` container on `.15` until 2026-08-01; that proxy is **retired**
+— `.20` joined the tailnet itself, so the phone now reaches `100.66.251.41:3000`
+directly under the `tag:mobile -> tag:soc` grant. See memory `soc-lab/tailscale.md`.)
 
 `OpenCTi` is **deliberately excluded** — it runs in on-demand savestate mode
 since 2026-06-07 (woken manually via `opencti-wake.ps1` on `.13` when needed).
-`OpenClaw` and the retired `T-Pot Sensor` are not SOC services and stay off.
+`OpenClaw` and the retired `T-Pot Sensor` are not SOC services. Both were archived
+to `/mnt/cold` on 2026-08-22 and **unregistered from VirtualBox on 2026-08-23** —
+their files are intact, but leaving them registered on a late-unlocking LUKS volume
+broke `vboxautostart` on every boot. See "VM registry and the `/mnt/cold` ordering"
+below before re-registering either.
 
 ## Why ACPI shutdown (not savestate)
 
