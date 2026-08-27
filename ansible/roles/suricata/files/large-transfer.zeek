@@ -30,6 +30,13 @@ export {
     const exfil_exclude_sni: set[string] = {
         "de85475856982e903df18911ce3c2ca1.r2.cloudflarestorage.com",
     } &redef;
+    ## Operator-owned single-tenant hosts, matched on address. Needed alongside
+    ## exfil_exclude_sni because bulk uploads to these arrive over SSH/rsync, which
+    ## carries no SNI to key on. Dedicated hosts only — a whole-address exclusion is
+    ## a permanent blind spot if that host is ever taken over.
+    const exfil_exclude_hosts: set[addr] = {
+        172.105.155.47,   # ht4.cellpex.com
+    } &redef;
 }
 
 event connection_state_remove(c: connection)
@@ -42,6 +49,8 @@ event connection_state_remove(c: connection)
         return;                          # internal->internal is not exfil
     if ( c$id$resp_h in LargeTransfer::exfil_exclude_nets )
         return;                          # trusted overlay / private dest, not exfil
+    if ( c$id$resp_h in LargeTransfer::exfil_exclude_hosts )
+        return;                          # operator-owned host, any protocol
     if ( c?$ssl && c$ssl?$server_name &&
          c$ssl$server_name in LargeTransfer::exfil_exclude_sni )
         return;                          # operator-owned upload endpoint
