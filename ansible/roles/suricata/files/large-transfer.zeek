@@ -4,6 +4,7 @@
 
 @load base/frameworks/notice
 @load base/protocols/conn
+@load base/protocols/ssl
 @load base/utils/site
 
 module LargeTransfer;
@@ -22,6 +23,13 @@ export {
         [fc00::]/7,       # IPv6 unique-local
         [fe80::]/10,      # IPv6 link-local
     } &redef;
+    ## Operator-owned upload endpoints, matched on TLS SNI. Keyed on SNI and not
+    ## on address because these live on shared CDN anycast IPs: excluding the IP
+    ## would whitelist every other tenant on that edge. An attacker can forge an
+    ## SNI, so keep this list to endpoints whose bulk uploads are expected.
+    const exfil_exclude_sni: set[string] = {
+        "de85475856982e903df18911ce3c2ca1.r2.cloudflarestorage.com",
+    } &redef;
 }
 
 event connection_state_remove(c: connection)
@@ -34,6 +42,9 @@ event connection_state_remove(c: connection)
         return;                          # internal->internal is not exfil
     if ( c$id$resp_h in LargeTransfer::exfil_exclude_nets )
         return;                          # trusted overlay / private dest, not exfil
+    if ( c?$ssl && c$ssl?$server_name &&
+         c$ssl$server_name in LargeTransfer::exfil_exclude_sni )
+        return;                          # operator-owned upload endpoint
     if ( c$orig$size < LargeTransfer::outbound_threshold )
         return;
     NOTICE([$note=LargeTransfer::Large_Outbound,
