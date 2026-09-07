@@ -4,8 +4,12 @@
 # Canonical location: /usr/local/sbin/opencti-wake.sh on .20 (Suricata host).
 # The .13 opencti-wake.ps1 is now a thin wrapper that SSHes here.
 #
-# Total wake time: ~45s (17s VBox resume + ~30s for ES/RabbitMQ to settle).
+# Total wake time: ~45s from savestate (17s VBox resume + ~30s for ES/RabbitMQ
+# to settle), ~90s from a cold boot (ES healthy ~60s, platform answers ~80s).
 # Containers self-heal on savestate resume (preserved working state).
+#
+# Both waits retry on a back-off until a deadline (SSH 120s; stack 120s from
+# savestate, 240s cold) because every check here races the boot.
 #
 # On a COLD boot from saved/poweroff (as opposed to savestate resume), the 5
 # TI connectors + worker get stuck in a Python retry loop because ES isn't
@@ -21,7 +25,7 @@
 #
 # Exit codes:
 #   0 = OK (VM running + stack healthy)
-#   1 = stack not fully healthy yet (give 30-60s more)
+#   1 = stack still not healthy when the retry deadline ran out
 #   2 = SSH / VBoxManage / unexpected state error
 
 set -u
@@ -79,46 +83,77 @@ esac
 
 [ "$NO_VERIFY" -eq 1 ] && exit 0
 
-# Wait for SSH on .22 (up to 90s)
+# How long to keep retrying. A cold boot needs far longer than a savestate
+# resume: ES goes starting->healthy around 60s and the platform first answers
+# around 80s, so anything shorter just reports a false failure.
+SSH_DEADLINE=120
+if [ "$was_cold_boot" -eq 1 ]; then STACK_DEADLINE=240; else STACK_DEADLINE=120; fi
+
+# Wait for SSH on .22. Probe with a real authenticated command, NOT a bare
+# /dev/tcp connect: port 22 accepts connections during early boot before sshd
+# can actually serve, so the old TCP probe declared "ready" ~60s too early and
+# the very next SSH call failed outright (2026-09-07 cold boot, exit 2).
 echo "Waiting for SSH on $OCTI_HOST..."
 t0=$(date +%s)
 ssh_ready=0
-for _ in $(seq 1 30); do
-    if timeout 3 bash -c "</dev/tcp/$OCTI_HOST/22" 2>/dev/null; then
+delay=3
+while [ $(( $(date +%s) - t0 )) -lt "$SSH_DEADLINE" ]; do
+    if octi_ssh true >/dev/null 2>&1; then
         ssh_ready=1; break
     fi
-    sleep 3
+    sleep "$delay"
+    [ "$delay" -lt 10 ] && delay=$(( delay + 2 ))
 done
 elapsed=$(( $(date +%s) - t0 ))
 if [ "$ssh_ready" -ne 1 ]; then
-    echo "${RED}ERROR: SSH not reachable after ${elapsed}s${RST}"
+    echo "${RED}ERROR: SSH not usable after ${elapsed}s${RST}"
     exit 2
 fi
 echo "SSH ready after ${elapsed}s"
 
-# Verify containers + platform
-echo "Checking OpenCTI stack..."
-check=$(octi_ssh 'docker ps -q | wc -l; systemctl is-active opencti' 2>&1) || { echo "${RED}ERROR: SSH to $OCTI_HOST failed${RST}"; exit 2; }
-container_count=$(printf '%s\n' "$check" | sed -n '1p' | tr -d ' ')
-svc_state=$(printf '%s\n' "$check" | sed -n '2p' | tr -d ' ')
+# Verify containers + platform. Everything here is a boot race, so probe on a
+# back-off until healthy or the deadline — a single shot only ever caught the
+# stack mid-start. `?` means that probe itself could not run (SSH refused).
+container_count='?'; svc_state='?'; http_code='000'
+
+probe_stack() {
+    local check
+    check=$(octi_ssh 'docker ps -q | wc -l; systemctl is-active opencti' 2>/dev/null) || {
+        container_count='?'; svc_state='ssh-failed'; http_code='000'
+        return 1
+    }
+    container_count=$(printf '%s\n' "$check" | sed -n '1p' | tr -d ' ')
+    svc_state=$(printf '%s\n' "$check" | sed -n '2p' | tr -d ' ')
+    http_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "http://$OCTI_HOST:8080/health" 2>/dev/null || echo 000)
+
+    # 11 since worker replicas cut 3->1 (2026-06-12); was 13
+    [ "$container_count" != '?' ] && [ "$container_count" -ge 11 ] 2>/dev/null \
+        && [ "$svc_state" = active ] \
+        && { [ "$http_code" = 401 ] || [ "$http_code" = 200 ]; }
+}
+
+echo "Checking OpenCTI stack (up to ${STACK_DEADLINE}s)..."
+t0=$(date +%s)
+stack_healthy=0
+delay=5
+while :; do
+    if probe_stack; then stack_healthy=1; break; fi
+    elapsed=$(( $(date +%s) - t0 ))
+    [ "$elapsed" -ge "$STACK_DEADLINE" ] && break
+    echo "  not ready yet (${elapsed}s): containers=$container_count opencti=$svc_state http=$http_code"
+    sleep "$delay"
+    [ "$delay" -lt 20 ] && delay=$(( delay + 5 ))
+done
 
 echo "Containers running: $container_count"
 echo "opencti systemd:    $svc_state"
-
-http_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "http://$OCTI_HOST:8080/health" || echo 000)
 echo "platform HTTP:      $http_code (401 = auth required = healthy)"
 
-# 11 since worker replicas cut 3->1 (2026-06-12); was 13
-if [ "$container_count" -ge 11 ] && [ "$svc_state" = active ] && { [ "$http_code" = 401 ] || [ "$http_code" = 200 ]; }; then
-    stack_healthy=1
-else
-    stack_healthy=0
-fi
-
 if [ "$stack_healthy" -ne 1 ]; then
-    echo "${YEL}WARN: stack not fully healthy yet — give it 30-60s more${RST}"
+    echo "${YEL}WARN: stack still not healthy after $(( $(date +%s) - t0 ))s${RST}"
     exit 1
 fi
+echo "Stack healthy after $(( $(date +%s) - t0 ))s"
 
 # Post-boot connector restart. On cold-boot from poweroff, connectors race ES
 # and stick in Python retry (see script header). Unconditional restart is
