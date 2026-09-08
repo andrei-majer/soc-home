@@ -452,56 +452,56 @@
   ansible.builtin.cron:
     name: velociraptor-netstat-win
     minute: "*/15"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Network.NetstatEnriched"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Network.NetstatEnriched"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 - name: Velociraptor | schedule ScheduledTasks on .13 (30 min)
   ansible.builtin.cron:
     name: velociraptor-scheduledtasks-win
     minute: "*/30"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.System.ScheduledTasks"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.System.ScheduledTasks"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 - name: Velociraptor | schedule Services on .13 (30 min)
   ansible.builtin.cron:
     name: velociraptor-services-win
     minute: "1-59/30"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.System.Services"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.System.Services"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 - name: Velociraptor | schedule WMI persistence on .13 (30 min)
   ansible.builtin.cron:
     name: velociraptor-wmi-win
     minute: "2-59/30"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Persistence.PermanentWMIEvents"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Persistence.PermanentWMIEvents"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 - name: Velociraptor | schedule StartupItems on .13 (30 min)
   ansible.builtin.cron:
     name: velociraptor-startup-win
     minute: "3-59/30"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Sys.StartupItems"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.ac8c5eec63123b59", artifacts=["Windows.Sys.StartupItems"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 - name: Velociraptor | schedule Pslist on .20 (15 min)
   ansible.builtin.cron:
     name: velociraptor-pslist-lin
     minute: "*/15"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Sys.Pslist"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Sys.Pslist"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 - name: Velociraptor | schedule Netstat on .20 (15 min)
   ansible.builtin.cron:
     name: velociraptor-netstat-lin
     minute: "*/15"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Network.Netstat"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Network.Netstat"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 - name: Velociraptor | schedule Services on .20 (30 min)
   ansible.builtin.cron:
     name: velociraptor-services-lin
     minute: "4-59/30"
-    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Sys.Services"], timeout=1200) FROM scope()' >/dev/null 2>&1
+    job: velociraptor --api_config /etc/velociraptor/automation_api.yaml query 'SELECT collect_client(client_id="C.7ce12e4c591be619", artifacts=["Linux.Sys.Services"], timeout=1200) FROM scope()' >> /var/log/velociraptor-cron.log 2>&1
   tags: velociraptor
 
 # ---------- Suricata enforcer ----------
