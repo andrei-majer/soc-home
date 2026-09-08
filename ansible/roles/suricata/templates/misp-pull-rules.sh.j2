@@ -54,6 +54,21 @@ awk '
     if ($0 ~ /content:"[^"]*\;/) { broken_snort++; next }
     # Drop rules with literal ; inside misp_ioc metadata value (MISP exporter bug — semicolon terminates the keyword)
     if ($0 ~ /misp_ioc [^,)]*;/) { broken_meta++; next }
+    # Drop rules where the exporter wraps pcre in an escaped quote (pcre:\"/.../\") instead
+    # of a plain one — Suricata reads the backslash as an unknown regex modifier (2026-09-08)
+    if ($0 ~ /pcre:\\"/) { broken_pcre_quote++; next }
+    # Drop rules with a bare URL scheme glued directly after a hex-escape pipe
+    # (e.g. content:"...|http://..."); a real hex escape is always 2-digit pairs, never
+    # literal ASCII letters, so this is always exporter corruption, not a valid pattern
+    if ($0 ~ /\|(https?|hxxps?):/) { broken_pipe_scheme++; next }
+    # Drop rules with a raw Snort line-continuation backslash ("\      flow"/"\      content")
+    # that never got merged into one line — an unrecognized keyword in Suricata
+    if ($0 ~ /\\[ ]+(flow|content)[ ]*:/) { broken_continuation++; next }
+    # Drop rules with an unfilled sid/priority placeholder ("sid:XX", "priority:X")
+    if ($0 ~ /(sid:XX|priority:X)([^0-9]|$)/) { broken_placeholder++; next }
+    # Drop rules containing un-decoded HTML entities (&gt; &lt; &quot; &amp;) — always an
+    # exporter artifact from a description field that should have been unescaped
+    if ($0 ~ /&(gt|lt|quot|amp);/) { broken_html_entity++; next }
     if (match($0, /sid:[0-9]+/)) {
       sid = substr($0, RSTART+4, RLENGTH-4)
       if (!seen[sid]++) print
@@ -66,7 +81,7 @@ DEDUP_COUNT=$(grep -c '^alert' "${DEDUP_FILE}" 2>/dev/null || echo 0)
 DROPPED=$(( RULE_COUNT - DEDUP_COUNT ))
 mv "${DEDUP_FILE}" "${TMP_FILE}"
 RULE_COUNT=${DEDUP_COUNT}
-logger -t misp-pull-rules "Dedup: kept ${RULE_COUNT} rules, dropped ${DROPPED} duplicates/broken"
+logger -t misp-pull-rules "Dedup: kept ${RULE_COUNT} rules, dropped ${DROPPED} duplicates/broken (pcre-quote/pipe-scheme/continuation/placeholder/html-entity/legacy filters)"
 
 mv "${TMP_FILE}" "${RULES_FILE}"
 chown root:root "${RULES_FILE}"
